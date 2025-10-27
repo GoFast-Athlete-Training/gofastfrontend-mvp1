@@ -24,7 +24,7 @@ const SplashPage = () => {
         if (isAuthenticated) {
           navigate('/athlete-home');
         } else {
-          navigate('/signup');
+          navigate('/athlete-signin');
         }
       }, 3000); // 3 second animation
     }
@@ -34,7 +34,7 @@ const SplashPage = () => {
     if (isAuthenticated) {
       navigate('/athlete-home');
     } else {
-      navigate('/signup');
+      navigate('/athlete-signin');
     }
   };
 
