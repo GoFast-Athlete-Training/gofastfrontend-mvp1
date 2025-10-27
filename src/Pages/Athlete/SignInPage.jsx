@@ -84,6 +84,7 @@ const SignInPage = () => {
                 value={formData.email}
                 onChange={handleInputChange}
                 required
+                autoComplete="email"
                 className="w-full p-4 border border-gray-300 rounded-lg focus:ring-2 focus:ring-orange-500 focus:border-orange-500"
                 placeholder="your@email.com"
               />
@@ -100,6 +101,7 @@ const SignInPage = () => {
                 value={formData.password}
                 onChange={handleInputChange}
                 required
+                autoComplete="current-password"
                 className="w-full p-4 border border-gray-300 rounded-lg focus:ring-2 focus:ring-orange-500 focus:border-orange-500"
                 placeholder="••••••••"
               />
