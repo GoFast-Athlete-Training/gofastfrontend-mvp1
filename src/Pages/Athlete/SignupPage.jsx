@@ -56,9 +56,10 @@ const SignupPage = () => {
       localStorage.setItem("athleteId", athlete.athleteId);
       localStorage.setItem("email", athlete.data?.email || result.email);
       
-      // MVP: Just show success popup - no navigation
-      console.log("✅ MVP SUCCESS: Athlete found/created in database");
-      alert(`🎉 SUCCESS!\n\nAthlete ID: ${athlete.athleteId}\nEmail: ${athlete.data?.email || result.email}\nFirebase ID: ${result.uid}\n\nBackend API call successful!`);
+      // SUCCESS: Navigate to profile setup
+      console.log("✅ SUCCESS: Athlete found/created in database");
+      console.log("✅ SUCCESS: Navigating to profile setup");
+      navigate('/athlete-create-profile');
       
     } catch (error) {
       console.error("❌ Signup failed:", error);
