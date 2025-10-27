@@ -75,15 +75,6 @@ const SplashPage = () => {
         </div>
       </div>
 
-      {/* Get Started Button */}
-      <div className="mt-16">
-        <button
-          onClick={handleGetStarted}
-          className="bg-white text-orange-600 font-bold py-4 px-8 rounded-full text-xl shadow-2xl hover:shadow-3xl transform hover:scale-105 transition-all duration-300 animate-pulse"
-        >
-          Get Started
-        </button>
-      </div>
 
       {/* Loading Indicator */}
       <div className="mt-8">
