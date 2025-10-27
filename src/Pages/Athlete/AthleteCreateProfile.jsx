@@ -77,6 +77,9 @@ const AthleteCreateProfile = () => {
   const handleSubmit = async (e) => {
     e.preventDefault();
     
+    console.log('🚀 SUBMIT: Starting profile creation...');
+    console.log('📝 Form data:', formData);
+    
     // Validate required fields
     if (!formData.firstName || !formData.lastName || !formData.gofastHandle || !formData.birthday || !formData.gender || !formData.city || !formData.state || !formData.primarySport) {
       alert('Please fill in all required fields');
@@ -84,29 +87,62 @@ const AthleteCreateProfile = () => {
     }
 
     try {
-      // TODO: Call backend to update athlete profile
-      const athleteId = localStorage.getItem('athleteId');
+      // Get Firebase ID from localStorage (set during signup)
+      const firebaseId = localStorage.getItem('firebaseId');
+      const email = localStorage.getItem('email');
       
-      // For now, save to localStorage
-      localStorage.setItem('athleteProfile', JSON.stringify({
-        firstName: formData.firstName,
-        lastName: formData.lastName,
-        gofastHandle: formData.gofastHandle,
-        birthday: formData.birthday,
-        gender: formData.gender,
-        city: formData.city,
-        state: formData.state,
-        primarySport: formData.primarySport,
-        bio: formData.bio,
-        instagram: formData.instagram,
-        profilePhotoPreview: null // Don't store blob URLs
-      }));
+      console.log('🔐 Firebase ID:', firebaseId);
+      console.log('📧 Email:', email);
+      
+      if (!firebaseId) {
+        alert('No Firebase ID found. Please sign up first.');
+        return;
+      }
+
+      // Call backend to create/update athlete profile
+      const backendUrl = 'https://gofastbackendv2-fall2025.onrender.com';
+      
+      console.log('🌐 Calling backend:', `${backendUrl}/api/auth/athleteuser`);
+      
+      const response = await fetch(`${backendUrl}/api/auth/athleteuser`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          firebaseId: firebaseId,
+          email: email,
+          firstName: formData.firstName,
+          lastName: formData.lastName,
+          gofastHandle: formData.gofastHandle,
+          birthday: formData.birthday,
+          gender: formData.gender,
+          city: formData.city,
+          state: formData.state,
+          primarySport: formData.primarySport,
+          bio: formData.bio,
+          instagram: formData.instagram
+        })
+      });
+
+      if (!response.ok) {
+        throw new Error(`Backend error: ${response.status} ${response.statusText}`);
+      }
+
+      const athleteData = await response.json();
+      console.log('✅ Backend response:', athleteData);
+      
+      // Store athlete data
+      localStorage.setItem('athleteId', athleteData.id);
+      localStorage.setItem('athleteProfile', JSON.stringify(athleteData));
 
       // Navigate to athlete home after profile setup
+      console.log('🏠 Navigating to athlete home...');
       navigate('/athlete-home');
+      
     } catch (error) {
-      console.error('Profile update failed:', error);
-      alert('Profile update failed. Please try again.');
+      console.error('❌ Profile creation failed:', error);
+      alert(`Profile creation failed: ${error.message}`);
     }
   };
 
