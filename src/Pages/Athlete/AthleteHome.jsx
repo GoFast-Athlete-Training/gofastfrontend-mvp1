@@ -1,64 +1,66 @@
-import React from 'react';
+import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { signOut } from 'firebase/auth';
 import { auth } from '../../firebase';
 
 const AthleteHome = () => {
   const navigate = useNavigate();
+  const [athleteProfile, setAthleteProfile] = useState(null);
+  const [isLoading, setIsLoading] = useState(true);
+
+  useEffect(() => {
+    // Load athlete profile from localStorage
+    const profile = localStorage.getItem('athleteProfile');
+    if (profile) {
+      setAthleteProfile(JSON.parse(profile));
+    }
+    setIsLoading(false);
+  }, []);
 
   const handleSignOut = async () => {
     try {
       await signOut(auth);
+      localStorage.clear(); // Clear all stored data
       navigate('/');
     } catch (error) {
       console.error('Error signing out:', error);
     }
   };
 
-  const mainFeatures = [
-    {
-      title: "Connect",
-      description: "Find your running crew and accountability partners",
-      icon: "👥",
-      path: "/connect",
-      color: "bg-orange-500"
-    },
-    {
-      title: "Train", 
-      description: "Personalized training plans and progress tracking",
-      icon: "🏃‍♂️",
-      path: "/training-hub",
-      color: "bg-blue-500"
-    },
-    {
-      title: "Shop",
-      description: "Earn points and redeem exclusive running gear",
-      icon: "🛍️",
-      path: "/shop",
-      color: "bg-green-500"
-    }
-  ];
+  if (isLoading) {
+    return (
+      <div className="min-h-screen bg-white flex items-center justify-center">
+        <div className="animate-pulse">
+          <div className="w-16 h-16 bg-gray-200 rounded-full mx-auto mb-4"></div>
+          <div className="h-4 bg-gray-200 rounded w-32 mx-auto"></div>
+        </div>
+      </div>
+    );
+  }
+
+  const athleteName = athleteProfile ? `${athleteProfile.firstName || 'Athlete'}` : 'Athlete';
+  const athleteLocation = athleteProfile ? `${athleteProfile.city || 'Your City'}, ${athleteProfile.state || 'State'}` : 'Your Location';
 
   return (
-    <div className="min-h-screen bg-gray-50">
+    <div className="min-h-screen bg-white">
       {/* Header */}
       <div className="bg-white shadow-sm">
-        <div className="max-w-6xl mx-auto px-6 py-4">
+        <div className="max-w-4xl mx-auto px-6 py-4">
           <div className="flex items-center justify-between">
             <div className="flex items-center space-x-4">
               <img src="/logo.jpg" alt="GoFast" className="w-8 h-8 rounded-full" />
               <span className="text-xl font-bold text-gray-900">GoFast</span>
             </div>
-            <div className="flex items-center space-x-4">
+            <div className="flex items-center space-x-3">
               <button
-                onClick={() => navigate('/profile-setup')}
-                className="text-gray-600 hover:text-gray-800 font-medium"
+                onClick={() => navigate('/athlete-create-profile')}
+                className="w-10 h-10 bg-gray-200 rounded-full flex items-center justify-center text-xl hover:bg-gray-300 transition-colors"
               >
-                Profile
+                👤
               </button>
               <button
                 onClick={handleSignOut}
-                className="bg-gray-200 text-gray-700 px-4 py-2 rounded-lg font-medium hover:bg-gray-300 transition"
+                className="text-gray-600 hover:text-gray-800 px-4 py-2 rounded-lg hover:bg-gray-100"
               >
                 Sign Out
               </button>
@@ -67,57 +69,125 @@ const AthleteHome = () => {
         </div>
       </div>
 
-      {/* Main Content */}
-      <div className="max-w-6xl mx-auto px-6 py-12">
-        {/* Welcome Section */}
-        <div className="text-center mb-12">
-          <h1 className="text-4xl font-bold text-gray-900 mb-4">
-            Welcome to GoFast!
-          </h1>
-          <p className="text-xl text-gray-600">
-            Ready to crush your running goals? Choose where to start:
-          </p>
+      {/* Navigation Hub */}
+      <div className="max-w-4xl mx-auto px-6 py-8">
+        <div className="mb-6">
+          <h1 className="text-3xl font-bold text-gray-900 mb-2">Welcome back, {athleteName}!</h1>
+          <p className="text-gray-600">{athleteLocation}</p>
+        </div>
+        <h2 className="text-2xl font-bold text-gray-900 mb-6">Quick Access</h2>
+        
+        {/* Main Navigation Grid */}
+        <div className="grid grid-cols-2 gap-4 mb-8">
+          <button
+            onClick={() => navigate('/connect')}
+            className="bg-gradient-to-br from-sky-500 to-sky-600 text-white rounded-xl p-6 shadow-lg hover:shadow-xl transition-shadow text-left"
+          >
+            <div className="text-4xl mb-3">👥</div>
+            <h3 className="text-xl font-bold mb-1">My Crew</h3>
+            <p className="text-sky-100 text-sm">Find running partners in {athleteProfile?.city || 'your area'}</p>
+          </button>
+
+          <button
+            onClick={() => navigate('/training-hub')}
+            className="bg-gradient-to-br from-orange-500 to-orange-600 text-white rounded-xl p-6 shadow-lg hover:shadow-xl transition-shadow text-left"
+          >
+            <div className="text-4xl mb-3">💪</div>
+            <h3 className="text-xl font-bold mb-1">Training</h3>
+            <p className="text-orange-100 text-sm">{athleteProfile?.primarySport ? `${athleteProfile.primarySport} training` : 'View your plan'}</p>
+          </button>
+
+          <button
+            onClick={() => navigate('/shop')}
+            className="bg-gradient-to-br from-green-500 to-green-600 text-white rounded-xl p-6 shadow-lg hover:shadow-xl transition-shadow text-left"
+          >
+            <div className="text-4xl mb-3">🏃</div>
+            <h3 className="text-xl font-bold mb-1">Activity</h3>
+            <p className="text-green-100 text-sm">Track your runs</p>
+          </button>
+
+          <button
+            onClick={() => navigate('/athlete-create-profile')}
+            className="bg-gradient-to-br from-purple-500 to-purple-600 text-white rounded-xl p-6 shadow-lg hover:shadow-xl transition-shadow text-left"
+          >
+            <div className="text-4xl mb-3">📊</div>
+            <h3 className="text-xl font-bold mb-1">Profile</h3>
+            <p className="text-purple-100 text-sm">Update your info</p>
+          </button>
         </div>
 
-        {/* Main Features Grid */}
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-8 mb-12">
-          {mainFeatures.map((feature, index) => (
-            <div 
-              key={index}
-              onClick={() => navigate(feature.path)}
-              className="bg-white rounded-xl shadow-lg p-8 hover:shadow-xl transition-all cursor-pointer transform hover:scale-105 text-center"
+        {/* Shopping Section */}
+        <div className="mb-8">
+          <h2 className="text-xl font-bold text-gray-900 mb-4">Shopping</h2>
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+            <button
+              onClick={() => navigate('/shop')}
+              className="bg-gradient-to-br from-sky-500 to-sky-600 text-white rounded-xl p-6 shadow-lg hover:shadow-xl transition-shadow text-left"
             >
-              <div className="text-6xl mb-6">{feature.icon}</div>
-              <h3 className="text-2xl font-bold text-gray-900 mb-4">
-                {feature.title}
-              </h3>
-              <p className="text-gray-600 text-lg mb-6">
-                {feature.description}
-              </p>
-              <div className={`${feature.color} text-white px-6 py-3 rounded-lg font-bold text-lg`}>
-                Get Started
+              <div className="text-4xl mb-3">🛍️</div>
+              <h3 className="text-xl font-bold mb-1">Get New Gear</h3>
+              <p className="text-sky-100 text-sm">Running shoes, watches, apparel</p>
+            </button>
+            
+            <button
+              onClick={() => navigate('/shop')}
+              className="bg-gradient-to-br from-orange-500 to-orange-600 text-white rounded-xl p-6 shadow-lg hover:shadow-xl transition-shadow text-left"
+            >
+              <div className="text-4xl mb-3">🎁</div>
+              <h3 className="text-xl font-bold mb-1">Use Your Points</h3>
+              <p className="text-orange-100 text-sm">GoFast merch & exclusive items</p>
+            </button>
+          </div>
+        </div>
+
+        {/* Upcoming Section */}
+        <div className="mb-8">
+          <h2 className="text-xl font-bold text-gray-900 mb-4">Upcoming</h2>
+          <div className="space-y-3">
+            <div className="bg-white rounded-xl p-4 shadow-sm border border-gray-200">
+              <div className="flex items-center justify-between">
+                <div>
+                  <h3 className="font-bold text-gray-900">Complete Your Profile</h3>
+                  <p className="text-sm text-gray-600">Add more details to get better matches</p>
+                </div>
+                <span className="text-2xl">📝</span>
               </div>
             </div>
-          ))}
+
+            <div className="bg-white rounded-xl p-4 shadow-sm border border-gray-200">
+              <div className="flex items-center justify-between">
+                <div>
+                  <h3 className="font-bold text-gray-900">Start Your First Run</h3>
+                  <p className="text-sm text-gray-600">Log your first activity to begin tracking</p>
+                </div>
+                <span className="text-2xl">🏃</span>
+              </div>
+            </div>
+          </div>
         </div>
 
-        {/* Quick Stats */}
-        <div className="bg-white rounded-xl shadow-lg p-8">
-          <h2 className="text-2xl font-bold text-gray-900 mb-6 text-center">
-            Your Running Journey
-          </h2>
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-            <div className="text-center">
-              <div className="text-3xl font-bold text-orange-600 mb-2">0</div>
-              <div className="text-gray-600">Miles This Week</div>
+        {/* Recent Activity */}
+        <div>
+          <h2 className="text-xl font-bold text-gray-900 mb-4">Recent Activity</h2>
+          <div className="space-y-3">
+            <div className="bg-white rounded-xl p-4 shadow-sm border border-gray-200">
+              <div className="flex items-center">
+                <div className="text-2xl mr-3">✅</div>
+                <div>
+                  <p className="font-medium text-gray-900">Profile Created</p>
+                  <p className="text-sm text-gray-600">Welcome to GoFast!</p>
+                </div>
+              </div>
             </div>
-            <div className="text-center">
-              <div className="text-3xl font-bold text-blue-600 mb-2">0</div>
-              <div className="text-gray-600">Runs Completed</div>
-            </div>
-            <div className="text-center">
-              <div className="text-3xl font-bold text-green-600 mb-2">0</div>
-              <div className="text-gray-600">Points Earned</div>
+
+            <div className="bg-white rounded-xl p-4 shadow-sm border border-gray-200">
+              <div className="flex items-center">
+                <div className="text-2xl mr-3">🚀</div>
+                <div>
+                  <p className="font-medium text-gray-900">Ready to Start!</p>
+                  <p className="text-sm text-gray-600">Complete your first run</p>
+                </div>
+              </div>
             </div>
           </div>
         </div>
