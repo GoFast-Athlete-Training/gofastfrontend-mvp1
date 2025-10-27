@@ -1,5 +1,5 @@
 import { initializeApp } from "firebase/app";
-import { getAuth, setPersistence, browserLocalPersistence, GoogleAuthProvider, signInWithPopup, signOut } from "firebase/auth";
+import { getAuth, setPersistence, browserLocalPersistence, GoogleAuthProvider, signInWithPopup, signInWithRedirect, getRedirectResult, signOut } from "firebase/auth";
 
 /**
  * Firebase Configuration - USER AUTH ONLY
@@ -29,6 +29,15 @@ setPersistence(auth, browserLocalPersistence).catch((error) => {
 
 // Google Provider for USER LOGIN
 const googleProvider = new GoogleAuthProvider();
+
+// Configure Google provider to avoid common issues
+googleProvider.setCustomParameters({
+  prompt: 'select_account' // Always show account selection
+});
+
+// Add scopes if needed
+googleProvider.addScope('email');
+googleProvider.addScope('profile');
 
 /**
  * Sign in with Google - USER LOGIN ONLY

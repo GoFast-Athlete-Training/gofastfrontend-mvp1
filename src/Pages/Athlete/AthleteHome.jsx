@@ -72,77 +72,37 @@ const AthleteHome = () => {
       {/* Navigation Hub */}
       <div className="max-w-4xl mx-auto px-6 py-8">
         <div className="mb-6">
-          <h1 className="text-3xl font-bold text-gray-900 mb-2">Welcome back, {athleteName}!</h1>
-          <p className="text-gray-600">{athleteLocation}</p>
-        </div>
-        <h2 className="text-2xl font-bold text-gray-900 mb-6">Quick Access</h2>
-        
-        {/* Main Navigation Grid */}
-        <div className="grid grid-cols-2 gap-4 mb-8">
-          <button
-            onClick={() => navigate('/connect')}
-            className="bg-gradient-to-br from-sky-500 to-sky-600 text-white rounded-xl p-6 shadow-lg hover:shadow-xl transition-shadow text-left"
-          >
-            <div className="text-4xl mb-3">👥</div>
-            <h3 className="text-xl font-bold mb-1">My Crew</h3>
-            <p className="text-sky-100 text-sm">Find running partners in {athleteProfile?.city || 'your area'}</p>
-          </button>
-
-          <button
-            onClick={() => navigate('/training-hub')}
-            className="bg-gradient-to-br from-orange-500 to-orange-600 text-white rounded-xl p-6 shadow-lg hover:shadow-xl transition-shadow text-left"
-          >
-            <div className="text-4xl mb-3">💪</div>
-            <h3 className="text-xl font-bold mb-1">Training</h3>
-            <p className="text-orange-100 text-sm">{athleteProfile?.primarySport ? `${athleteProfile.primarySport} training` : 'View your plan'}</p>
-          </button>
-
-          <button
-            onClick={() => navigate('/shop')}
-            className="bg-gradient-to-br from-green-500 to-green-600 text-white rounded-xl p-6 shadow-lg hover:shadow-xl transition-shadow text-left"
-          >
-            <div className="text-4xl mb-3">🏃</div>
-            <h3 className="text-xl font-bold mb-1">Activity</h3>
-            <p className="text-green-100 text-sm">Track your runs</p>
-          </button>
-
-          <button
-            onClick={() => navigate('/athlete-create-profile')}
-            className="bg-gradient-to-br from-purple-500 to-purple-600 text-white rounded-xl p-6 shadow-lg hover:shadow-xl transition-shadow text-left"
-          >
-            <div className="text-4xl mb-3">📊</div>
-            <h3 className="text-xl font-bold mb-1">Profile</h3>
-            <p className="text-purple-100 text-sm">Update your info</p>
-          </button>
+          <h1 className="text-3xl font-bold text-gray-900 mb-2">Welcome to GoFast, {athleteName}!</h1>
+          <p className="text-gray-600">You're all set up and ready to start your running journey</p>
         </div>
 
-        {/* Shopping Section */}
+        {/* Getting Started Section */}
         <div className="mb-8">
-          <h2 className="text-xl font-bold text-gray-900 mb-4">Shopping</h2>
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+          <h2 className="text-2xl font-bold text-gray-900 mb-6">Get Started</h2>
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
             <button
-              onClick={() => navigate('/shop')}
+              onClick={() => navigate('/connect')}
               className="bg-gradient-to-br from-sky-500 to-sky-600 text-white rounded-xl p-6 shadow-lg hover:shadow-xl transition-shadow text-left"
             >
-              <div className="text-4xl mb-3">🛍️</div>
-              <h3 className="text-xl font-bold mb-1">Get New Gear</h3>
-              <p className="text-sky-100 text-sm">Running shoes, watches, apparel</p>
+              <div className="text-4xl mb-3">👥</div>
+              <h3 className="text-xl font-bold mb-1">Find Your Crew</h3>
+              <p className="text-sky-100 text-sm">Connect with runners in {athleteProfile?.city || 'your area'}</p>
             </button>
-            
+
             <button
-              onClick={() => navigate('/shop')}
+              onClick={() => navigate('/training-hub')}
               className="bg-gradient-to-br from-orange-500 to-orange-600 text-white rounded-xl p-6 shadow-lg hover:shadow-xl transition-shadow text-left"
             >
-              <div className="text-4xl mb-3">🎁</div>
-              <h3 className="text-xl font-bold mb-1">Use Your Points</h3>
-              <p className="text-orange-100 text-sm">GoFast merch & exclusive items</p>
+              <div className="text-4xl mb-3">🏃</div>
+              <h3 className="text-xl font-bold mb-1">Start Training</h3>
+              <p className="text-orange-100 text-sm">Get your personalized {athleteProfile?.primarySport || 'running'} plan</p>
             </button>
           </div>
         </div>
 
-        {/* Upcoming Section */}
+        {/* Next Steps */}
         <div className="mb-8">
-          <h2 className="text-xl font-bold text-gray-900 mb-4">Upcoming</h2>
+          <h2 className="text-xl font-bold text-gray-900 mb-4">What's Next?</h2>
           <div className="space-y-3">
             <div className="bg-white rounded-xl p-4 shadow-sm border border-gray-200">
               <div className="flex items-center justify-between">
@@ -150,43 +110,27 @@ const AthleteHome = () => {
                   <h3 className="font-bold text-gray-900">Complete Your Profile</h3>
                   <p className="text-sm text-gray-600">Add more details to get better matches</p>
                 </div>
-                <span className="text-2xl">📝</span>
+                <button 
+                  onClick={() => navigate('/athlete-create-profile')}
+                  className="text-orange-600 hover:text-orange-700 font-medium"
+                >
+                  Update →
+                </button>
               </div>
             </div>
 
             <div className="bg-white rounded-xl p-4 shadow-sm border border-gray-200">
               <div className="flex items-center justify-between">
                 <div>
-                  <h3 className="font-bold text-gray-900">Start Your First Run</h3>
-                  <p className="text-sm text-gray-600">Log your first activity to begin tracking</p>
+                  <h3 className="font-bold text-gray-900">Find Running Partners</h3>
+                  <p className="text-sm text-gray-600">Connect with athletes at your level</p>
                 </div>
-                <span className="text-2xl">🏃</span>
-              </div>
-            </div>
-          </div>
-        </div>
-
-        {/* Recent Activity */}
-        <div>
-          <h2 className="text-xl font-bold text-gray-900 mb-4">Recent Activity</h2>
-          <div className="space-y-3">
-            <div className="bg-white rounded-xl p-4 shadow-sm border border-gray-200">
-              <div className="flex items-center">
-                <div className="text-2xl mr-3">✅</div>
-                <div>
-                  <p className="font-medium text-gray-900">Profile Created</p>
-                  <p className="text-sm text-gray-600">Welcome to GoFast!</p>
-                </div>
-              </div>
-            </div>
-
-            <div className="bg-white rounded-xl p-4 shadow-sm border border-gray-200">
-              <div className="flex items-center">
-                <div className="text-2xl mr-3">🚀</div>
-                <div>
-                  <p className="font-medium text-gray-900">Ready to Start!</p>
-                  <p className="text-sm text-gray-600">Complete your first run</p>
-                </div>
+                <button 
+                  onClick={() => navigate('/connect')}
+                  className="text-sky-600 hover:text-sky-700 font-medium"
+                >
+                  Explore →
+                </button>
               </div>
             </div>
           </div>

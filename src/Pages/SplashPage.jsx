@@ -47,7 +47,7 @@ const SplashPage = () => {
 
   if (isLoading) {
     return (
-      <div className="min-h-screen bg-black flex items-center justify-center">
+      <div className="min-h-screen bg-gradient-to-br from-sky-400 to-sky-600 flex items-center justify-center">
         <div className="animate-pulse">
           <div className="w-16 h-16 bg-white rounded-full mx-auto mb-4"></div>
         </div>
@@ -56,7 +56,7 @@ const SplashPage = () => {
   }
 
   return (
-    <div className="min-h-screen bg-black flex items-center justify-center relative overflow-hidden">
+    <div className="min-h-screen bg-gradient-to-br from-sky-400 to-sky-600 flex items-center justify-center relative overflow-hidden">
       {/* Logo Phase */}
       {animationPhase === 'logo' && (
         <div className="animate-fade-in">
@@ -68,7 +68,7 @@ const SplashPage = () => {
         </div>
       )}
 
-      {/* Black Phase */}
+      {/* Fade Away Phase */}
       {animationPhase === 'black' && (
         <div className="animate-fade-out">
           <img 
@@ -83,9 +83,9 @@ const SplashPage = () => {
       {animationPhase === 'text' && (
         <div className="text-center animate-fade-in">
           <h1 className="text-6xl md:text-8xl font-bold text-white mb-8 animate-pulse">
-            Let's Go Crush Goals!
+            Let's Go <span className="text-orange-400">Crush</span> Goals!
           </h1>
-          <p className="text-2xl md:text-3xl text-orange-400 font-medium">
+          <p className="text-2xl md:text-3xl text-sky-100 font-medium">
             Your running journey starts here
           </p>
         </div>

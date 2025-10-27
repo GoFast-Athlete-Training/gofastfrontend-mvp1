@@ -99,12 +99,12 @@ const AthleteCreateProfile = () => {
         return;
       }
 
-      // Call backend to create/update athlete profile
+      // Step 1: Create/find athlete with basic info
       const backendUrl = 'https://gofastbackendv2-fall2025.onrender.com';
       
-      console.log('🌐 Calling backend:', `${backendUrl}/api/auth/athleteuser`);
+      console.log('🌐 Step 1: Creating athlete:', `${backendUrl}/api/auth/athleteuser`);
       
-      const response = await fetch(`${backendUrl}/api/auth/athleteuser`, {
+      const authResponse = await fetch(`${backendUrl}/api/auth/athleteuser`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
@@ -112,6 +112,27 @@ const AthleteCreateProfile = () => {
         body: JSON.stringify({
           firebaseId: firebaseId,
           email: email,
+          firstName: formData.firstName,
+          lastName: formData.lastName
+        })
+      });
+
+      if (!authResponse.ok) {
+        throw new Error(`Auth error: ${authResponse.status} ${authResponse.statusText}`);
+      }
+
+      const athleteData = await authResponse.json();
+      console.log('✅ Step 1 - Athlete created/found:', athleteData);
+      
+      // Step 2: Update athlete with full profile
+      console.log('🌐 Step 2: Updating profile:', `${backendUrl}/api/athlete/${athleteData.id}/profile`);
+      
+      const profileResponse = await fetch(`${backendUrl}/api/athlete/${athleteData.id}/profile`, {
+        method: 'PUT',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
           firstName: formData.firstName,
           lastName: formData.lastName,
           gofastHandle: formData.gofastHandle,
@@ -125,16 +146,16 @@ const AthleteCreateProfile = () => {
         })
       });
 
-      if (!response.ok) {
-        throw new Error(`Backend error: ${response.status} ${response.statusText}`);
+      if (!profileResponse.ok) {
+        throw new Error(`Profile error: ${profileResponse.status} ${profileResponse.statusText}`);
       }
 
-      const athleteData = await response.json();
-      console.log('✅ Backend response:', athleteData);
+      const profileData = await profileResponse.json();
+      console.log('✅ Step 2 - Profile updated:', profileData);
       
       // Store athlete data
       localStorage.setItem('athleteId', athleteData.id);
-      localStorage.setItem('athleteProfile', JSON.stringify(athleteData));
+      localStorage.setItem('athleteProfile', JSON.stringify(profileData.athlete));
 
       // Navigate to athlete home after profile setup
       console.log('🏠 Navigating to athlete home...');
