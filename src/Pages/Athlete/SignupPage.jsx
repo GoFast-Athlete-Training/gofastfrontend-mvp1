@@ -1,6 +1,7 @@
 import React, { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { signInWithGoogle } from '../../firebase';
+import { signInWithGoogle, auth } from '../../firebase';
+import api from '../../api/axiosConfig';
 
 const SignupPage = () => {
   const navigate = useNavigate();
@@ -16,26 +17,54 @@ const SignupPage = () => {
       
       console.log("✅ Google sign-in successful:", result.email);
       
-      // TODO: Call backend findOrCreate athlete
-      // const res = await api.post("/athleteuser", {
-      //   firebaseId: result.uid,
-      //   email: result.email,
-      //   firstName: result.name?.split(' ')[0] || '',
-      //   lastName: result.name?.split(' ').slice(1).join(' ') || '',
-      //   photoURL: result.photoURL
-      // });
+      // Get Firebase ID token for backend verification
+      const firebaseToken = await auth.currentUser.getIdToken();
+      console.log("🔐 Firebase token obtained:", firebaseToken.substring(0, 20) + "...");
+      
+      // Store Firebase token for API calls
+      localStorage.setItem("firebaseToken", firebaseToken);
+      
+      // Call backend create athlete with Firebase token verification
+      console.log("🌐 Calling backend API: /athlete/create");
+      console.log("📤 Request data:", {
+        firebaseId: result.uid,
+        email: result.email,
+        firstName: result.name?.split(' ')[0] || '',
+        lastName: result.name?.split(' ').slice(1).join(' ') || '',
+        photoURL: result.photoURL
+      });
+      
+      const res = await api.post("/athlete/create", {
+        firebaseId: result.uid,
+        email: result.email,
+        firstName: result.name?.split(' ')[0] || '',
+        lastName: result.name?.split(' ').slice(1).join(' ') || '',
+        photoURL: result.photoURL
+      });
+      
+      console.log("✅ Backend API response:", res.data);
+      
+      const athlete = res.data;
+      
+      // CRITICAL: Validate backend response
+      if (!athlete || !athlete.success) {
+        throw new Error(`Backend API failed: ${athlete?.message || 'Invalid response'}`);
+      }
       
       // Store auth data
       localStorage.setItem("firebaseId", result.uid);
-      localStorage.setItem("email", result.email);
+      localStorage.setItem("athleteId", athlete.athleteId);
+      localStorage.setItem("email", athlete.data?.email || result.email);
       
-      // New user → Profile setup
-      console.log("✅ New user → Profile setup");
-      navigate('/athlete-create-profile');
+      // MVP: Just show success popup - no navigation
+      console.log("✅ MVP SUCCESS: Athlete found/created in database");
+      alert(`🎉 SUCCESS!\n\nAthlete ID: ${athlete.athleteId}\nEmail: ${athlete.data?.email || result.email}\nFirebase ID: ${result.uid}\n\nBackend API call successful!`);
       
     } catch (error) {
       console.error("❌ Signup failed:", error);
-      alert("Signup failed. Please try again.");
+      
+      // MVP: Simple error popup
+      alert(`❌ MVP FAILED!\n\nError: ${error.message}\n\nStatus: ${error.response?.status || 'Unknown'}\n\nBackend API call failed!`);
     } finally {
       setIsSigningUp(false);
     }
