@@ -1,4 +1,4 @@
-import React, { useState, useRef } from 'react';
+import React, { useState, useRef, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 
 const AthleteCreateProfile = () => {
@@ -18,6 +18,27 @@ const AthleteCreateProfile = () => {
     profilePhoto: null,
     profilePhotoPreview: null
   });
+
+  // Pre-fill form with Adam's data for testing
+  useEffect(() => {
+    const adamData = {
+      firstName: 'Adam',
+      lastName: 'Cole',
+      gofastHandle: 'adam_cole',
+      birthday: '1990-01-15',
+      gender: 'male',
+      city: 'Charlotte',
+      state: 'NC',
+      primarySport: 'running',
+      bio: 'Passionate runner focused on marathon training and community building.',
+      instagram: '@adamcole_runs'
+    };
+    
+    setFormData(prev => ({
+      ...prev,
+      ...adamData
+    }));
+  }, []);
 
   const handleInputChange = (field, value) => {
     setFormData(prev => ({
