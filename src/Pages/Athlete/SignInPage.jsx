@@ -1,15 +1,13 @@
 import React, { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { createUserWithEmailAndPassword, signInWithEmailAndPassword } from 'firebase/auth';
+import { signInWithEmailAndPassword } from 'firebase/auth';
 import { auth } from '../firebase';
 
-const SignupPage = () => {
+const SignInPage = () => {
   const navigate = useNavigate();
-  const [isLogin, setIsLogin] = useState(false);
   const [formData, setFormData] = useState({
     email: '',
-    password: '',
-    confirmPassword: ''
+    password: ''
   });
   const [error, setError] = useState('');
   const [isLoading, setIsLoading] = useState(false);
@@ -28,21 +26,16 @@ const SignupPage = () => {
     setError('');
 
     try {
-      if (isLogin) {
-        // Login
-        await signInWithEmailAndPassword(auth, formData.email, formData.password);
-        navigate('/athlete-home');
-      } else {
-        // Signup
-        if (formData.password !== formData.confirmPassword) {
-          setError('Passwords do not match');
-          setIsLoading(false);
-          return;
-        }
-        
-        await createUserWithEmailAndPassword(auth, formData.email, formData.password);
-        navigate('/profile-setup');
-      }
+      // Sign in with Firebase
+      const userCredential = await signInWithEmailAndPassword(auth, formData.email, formData.password);
+      const user = userCredential.user;
+      
+      // Get Firebase ID token
+      const idToken = await user.getIdToken();
+      
+      // Return user → Universal router/hydration (TODO: implement later)
+      console.log("✅ Return user → Universal router");
+      navigate('/athlete-home'); // Placeholder for now
     } catch (error) {
       setError(error.message);
     } finally {
@@ -52,6 +45,10 @@ const SignupPage = () => {
 
   const handleBack = () => {
     navigate('/');
+  };
+
+  const handleSignUp = () => {
+    navigate('/signup');
   };
 
   return (
@@ -69,12 +66,8 @@ const SignupPage = () => {
           </button>
           
           <img src="/logo.jpg" alt="GoFast" className="w-16 h-16 rounded-full mx-auto mb-4" />
-          <h1 className="text-3xl font-bold text-gray-900 mb-2">
-            {isLogin ? 'Welcome Back!' : 'Join GoFast'}
-          </h1>
-          <p className="text-gray-600">
-            {isLogin ? 'Sign in to continue your journey' : 'Start crushing your running goals'}
-          </p>
+          <h1 className="text-3xl font-bold text-gray-900 mb-2">Welcome Back!</h1>
+          <p className="text-gray-600">Sign in to continue your journey</p>
         </div>
 
         {/* Form */}
@@ -112,24 +105,6 @@ const SignupPage = () => {
               />
             </div>
 
-            {/* Confirm Password (Signup only) */}
-            {!isLogin && (
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-2">
-                  Confirm Password
-                </label>
-                <input
-                  type="password"
-                  name="confirmPassword"
-                  value={formData.confirmPassword}
-                  onChange={handleInputChange}
-                  required
-                  className="w-full p-4 border border-gray-300 rounded-lg focus:ring-2 focus:ring-orange-500 focus:border-orange-500"
-                  placeholder="••••••••"
-                />
-              </div>
-            )}
-
             {/* Error Message */}
             {error && (
               <div className="bg-red-50 border border-red-200 rounded-lg p-4">
@@ -143,19 +118,19 @@ const SignupPage = () => {
               disabled={isLoading}
               className="w-full bg-orange-500 hover:bg-orange-600 text-white font-bold py-4 px-6 rounded-lg transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
             >
-              {isLoading ? 'Loading...' : (isLogin ? 'Sign In' : 'Create Account')}
+              {isLoading ? 'Signing In...' : 'Sign In'}
             </button>
           </form>
 
-          {/* Toggle Login/Signup */}
+          {/* Sign Up Link */}
           <div className="mt-6 text-center">
             <p className="text-gray-600">
-              {isLogin ? "Don't have an account? " : "Already have an account? "}
+              Don't have an account?{' '}
               <button
-                onClick={() => setIsLogin(!isLogin)}
+                onClick={handleSignUp}
                 className="text-orange-600 hover:text-orange-700 font-medium"
               >
-                {isLogin ? 'Sign up' : 'Sign in'}
+                Sign up
               </button>
             </p>
           </div>
@@ -165,4 +140,4 @@ const SignupPage = () => {
   );
 };
 
-export default SignupPage;
+export default SignInPage;
