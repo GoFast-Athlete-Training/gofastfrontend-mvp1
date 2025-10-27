@@ -87,12 +87,14 @@ const AthleteCreateProfile = () => {
     }
 
     try {
-      // Get Firebase ID from localStorage (set during signup)
+      // Get Firebase ID and token from localStorage (set during signup)
       const firebaseId = localStorage.getItem('firebaseId');
       const email = localStorage.getItem('email');
+      const firebaseToken = localStorage.getItem('firebaseToken');
       
       console.log('🔐 Firebase ID:', firebaseId);
       console.log('📧 Email:', email);
+      console.log('🎫 Firebase Token:', firebaseToken ? 'Present' : 'Missing');
       
       if (!firebaseId) {
         alert('No Firebase ID found. Please sign up first.');
@@ -102,12 +104,13 @@ const AthleteCreateProfile = () => {
       // Step 1: Create/find athlete with basic info
       const backendUrl = 'https://gofastbackendv2-fall2025.onrender.com';
       
-      console.log('🌐 Step 1: Creating athlete:', `${backendUrl}/api/auth/athleteuser`);
+      console.log('🌐 Step 1: Creating athlete:', `${backendUrl}/api/athlete/create`);
       
-      const authResponse = await fetch(`${backendUrl}/api/auth/athleteuser`, {
+      const authResponse = await fetch(`${backendUrl}/api/athlete/create`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
+          'Authorization': `Bearer ${firebaseToken}`
         },
         body: JSON.stringify({
           firebaseId: firebaseId,
