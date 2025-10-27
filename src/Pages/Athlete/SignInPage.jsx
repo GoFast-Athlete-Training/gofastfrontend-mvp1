@@ -43,6 +43,10 @@ const SignInPage = () => {
     }
   };
 
+  const handleLearnMore = () => {
+    window.open('https://www.gofastcrushgoals.com', '_blank');
+  };
+
   const handleBack = () => {
     navigate('/');
   };
@@ -52,7 +56,7 @@ const SignInPage = () => {
   };
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-orange-50 to-orange-100 flex items-center justify-center">
+    <div className="min-h-screen bg-gradient-to-br from-sky-50 to-sky-100 flex items-center justify-center">
       <div className="max-w-md w-full mx-4">
         {/* Header */}
         <div className="text-center mb-8">
@@ -135,6 +139,16 @@ const SignInPage = () => {
                 Sign up
               </button>
             </p>
+          </div>
+
+          {/* Learn More Button */}
+          <div className="mt-4 text-center">
+            <button
+              onClick={handleLearnMore}
+              className="text-sky-600 hover:text-sky-700 font-medium text-sm"
+            >
+              Learn More
+            </button>
           </div>
         </div>
       </div>
