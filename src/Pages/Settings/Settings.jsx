@@ -64,6 +64,26 @@ const Settings = () => {
         // Store codeVerifier for callback
         localStorage.setItem('garmin_code_verifier', data.codeVerifier);
         
+        // Listen for popup messages BEFORE opening popup
+        const messageHandler = (event) => {
+          if (event.origin !== window.location.origin) return;
+          
+          if (event.data.type === 'garmin-oauth-success') {
+            console.log('✅ Garmin OAuth success received:', event.data);
+            setIsGarminLoading(false);
+            // TODO: Update UI to show connected state
+            alert('Garmin connected successfully!');
+            window.removeEventListener('message', messageHandler);
+          } else if (event.data.type === 'garmin-oauth-error') {
+            console.error('❌ Garmin OAuth error received:', event.data);
+            setIsGarminLoading(false);
+            alert(`Garmin connection failed: ${event.data.error}`);
+            window.removeEventListener('message', messageHandler);
+          }
+        };
+        
+        window.addEventListener('message', messageHandler);
+        
         // Open popup window for OAuth
         const popup = window.open(
           data.authUrl,
@@ -76,11 +96,10 @@ const Settings = () => {
           if (popup.closed) {
             clearInterval(checkClosed);
             setIsGarminLoading(false);
+            window.removeEventListener('message', messageHandler);
             // Popup closed - check if we got a success/error message
             // If not, assume user cancelled
-            if (!popup.closed) {
-              alert('Garmin connection cancelled.');
-            }
+            alert('Garmin connection cancelled.');
           }
         }, 1000);
         
