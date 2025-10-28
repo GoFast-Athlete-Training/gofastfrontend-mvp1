@@ -2,10 +2,12 @@ import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { signOut } from 'firebase/auth';
 import { auth } from '../../firebase';
+import { GARMIN_CONFIG } from '../../config/garminConfig';
 
 const AthleteProfile = () => {
   const [activeSection, setActiveSection] = useState('profile');
   const [athleteProfile, setAthleteProfile] = useState(null);
+  const [garminStatus, setGarminStatus] = useState(null);
   const navigate = useNavigate();
 
   useEffect(() => {
@@ -14,7 +16,32 @@ const AthleteProfile = () => {
     if (storedProfile) {
       setAthleteProfile(JSON.parse(storedProfile));
     }
+    
+    // Fetch Garmin connection status
+    fetchGarminStatus();
   }, []);
+
+  const fetchGarminStatus = async () => {
+    try {
+      const response = await fetch(`${GARMIN_CONFIG.API_BASE_URL}/garmin/status`, {
+        method: 'GET',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        credentials: 'include'
+      });
+      
+      if (response.ok) {
+        const data = await response.json();
+        setGarminStatus(data);
+        console.log('✅ Garmin status fetched in AthleteProfile:', data);
+      } else {
+        console.log('⚠️ Could not fetch Garmin status');
+      }
+    } catch (error) {
+      console.error('❌ Error fetching Garmin status:', error);
+    }
+  };
 
   const handleSignOut = async () => {
     try {
@@ -229,11 +256,41 @@ const AthleteProfile = () => {
                         <div>
                           <h3 className="font-medium text-gray-900">Garmin Connect</h3>
                           <p className="text-sm text-gray-600">Sync your runs and get detailed analytics</p>
+                          {garminStatus && (
+                            <div className="mt-2">
+                              <div className={`inline-flex items-center px-2 py-1 rounded-full text-xs font-medium ${
+                                garminStatus.connected 
+                                  ? 'bg-green-100 text-green-800' 
+                                  : 'bg-gray-100 text-gray-600'
+                              }`}>
+                                {garminStatus.connected ? '✅ Connected' : '❌ Not Connected'}
+                              </div>
+                              {garminStatus.garminUserId && (
+                                <div className="mt-1 text-xs text-gray-500">
+                                  ID: {garminStatus.garminUserId}
+                                </div>
+                              )}
+                            </div>
+                          )}
                         </div>
                       </div>
-                      <button className="bg-blue-500 text-white px-4 py-2 rounded-lg hover:bg-blue-600 transition">
-                        Connect
-                      </button>
+                      <div className="flex space-x-2">
+                        {garminStatus?.connected ? (
+                          <button 
+                            onClick={() => navigate('/settings')}
+                            className="bg-green-500 text-white px-4 py-2 rounded-lg hover:bg-green-600 transition"
+                          >
+                            Manage
+                          </button>
+                        ) : (
+                          <button 
+                            onClick={() => navigate('/settings')}
+                            className="bg-blue-500 text-white px-4 py-2 rounded-lg hover:bg-blue-600 transition"
+                          >
+                            Connect
+                          </button>
+                        )}
+                      </div>
                     </div>
                   </div>
                   
