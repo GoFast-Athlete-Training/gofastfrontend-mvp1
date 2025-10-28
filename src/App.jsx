@@ -4,7 +4,7 @@ import ScrollToTop from './Components/ScrollToTop';
 
 // Pages
 import SplashPage from './Pages/SplashPage';
-import SignInPage from './Pages/Athlete/SignInPage';
+import Signin from './Pages/Signin';
 import SignupPage from './Pages/Athlete/SignupPage';
 import AthleteCreateProfile from './Pages/Athlete/AthleteCreateProfile';
 import AthleteHome from './Pages/Athlete/AthleteHome';
@@ -18,7 +18,7 @@ const App = () => {
         <Route path="/" element={<SplashPage />} />
         
         {/* Authentication */}
-        <Route path="/athlete-signin" element={<SignInPage />} />
+        <Route path="/athlete-signin" element={<Signin />} />
         <Route path="/signup" element={<SignupPage />} />
         
         {/* Profile Setup */}
