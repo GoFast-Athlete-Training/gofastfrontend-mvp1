@@ -33,7 +33,7 @@ const App = () => {
         <Route path="/athlete-profile" element={<AthleteProfile />} />
         <Route path="/settings" element={<Settings />} />
         
-        {/* Garmin OAuth 1.0a Flow */}
+        {/* Garmin OAuth 2.0 PKCE Flow */}
         <Route path="/garmin/connect" element={<GarminConnect />} />
         <Route path="/garmin/callback" element={<GarminOAuthCallback />} />
         

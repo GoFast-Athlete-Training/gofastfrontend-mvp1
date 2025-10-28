@@ -67,12 +67,12 @@ const GarminConnect = () => {
         
       } else {
         const errorData = await response.json();
-        console.error('Failed to get Garmin OAuth 1.0a URL:', errorData);
+        console.error('Failed to get Garmin OAuth 2.0 PKCE URL:', errorData);
         alert('Failed to initiate Garmin connection. Please try again.');
         setIsLoading(false);
       }
     } catch (error) {
-      console.error('Garmin OAuth 1.0a initiation error:', error);
+      console.error('Garmin OAuth 2.0 PKCE initiation error:', error);
       alert('An error occurred while connecting to Garmin. Please try again.');
       setIsLoading(false);
     }
