@@ -11,6 +11,7 @@ import AthleteHome from './Pages/Athlete/AthleteHome';
 import AthleteProfile from './Pages/Athlete/AthleteProfile';
 import Settings from './Pages/Settings/Settings';
 import GarminOAuthCallback from './Pages/Settings/GarminOAuthCallback';
+import GarminConnectSuccess from './Pages/Settings/GarminConnectSuccess';
 
 // Debug Components
 import FindMyUserId from './Pages/Debug/FindMyUserId';
@@ -48,6 +49,7 @@ const App = () => {
         
         {/* Garmin OAuth 2.0 PKCE Flow */}
         <Route path="/garmin/callback" element={<GarminOAuthCallback />} />
+        <Route path="/garmin/success" element={<GarminConnectSuccess />} />
         
         {/* Garmin Webhook Endpoints */}
         <Route path="/garmin/activity" element={<GarminActivityWebhook />} />
