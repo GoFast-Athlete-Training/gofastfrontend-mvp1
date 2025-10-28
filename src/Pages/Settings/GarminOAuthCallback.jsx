@@ -83,15 +83,8 @@ const GarminOAuthCallback = () => {
           setStatus('success');
           setMessage('Garmin connected successfully!');
           
-          // Notify parent window of success
-          if (window.opener) {
-            window.opener.postMessage({ type: 'garmin-oauth-success', data }, '*');
-          }
-          
-          // Close popup after 2 seconds
-          setTimeout(() => {
-            window.close();
-          }, 2000);
+          // Redirect to success page
+          setTimeout(() => navigate('/garmin/success'), 2000);
         } else {
           const errorData = await response.json();
           console.error('Backend OAuth error:', errorData);
