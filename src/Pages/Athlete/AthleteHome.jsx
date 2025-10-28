@@ -112,7 +112,7 @@ const AthleteHome = () => {
     `Welcome, ${athleteProfile?.firstName || 'Athlete'}!`;
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-orange-50 to-orange-100">
+    <div className="min-h-screen bg-gradient-to-br from-sky-50 to-sky-100">
       {/* Header */}
       <div className="bg-white shadow-sm">
         <div className="max-w-6xl mx-auto px-6 py-4">
@@ -124,14 +124,14 @@ const AthleteHome = () => {
             <div className="flex items-center space-x-4">
               {/* Settings Button */}
               <button
-                onClick={() => navigate('/athlete-profile')}
+                onClick={() => navigate('/settings')}
                 className="text-gray-600 hover:text-gray-900 px-3 py-2 rounded-lg font-medium hover:bg-gray-100 transition"
               >
                 Settings
               </button>
               {/* Profile Avatar - Clickable */}
               <button
-                onClick={() => navigate('/athlete-create-profile')}
+                onClick={() => navigate('/athlete-profile')}
                 className="w-10 h-10 bg-orange-500 rounded-full flex items-center justify-center text-white font-bold hover:bg-orange-600 transition"
               >
                 {athleteProfile?.firstName ? athleteProfile.firstName[0].toUpperCase() : 'A'}
@@ -161,13 +161,11 @@ const AthleteHome = () => {
               </p>
             </div>
           )}
-          {onboardingState?.isNewUser && (
-            <div className="bg-blue-100 border border-blue-300 rounded-lg p-4 max-w-2xl mx-auto mt-4">
-              <p className="text-blue-800">
-                🎉 You're new here! We'll guide you through the basics for your first 15 days.
-              </p>
-            </div>
-          )}
+          <div className="bg-sky-100 border border-sky-300 rounded-lg p-4 max-w-2xl mx-auto mt-4">
+            <p className="text-sky-800">
+              Here's to your journey! Explore the below to achieve greater accountability and faster times.
+            </p>
+          </div>
         </div>
 
         {/* Smart Action Cards */}
@@ -188,38 +186,11 @@ const AthleteHome = () => {
                 <div className={`${card.color} text-white px-4 py-2 rounded-lg font-bold`}>
                   Get Started
                 </div>
-                {card.priority === 'high' && onboardingState?.isNewUser && (
-                  <div className="mt-2">
-                    <span className="text-xs bg-orange-100 text-orange-800 px-2 py-1 rounded-full">
-                      Recommended
-                    </span>
-                  </div>
-                )}
               </div>
             );
           })}
         </div>
 
-        {/* Onboarding Progress (for new users) */}
-        {onboardingState?.isNewUser && (
-          <div className="mt-12 bg-white rounded-xl shadow-lg p-6">
-            <h3 className="text-lg font-bold text-gray-900 mb-4">Your GoFast Journey</h3>
-            <div className="flex items-center space-x-4">
-              <div className="flex-1 bg-gray-200 rounded-full h-2">
-                <div 
-                  className="bg-orange-500 h-2 rounded-full transition-all duration-500"
-                  style={{ width: `${(onboardingState.daysSinceCreation / 15) * 100}%` }}
-                ></div>
-              </div>
-              <span className="text-sm text-gray-600">
-                Day {onboardingState.daysSinceCreation} of 15
-              </span>
-            </div>
-            <p className="text-sm text-gray-600 mt-2">
-              Complete your onboarding to unlock all features!
-            </p>
-          </div>
-        )}
       </div>
     </div>
   );

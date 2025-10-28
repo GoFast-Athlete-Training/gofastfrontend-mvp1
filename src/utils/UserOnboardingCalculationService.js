@@ -36,16 +36,7 @@ export class UserOnboardingCalculationService {
     const { isNewUser, onboardingPhase } = onboardingState;
     
     // Base cards that everyone gets
-    const baseCards = [
-      {
-        title: "Connect Garmin",
-        description: "Sync your runs and get detailed analytics",
-        icon: "⌚",
-        path: "/settings/devices",
-        color: "bg-blue-500",
-        priority: "high"
-      }
-    ];
+    const baseCards = [];
 
     // Onboarding cards for new users (first 15 days)
     if (isNewUser) {
@@ -67,14 +58,6 @@ export class UserOnboardingCalculationService {
           path: "/training/track",
           color: "bg-orange-500",
           priority: "high"
-        },
-        {
-          title: "Find Running Partners",
-          description: "Connect with runners in your area",
-          icon: "👥",
-          path: "/connect/partners",
-          color: "bg-purple-500",
-          priority: "medium"
         }
       ];
     }
@@ -97,14 +80,6 @@ export class UserOnboardingCalculationService {
         path: "/training/analytics",
         color: "bg-orange-500",
         priority: "high"
-      },
-      {
-        title: "Running Partners",
-        description: "Connect with runners in your area",
-        icon: "👥",
-        path: "/connect/partners",
-        color: "bg-purple-500",
-        priority: "medium"
       }
     ];
   }

@@ -9,6 +9,7 @@ import SignupPage from './Pages/Athlete/AthleteSignup';
 import AthleteCreateProfile from './Pages/Athlete/AthleteCreateProfile';
 import AthleteHome from './Pages/Athlete/AthleteHome';
 import AthleteProfile from './Pages/Athlete/AthleteProfile';
+import Settings from './Pages/Settings/Settings';
 
 const App = () => {
   return (
@@ -28,6 +29,7 @@ const App = () => {
         {/* Main App - Protected Routes */}
         <Route path="/athlete-home" element={<AthleteHome />} />
         <Route path="/athlete-profile" element={<AthleteProfile />} />
+        <Route path="/settings" element={<Settings />} />
         
         {/* Smart Onboarding Routes */}
         <Route path="/settings/devices" element={<div className="min-h-screen bg-gray-50 flex items-center justify-center"><h1 className="text-4xl font-bold text-gray-900">Device Settings - Coming Soon!</h1></div>} />
