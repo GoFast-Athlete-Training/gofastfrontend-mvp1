@@ -25,11 +25,10 @@ const GarminConnectSuccess = () => {
 
       // Step 1: Fetch user info from Garmin to get UUID
       console.log('🔍 Step 1: Fetching Garmin user info...');
-      const userResponse = await fetch(`https://gofastbackendv2-fall2025.onrender.com/api/garmin/user`, {
+      const userResponse = await fetch(`https://gofastbackendv2-fall2025.onrender.com/api/garmin/user?athleteId=${athleteId}`, {
         method: 'GET',
         headers: {
           'Content-Type': 'application/json',
-          // TODO: Add proper auth header when auth is implemented
         }
       });
 
