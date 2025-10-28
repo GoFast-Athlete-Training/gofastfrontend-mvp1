@@ -15,92 +15,18 @@ const GarminConnectSuccess = () => {
   const completeGarminSetup = async () => {
     try {
       setLoading(true);
-      console.log('🎯 GarminConnectSuccess: Starting complete setup...');
+      console.log('🎯 GarminConnectSuccess: Tokens saved, showing success...');
       
-      // Get athleteId from localStorage
-      const athleteId = localStorage.getItem('athleteId');
-      if (!athleteId) {
-        throw new Error('No athlete ID found');
-      }
-
-      // Step 1: Get tokens from localStorage (saved by OAuth callback)
-      console.log('🔍 Step 1: Getting tokens from localStorage...');
-      const tokens = JSON.parse(localStorage.getItem('garminTokens') || '{}');
-      if (!tokens.access_token) {
-        throw new Error('No Garmin tokens found in localStorage');
-      }
-
-      // Step 2: Call Garmin API directly to get UUID
-      console.log('🔍 Step 2: Calling Garmin API directly...');
-      const garminResponse = await fetch('https://connectapi.garmin.com/oauth-service/oauth/user-info', {
-        method: 'GET',
-        headers: {
-          'Authorization': `Bearer ${tokens.access_token}`,
-          'Content-Type': 'application/json'
-        }
-      });
-
-      if (!garminResponse.ok) {
-        throw new Error(`Garmin API error: ${garminResponse.status}`);
-      }
-
-      const garminData = await garminResponse.json();
-      console.log('✅ Step 2: Garmin API response:', garminData);
-      
-      const garminUserId = garminData.userId;
-      if (!garminUserId) {
-        throw new Error('No userId in Garmin response');
-      }
-
-      // Step 3: Save UUID to our backend
-      console.log('🔍 Step 3: Saving UUID to backend...');
-      const saveResponse = await fetch('https://gofastbackendv2-fall2025.onrender.com/api/garmin/user/connect', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({
-          userId: athleteId,
-          garminUserId: garminUserId,
-          accessToken: tokens.access_token,
-          refreshToken: tokens.refresh_token,
-          expiresIn: tokens.expires_in,
-          scope: tokens.scope
-        })
-      });
-
-      if (!saveResponse.ok) {
-        throw new Error(`Failed to save UUID: ${saveResponse.status}`);
-      }
-
-      const saveData = await saveResponse.json();
-      console.log('✅ Step 3: UUID saved:', saveData);
-      
+      // Just show success - UUID fetch is manual in Settings
       setGarminData({
         connected: true,
-        userId: garminUserId,
+        userId: null, // Will be fetched manually
         connectedAt: new Date().toISOString(),
-        scope: tokens.scope
+        scope: 'PARTNER_WRITE PARTNER_READ CONNECT_READ CONNECT_WRITE'
       });
       setStatus('success');
       
-      // Step 4: Refresh dashboard hydration
-      console.log('🔄 Step 4: Refreshing dashboard hydration...');
-      const hydrateResponse = await fetch('https://gofastbackendv2-fall2025.onrender.com/api/athlete/admin/hydrate', {
-        method: 'GET',
-        headers: { 
-          'Content-Type': 'application/json'
-        }
-      });
-
-      if (hydrateResponse.ok) {
-        const hydrateData = await hydrateResponse.json();
-        localStorage.setItem('athletesData', JSON.stringify(hydrateData.athletes));
-        localStorage.setItem('athletesLastUpdated', new Date().toISOString());
-        console.log('✅ Step 4: Dashboard refreshed with fresh data');
-      }
-
-      console.log('✅ Garmin connection completed successfully!');
+      console.log('✅ Garmin OAuth completed - tokens saved!');
       
     } catch (error) {
       console.error('❌ GarminConnectSuccess error:', error);
@@ -138,14 +64,14 @@ const GarminConnectSuccess = () => {
           </div>
           
           <h1 className="text-2xl font-bold mb-2">
-            {status === 'loading' && 'Completing Garmin Setup...'}
+            {status === 'loading' && 'Garmin Connected!'}
             {status === 'success' && 'Garmin Connected Successfully!'}
             {status === 'error' && 'Setup Failed'}
           </h1>
           
           <p className="text-gray-600 mb-6">
-            {status === 'loading' && 'Fetching your Garmin user information...'}
-            {status === 'success' && 'Your Garmin account is now fully connected.'}
+            {status === 'loading' && 'Tokens saved to your account...'}
+            {status === 'success' && 'Your Garmin account is connected. Go to Settings to complete setup.'}
             {status === 'error' && 'There was an issue completing the setup.'}
           </p>
         </div>
