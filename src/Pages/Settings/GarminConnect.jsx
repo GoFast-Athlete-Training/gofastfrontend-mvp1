@@ -6,11 +6,28 @@ const GarminConnect = () => {
   const navigate = useNavigate();
   const [isLoading, setIsLoading] = useState(false);
 
+  useEffect(() => {
+    // Listen for messages from popup
+    const handleMessage = (event) => {
+      if (event.data.type === 'garmin-oauth-success') {
+        setIsLoading(false);
+        alert('Garmin connected successfully!');
+        navigate('/settings');
+      } else if (event.data.type === 'garmin-oauth-error') {
+        setIsLoading(false);
+        alert(`Garmin connection failed: ${event.data.error}`);
+      }
+    };
+
+    window.addEventListener('message', handleMessage);
+    return () => window.removeEventListener('message', handleMessage);
+  }, [navigate]);
+
   const initiateGarminOAuth = async () => {
     try {
       setIsLoading(true);
       
-      // Get OAuth 1.0a request token from backend
+      // Get OAuth 2.0 PKCE authorization URL from backend
       const response = await fetch(`${GARMIN_CONFIG.API_BASE_URL}/garmin/auth`, {
         method: 'POST',
         headers: {
@@ -23,19 +40,40 @@ const GarminConnect = () => {
 
       if (response.ok) {
         const data = await response.json();
-        console.log('Garmin OAuth 1.0a auth URL:', data.authUrl);
+        console.log('Garmin OAuth 2.0 PKCE auth URL:', data.authUrl);
         
-        // Redirect to Garmin OAuth 1.0a authorization page
-        window.location.href = data.authUrl;
+        // Store codeVerifier for callback
+        localStorage.setItem('garmin_code_verifier', data.codeVerifier);
+        
+        // Open popup window for OAuth
+        const popup = window.open(
+          data.authUrl,
+          'garmin-oauth',
+          'width=600,height=700,scrollbars=yes,resizable=yes'
+        );
+        
+        // Listen for popup completion
+        const checkClosed = setInterval(() => {
+          if (popup.closed) {
+            clearInterval(checkClosed);
+            setIsLoading(false);
+            // Popup closed - check if we got a success/error message
+            // If not, assume user cancelled
+            if (!popup.closed) {
+              alert('Garmin connection cancelled.');
+            }
+          }
+        }, 1000);
+        
       } else {
         const errorData = await response.json();
         console.error('Failed to get Garmin OAuth 1.0a URL:', errorData);
         alert('Failed to initiate Garmin connection. Please try again.');
+        setIsLoading(false);
       }
     } catch (error) {
       console.error('Garmin OAuth 1.0a initiation error:', error);
       alert('An error occurred while connecting to Garmin. Please try again.');
-    } finally {
       setIsLoading(false);
     }
   };

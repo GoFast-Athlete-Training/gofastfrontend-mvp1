@@ -10,36 +10,47 @@ const GarminOAuthCallback = () => {
   useEffect(() => {
     const handleOAuthCallback = async () => {
       try {
-        // Get OAuth 1.0a parameters from URL
-        const oauthToken = searchParams.get('oauth_token');
-        const oauthVerifier = searchParams.get('oauth_verifier');
+        // Get OAuth 2.0 parameters from URL
+        const code = searchParams.get('code');
+        const state = searchParams.get('state');
         const error = searchParams.get('error');
 
         if (error) {
-          console.error('Garmin OAuth 1.0a error:', error);
+          console.error('Garmin OAuth 2.0 error:', error);
           setStatus('error');
           setMessage(`OAuth error: ${error}`);
+          // Close popup and notify parent
+          if (window.opener) {
+            window.opener.postMessage({ type: 'garmin-oauth-error', error }, '*');
+            window.close();
+          }
           return;
         }
 
-        if (!oauthToken || !oauthVerifier) {
-          console.error('Missing OAuth 1.0a parameters');
+        if (!code) {
+          console.error('Missing OAuth 2.0 authorization code');
           setStatus('error');
-          setMessage('Missing OAuth token or verifier from Garmin');
+          setMessage('Missing authorization code from Garmin');
+          // Close popup and notify parent
+          if (window.opener) {
+            window.opener.postMessage({ type: 'garmin-oauth-error', error: 'Missing code' }, '*');
+            window.close();
+          }
           return;
         }
 
-        console.log('Garmin OAuth 1.0a callback received:', { oauthToken, oauthVerifier });
+        console.log('Garmin OAuth 2.0 callback received:', { code, state });
 
-        // Send OAuth 1.0a parameters to backend to exchange for access tokens
+        // Send OAuth 2.0 authorization code to backend to exchange for access tokens
         const response = await fetch('https://gofastbackendv2-fall2025.onrender.com/api/garmin/callback', {
           method: 'POST',
           headers: {
             'Content-Type': 'application/json',
           },
           body: JSON.stringify({
-            oauth_token: oauthToken,
-            oauth_verifier: oauthVerifier
+            code: code,
+            state: state,
+            codeVerifier: localStorage.getItem('garmin_code_verifier') // Get from localStorage
           })
         });
 
@@ -50,26 +61,41 @@ const GarminOAuthCallback = () => {
           setStatus('success');
           setMessage('Garmin connected successfully!');
           
-          // Redirect to settings after 2 seconds
+          // Notify parent window of success
+          if (window.opener) {
+            window.opener.postMessage({ type: 'garmin-oauth-success', data }, '*');
+          }
+          
+          // Close popup after 2 seconds
           setTimeout(() => {
-            navigate('/settings');
+            window.close();
           }, 2000);
         } else {
           const errorData = await response.json();
           console.error('Backend OAuth error:', errorData);
           setStatus('error');
           setMessage(errorData.message || 'Failed to connect Garmin');
+          
+          // Notify parent window of error
+          if (window.opener) {
+            window.opener.postMessage({ type: 'garmin-oauth-error', error: errorData.message }, '*');
+          }
         }
 
       } catch (error) {
         console.error('OAuth callback error:', error);
         setStatus('error');
         setMessage('An error occurred while connecting Garmin');
+        
+        // Notify parent window of error
+        if (window.opener) {
+          window.opener.postMessage({ type: 'garmin-oauth-error', error: error.message }, '*');
+        }
       }
     };
 
     handleOAuthCallback();
-  }, [searchParams, navigate]);
+  }, [searchParams]);
 
   const getStatusIcon = () => {
     switch (status) {

@@ -1,11 +1,10 @@
-// Garmin OAuth 1.0a Configuration - matches Render environment variables
+// Garmin OAuth 2.0 PKCE Configuration - matches Render environment variables
 export const GARMIN_CONFIG = {
-  CONSUMER_KEY: process.env.REACT_APP_GARMIN_CONSUMER_KEY || 'your_garmin_consumer_key_here',
-  CONSUMER_SECRET: process.env.REACT_APP_GARMIN_CONSUMER_SECRET || 'your_garmin_consumer_secret_here',
+  CLIENT_ID: process.env.REACT_APP_GARMIN_CLIENT_ID || 'your_garmin_client_id_here',
+  CLIENT_SECRET: process.env.REACT_APP_GARMIN_CLIENT_SECRET || 'your_garmin_client_secret_here',
   CALLBACK_URL: 'https://athlete.gofastcrushgoals.com/garmin/callback',
-  REQUEST_TOKEN_URL: 'https://connectapi.garmin.com/oauth-service/oauth/request_token',
-  ACCESS_TOKEN_URL: 'https://connectapi.garmin.com/oauth-service/oauth/access_token',
-  AUTHORIZE_URL: 'https://connect.garmin.com/oauthConfirm',
+  AUTHORIZE_URL: 'https://connect.garmin.com/oauth2Confirm',
+  TOKEN_URL: 'https://diauth.garmin.com/di-oauth2-service/oauth/token',
   API_BASE_URL: process.env.REACT_APP_API_URL || 'https://gofastbackendv2-fall2025.onrender.com/api'
 };
 
