@@ -12,14 +12,8 @@ import AthleteProfile from './Pages/Athlete/AthleteProfile';
 import Settings from './Pages/Settings/Settings';
 import GarminOAuthCallback from './Pages/Settings/GarminOAuthCallback';
 
-// Garmin Webhook Components
-import GarminActivityWebhook from './Pages/Garmin/GarminActivityWebhook';
-import GarminDetailsWebhook from './Pages/Garmin/GarminDetailsWebhook';
-import GarminActivityFilesWebhook from './Pages/Garmin/GarminActivityFilesWebhook';
-import GarminActivityManualWebhook from './Pages/Garmin/GarminActivityManualWebhook';
-import GarminMoveIQWebhook from './Pages/Garmin/GarminMoveIQWebhook';
-import GarminPermissionsWebhook from './Pages/Garmin/GarminPermissionsWebhook';
-import GarminDeregisterWebhook from './Pages/Garmin/GarminDeregisterWebhook';
+// Debug Components
+import FindMyUserId from './Pages/Debug/FindMyUserId';
 
 const App = () => {
   return (
@@ -52,6 +46,9 @@ const App = () => {
         <Route path="/garmin/moveiq" element={<GarminMoveIQWebhook />} />
         <Route path="/garmin/permissions" element={<GarminPermissionsWebhook />} />
         <Route path="/garmin/deregistration" element={<GarminDeregisterWebhook />} />
+        
+        {/* Debug Routes */}
+        <Route path="/debug/userid" element={<FindMyUserId />} />
         
         {/* Smart Onboarding Routes */}
         <Route path="/settings/devices" element={<div className="min-h-screen bg-gray-50 flex items-center justify-center"><h1 className="text-4xl font-bold text-gray-900">Device Settings - Coming Soon!</h1></div>} />

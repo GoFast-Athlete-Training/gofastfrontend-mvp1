@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
 import { GARMIN_CONFIG } from "../../config/garminConfig";
+import GarminConnectSettings from "./GarminConnectSettings";
 
 const Settings = () => {
   const navigate = useNavigate();
@@ -13,6 +14,7 @@ const Settings = () => {
 
   // Garmin OAuth states
   const [isGarminLoading, setIsGarminLoading] = useState(false);
+  const [showGarminPermissions, setShowGarminPermissions] = useState(false);
 
   // Listen for messages from Garmin OAuth popup
   useEffect(() => {
@@ -211,20 +213,41 @@ const Settings = () => {
                     </button>
                   )}
                   
-                  {/* Disconnect Button */}
+                  {/* Connected Actions */}
                   {connections[card.service] && (
-                    <button
-                      onClick={() => toggleConnection(card.service)}
-                      className="w-full py-3 px-6 rounded-lg font-semibold text-gray-700 bg-gray-200 hover:bg-gray-300 transition-colors"
-                    >
-                      Disconnect
-                    </button>
+                    <div className="space-y-2">
+                      {/* See Permissions Button */}
+                      {card.service === 'garmin' && (
+                        <button
+                          onClick={() => setShowGarminPermissions(!showGarminPermissions)}
+                          className="w-full py-2 px-4 rounded-lg font-medium text-blue-600 bg-blue-50 hover:bg-blue-100 transition-colors"
+                        >
+                          {showGarminPermissions ? 'Hide Permissions' : 'See Permissions'}
+                        </button>
+                      )}
+                      
+                      {/* Disconnect Button */}
+                      <button
+                        onClick={() => toggleConnection(card.service)}
+                        className="w-full py-2 px-4 rounded-lg font-medium text-gray-700 bg-gray-200 hover:bg-gray-300 transition-colors"
+                      >
+                        Disconnect
+                      </button>
+                    </div>
                   )}
                 </div>
               </div>
             ))}
           </div>
         </div>
+
+        {/* Garmin Permissions Section */}
+        {showGarminPermissions && (
+          <div className="mb-8">
+            <h2 className="text-xl font-semibold text-gray-900 mb-6">Garmin Permissions</h2>
+            <GarminConnectSettings />
+          </div>
+        )}
 
         {/* Info Section */}
         <div className="bg-blue-50 rounded-xl p-6">
