@@ -31,27 +31,23 @@ const AthleteHome = () => {
       const token = await user.getIdToken();
       console.log('🔐 ATHLETE HOME: Got Firebase token');
       
-      // Call backend to get athlete data
-      const response = await fetch('https://gofastbackendv2-fall2025.onrender.com/api/athlete/find', {
-        method: 'POST',
+      // Call backend to get athlete data using universal hydrate route
+      const response = await fetch('https://gofastbackendv2-fall2025.onrender.com/api/athlete/retrieve', {
+        method: 'GET',
         headers: {
           'Content-Type': 'application/json',
           'Authorization': `Bearer ${token}`
-        },
-        body: JSON.stringify({
-          firebaseId: user.uid,
-          email: user.email
-        })
+        }
       });
       
       if (response.ok) {
         const data = await response.json();
         console.log('✅ ATHLETE HOME: Hydrated athlete data:', data);
         
-        if (data.success && data.data) {
-          setAthleteProfile(data.data);
+        if (data.success && data.athlete) {
+          setAthleteProfile(data.athlete);
           // Store in localStorage for other components
-          localStorage.setItem('athleteProfile', JSON.stringify(data.data));
+          localStorage.setItem('athleteProfile', JSON.stringify(data.athlete));
         }
       } else {
         console.log('❌ ATHLETE HOME: Failed to hydrate, athlete not found');
@@ -83,7 +79,7 @@ const AthleteHome = () => {
         <div className="text-center">
           <div className="animate-spin rounded-full h-16 w-16 border-b-2 border-orange-500 mx-auto mb-4"></div>
           <p className="text-gray-600">
-            {hydrating ? 'Hydrating your profile...' : 'Loading...'}
+            {hydrating ? 'Loading your profile...' : 'Loading...'}
           </p>
         </div>
       </div>
@@ -92,7 +88,7 @@ const AthleteHome = () => {
 
   // Universal greeting - works whether they have profile or not
   const athleteName = athleteProfile?.firstName || 'Athlete';
-  const hasProfile = athleteProfile?.firstName && athleteProfile?.lastName;
+  const hasProfile = athleteProfile?.gofastHandle; // Profile complete = has gofastHandle
   const athleteLocation = athleteProfile ? `${athleteProfile.city || 'Your City'}, ${athleteProfile.state || 'State'}` : 'Your Location';
 
   return (

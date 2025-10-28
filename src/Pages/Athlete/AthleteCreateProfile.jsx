@@ -7,6 +7,7 @@ const AthleteCreateProfile = () => {
   const [formData, setFormData] = useState({
     firstName: '',
     lastName: '',
+    phoneNumber: '',
     birthday: '',
     gender: '',
     city: '',
@@ -24,6 +25,7 @@ const AthleteCreateProfile = () => {
     const adamData = {
       firstName: 'Adam',
       lastName: 'Cole',
+      phoneNumber: '(555) 123-4567',
       gofastHandle: 'adam_cole',
       birthday: '1990-01-15',
       gender: 'male',
@@ -138,6 +140,7 @@ const AthleteCreateProfile = () => {
         body: JSON.stringify({
           firstName: formData.firstName,
           lastName: formData.lastName,
+          phoneNumber: formData.phoneNumber,
           gofastHandle: formData.gofastHandle,
           birthday: formData.birthday,
           gender: formData.gender,
@@ -244,6 +247,20 @@ const AthleteCreateProfile = () => {
                 required
               />
             </div>
+          </div>
+
+          {/* Phone Number */}
+          <div>
+            <label className="block text-sm font-medium text-gray-700 mb-1">
+              Phone Number
+            </label>
+            <input
+              type="tel"
+              value={formData.phoneNumber}
+              onChange={(e) => handleInputChange('phoneNumber', e.target.value)}
+              placeholder="(555) 123-4567"
+              className="w-full p-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-orange-500 focus:border-orange-500"
+            />
           </div>
 
           {/* Short Bio */}
