@@ -56,7 +56,10 @@ const Settings = () => {
 
       if (response.ok) {
         const data = await response.json();
-        console.log('Garmin OAuth 2.0 PKCE auth URL:', data.authUrl);
+        console.log('🔍 DEBUG - Garmin OAuth 2.0 PKCE auth URL:', data.authUrl);
+        console.log('🔍 DEBUG - Code Verifier:', data.codeVerifier);
+        console.log('🔍 DEBUG - State:', data.state);
+        console.log('🔍 DEBUG - Callback URL:', GARMIN_CONFIG.CALLBACK_URL);
         
         // Store codeVerifier for callback
         localStorage.setItem('garmin_code_verifier', data.codeVerifier);

@@ -8,24 +8,31 @@ const GarminOAuthCallback = () => {
   const [message, setMessage] = useState('Processing Garmin connection...');
 
   useEffect(() => {
-    const handleOAuthCallback = async () => {
-      try {
-        // Get OAuth 2.0 parameters from URL
-        const code = searchParams.get('code');
-        const state = searchParams.get('state');
-        const error = searchParams.get('error');
+  const handleOAuthCallback = async () => {
+    try {
+      // Get OAuth 2.0 parameters from URL
+      const code = searchParams.get('code');
+      const state = searchParams.get('state');
+      const error = searchParams.get('error');
 
-        if (error) {
-          console.error('Garmin OAuth 2.0 error:', error);
-          setStatus('error');
-          setMessage(`OAuth error: ${error}`);
-          // Close popup and notify parent
-          if (window.opener) {
-            window.opener.postMessage({ type: 'garmin-oauth-error', error }, '*');
-            window.close();
-          }
-          return;
+      console.log('🔍 DEBUG - OAuth Callback received:');
+      console.log('🔍 DEBUG - Code:', code);
+      console.log('🔍 DEBUG - State:', state);
+      console.log('🔍 DEBUG - Error:', error);
+      console.log('🔍 DEBUG - Full URL:', window.location.href);
+      console.log('🔍 DEBUG - Code Verifier from localStorage:', localStorage.getItem('garmin_code_verifier'));
+
+      if (error) {
+        console.error('🔍 DEBUG - Garmin OAuth 2.0 error:', error);
+        setStatus('error');
+        setMessage(`OAuth error: ${error}`);
+        // Close popup and notify parent
+        if (window.opener) {
+          window.opener.postMessage({ type: 'garmin-oauth-error', error }, '*');
+          window.close();
         }
+        return;
+      }
 
         if (!code) {
           console.error('Missing OAuth 2.0 authorization code');
