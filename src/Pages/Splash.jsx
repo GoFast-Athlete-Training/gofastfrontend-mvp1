@@ -1,73 +1,97 @@
-import { useEffect } from "react";
-import { useNavigate } from "react-router-dom";
-import { auth } from "../firebase";
+import React, { useState, useEffect } from 'react';
+import { useNavigate } from 'react-router-dom';
+import { auth } from '../firebase';
 
-export default function Splash() {
+const SplashPage = () => {
   const navigate = useNavigate();
+  const [isLoading, setIsLoading] = useState(true);
+  const [isAuthenticated, setIsAuthenticated] = useState(false);
+  const [animationPhase, setAnimationPhase] = useState('logo'); // logo -> black -> text -> route
 
   useEffect(() => {
-    let timer;
-    
-    // Use Firebase's onAuthStateChanged to wait for auth to initialize
-    const unsubscribe = auth.onAuthStateChanged((firebaseUser) => {
-      // Wait 1 second for splash animation, then check auth
-      timer = setTimeout(() => {
-        checkAuthAndRoute(firebaseUser);
-      }, 1000);
+    // Check if user is authenticated
+    const unsubscribe = auth.onAuthStateChanged((user) => {
+      setIsAuthenticated(!!user);
+      setIsLoading(false);
     });
-    
-    return () => {
-      clearTimeout(timer);
-      unsubscribe();
-    };
-  }, [navigate]);
 
-  const checkAuthAndRoute = (firebaseUser) => {
-    if (!firebaseUser) {
-      console.log("❌ No Firebase → Signin");
-      navigate("/signin");
-      return;
+    return () => unsubscribe();
+  }, []);
+
+  useEffect(() => {
+    if (!isLoading) {
+      // Animation sequence
+      const timer1 = setTimeout(() => {
+        setAnimationPhase('black');
+      }, 2000); // Logo shows for 2 seconds
+
+      const timer2 = setTimeout(() => {
+        setAnimationPhase('text');
+      }, 3000); // Black screen for 1 second
+
+      const timer3 = setTimeout(() => {
+        if (isAuthenticated) {
+          navigate('/athlete-home');
+        } else {
+          navigate('/athletesignup');
+        }
+      }, 6000); // Text shows for 3 seconds, then route
+
+      return () => {
+        clearTimeout(timer1);
+        clearTimeout(timer2);
+        clearTimeout(timer3);
+      };
     }
+  }, [isLoading, isAuthenticated, navigate]);
 
-    console.log("✅ Firebase → Welcome");
-    navigate("/welcome");
-  };
-
-  return (
-    <div className="min-h-screen bg-gradient-to-br from-sky-400 via-blue-500 to-indigo-600 flex items-center justify-center p-6">
-      <div className="relative text-center space-y-8">
-        {/* GoFast Logo */}
-        <div className="flex justify-center mb-8">
-          <div className="relative">
-            <div className="absolute -top-8 -left-8 text-5xl animate-bounce">🏃‍♂️</div>
-            <div className="absolute -top-6 -right-8 text-4xl animate-bounce" style={{ animationDelay: '0.3s' }}>⚡</div>
-            <div className="absolute -bottom-4 -left-6 text-3xl animate-bounce" style={{ animationDelay: '0.5s' }}>🏆</div>
-            
-            <div className="w-32 h-32 bg-white/20 backdrop-blur-lg rounded-3xl flex items-center justify-center shadow-2xl">
-              <svg className="w-16 h-16 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 10V3L4 14h7v7l9-11h-7z" />
-              </svg>
-            </div>
-          </div>
-        </div>
-
-        <div className="space-y-4">
-          <h1 className="text-6xl font-black text-white drop-shadow-2xl">
-            GoFast
-          </h1>
-          <p className="text-2xl text-white/90 font-medium drop-shadow-lg">
-            Crush your goals with the ultimate running community
-          </p>
-        </div>
-
-        <div className="flex justify-center pt-8">
-          <div className="flex gap-2">
-            <div className="w-3 h-3 bg-white rounded-full animate-bounce"></div>
-            <div className="w-3 h-3 bg-white rounded-full animate-bounce" style={{ animationDelay: '0.2s' }}></div>
-            <div className="w-3 h-3 bg-white rounded-full animate-bounce" style={{ animationDelay: '0.4s' }}></div>
-          </div>
+  if (isLoading) {
+    return (
+      <div className="min-h-screen bg-gradient-to-br from-sky-400 to-sky-600 flex items-center justify-center">
+        <div className="animate-pulse">
+          <div className="w-16 h-16 bg-white rounded-full mx-auto mb-4"></div>
         </div>
       </div>
+    );
+  }
+
+  return (
+    <div className="min-h-screen bg-gradient-to-br from-sky-400 to-sky-600 flex items-center justify-center relative overflow-hidden">
+      {/* Logo Phase */}
+      {animationPhase === 'logo' && (
+        <div className="animate-fade-in">
+          <img 
+            src="/logo.jpg" 
+            alt="GoFast Logo" 
+            className="w-48 h-48 rounded-full shadow-2xl mx-auto"
+          />
+        </div>
+      )}
+
+      {/* Fade Away Phase */}
+      {animationPhase === 'black' && (
+        <div className="animate-fade-out">
+          <img 
+            src="/logo.jpg" 
+            alt="GoFast Logo" 
+            className="w-48 h-48 rounded-full shadow-2xl mx-auto opacity-0"
+          />
+        </div>
+      )}
+
+      {/* Text Phase */}
+      {animationPhase === 'text' && (
+        <div className="text-center animate-fade-in">
+          <h1 className="text-6xl md:text-8xl font-bold text-white mb-8 animate-pulse">
+            Let's Go <span className="text-orange-400">Crush</span> Goals!
+          </h1>
+          <p className="text-2xl md:text-3xl text-sky-100 font-medium">
+            Your running journey starts here
+          </p>
+        </div>
+      )}
     </div>
   );
-}
+};
+
+export default SplashPage;

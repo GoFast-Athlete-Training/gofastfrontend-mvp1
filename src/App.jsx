@@ -3,7 +3,7 @@ import { BrowserRouter as Router, Routes, Route } from 'react-router-dom';
 import ScrollToTop from './Components/ScrollToTop';
 
 // Pages
-import SplashPage from './Pages/SplashPage';
+import Splash from './Pages/Splash';
 import Signin from './Pages/Athlete/Signin';
 import SignupPage from './Pages/Athlete/SignupPage';
 import AthleteCreateProfile from './Pages/Athlete/AthleteCreateProfile';
@@ -15,7 +15,7 @@ const App = () => {
       <ScrollToTop />
       <Routes>
         {/* Splash Page - Entry Point */}
-        <Route path="/" element={<SplashPage />} />
+        <Route path="/" element={<Splash />} />
         
         {/* Authentication */}
         <Route path="/athletesignin" element={<Signin />} />

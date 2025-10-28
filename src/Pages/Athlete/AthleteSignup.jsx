@@ -19,7 +19,7 @@ const SignupPage = () => {
       
       // Get Firebase ID token for backend verification
       const firebaseToken = await auth.currentUser.getIdToken();
-      console.log("🔐 Firebase token obtained:", firebaseToken.substring(0, 20) + "...");
+      console.log("🔐 Firebase token obtained: [REDACTED]");
       
       // Store Firebase token for API calls
       localStorage.setItem("firebaseToken", firebaseToken);
