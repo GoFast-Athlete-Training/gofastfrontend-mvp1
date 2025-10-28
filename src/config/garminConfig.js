@@ -9,9 +9,18 @@ export const GARMIN_CONFIG = {
   
   // Webhook URLs for Garmin Developer Portal
   WEBHOOK_URLS: {
+    // Activity Webhooks
     ACTIVITY: 'https://athlete.gofastcrushgoals.com/garmin/activity',
+    ACTIVITY_DETAILS: 'https://athlete.gofastcrushgoals.com/garmin/details',
+    ACTIVITY_FILES: 'https://athlete.gofastcrushgoals.com/garmin/activity-files',
+    ACTIVITY_MANUAL: 'https://athlete.gofastcrushgoals.com/garmin/activity-manual',
+    MOVEIQ: 'https://athlete.gofastcrushgoals.com/garmin/moveiq',
+    
+    // Common Webhooks
+    DEREGISTRATION: 'https://athlete.gofastcrushgoals.com/garmin/deregistration',
     PERMISSIONS: 'https://athlete.gofastcrushgoals.com/garmin/permissions',
-    DEREGISTER: 'https://athlete.gofastcrushgoals.com/garmin/deregister',
+    
+    // General fallback
     GENERAL: 'https://athlete.gofastcrushgoals.com/garmin/webhook'
   }
 };

@@ -14,6 +14,10 @@ import GarminOAuthCallback from './Pages/Settings/GarminOAuthCallback';
 
 // Garmin Webhook Components
 import GarminActivityWebhook from './Pages/Garmin/GarminActivityWebhook';
+import GarminDetailsWebhook from './Pages/Garmin/GarminDetailsWebhook';
+import GarminActivityFilesWebhook from './Pages/Garmin/GarminActivityFilesWebhook';
+import GarminActivityManualWebhook from './Pages/Garmin/GarminActivityManualWebhook';
+import GarminMoveIQWebhook from './Pages/Garmin/GarminMoveIQWebhook';
 import GarminPermissionsWebhook from './Pages/Garmin/GarminPermissionsWebhook';
 import GarminDeregisterWebhook from './Pages/Garmin/GarminDeregisterWebhook';
 
@@ -42,8 +46,12 @@ const App = () => {
         
         {/* Garmin Webhook Endpoints */}
         <Route path="/garmin/activity" element={<GarminActivityWebhook />} />
+        <Route path="/garmin/details" element={<GarminDetailsWebhook />} />
+        <Route path="/garmin/activity-files" element={<GarminActivityFilesWebhook />} />
+        <Route path="/garmin/activity-manual" element={<GarminActivityManualWebhook />} />
+        <Route path="/garmin/moveiq" element={<GarminMoveIQWebhook />} />
         <Route path="/garmin/permissions" element={<GarminPermissionsWebhook />} />
-        <Route path="/garmin/deregister" element={<GarminDeregisterWebhook />} />
+        <Route path="/garmin/deregistration" element={<GarminDeregisterWebhook />} />
         
         {/* Smart Onboarding Routes */}
         <Route path="/settings/devices" element={<div className="min-h-screen bg-gray-50 flex items-center justify-center"><h1 className="text-4xl font-bold text-gray-900">Device Settings - Coming Soon!</h1></div>} />
