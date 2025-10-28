@@ -126,7 +126,6 @@ const GarminConnectSuccess = () => {
       }
 
       // Save UUID to backend
-      const athleteId = localStorage.getItem('athleteId');
       const saveResponse = await fetch('https://gofastbackendv2-fall2025.onrender.com/api/garmin/user/connect', {
         method: 'POST',
         headers: {
