@@ -33,7 +33,7 @@ const SplashPage = () => {
         if (isAuthenticated) {
           navigate('/athlete-home');
         } else {
-          navigate('/signup');
+          navigate('/athletesignup');
         }
       }, 6000); // Text shows for 3 seconds, then route
 
