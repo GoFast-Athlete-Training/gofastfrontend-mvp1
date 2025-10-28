@@ -7,9 +7,15 @@ const GarminOAuthCallback = () => {
   const [status, setStatus] = useState('processing');
   const [message, setMessage] = useState('Processing Garmin connection...');
 
+  console.log('🔍 DEBUG - GarminOAuthCallback component mounted');
+  console.log('🔍 DEBUG - Current URL:', window.location.href);
+  console.log('🔍 DEBUG - Search params:', Object.fromEntries(searchParams.entries()));
+
   useEffect(() => {
-  const handleOAuthCallback = async () => {
-    try {
+    console.log('🔍 DEBUG - useEffect triggered');
+    const handleOAuthCallback = async () => {
+      console.log('🔍 DEBUG - handleOAuthCallback started');
+      try {
       // Get OAuth 2.0 parameters from URL
       const code = searchParams.get('code');
       const state = searchParams.get('state');
