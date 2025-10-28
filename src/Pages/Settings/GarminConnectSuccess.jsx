@@ -41,10 +41,35 @@ const GarminConnectSuccess = () => {
       setLoading(true);
       console.log('🔍 Getting Garmin UUID...');
       
-      // Get tokens from localStorage
-      const tokens = JSON.parse(localStorage.getItem('garminTokens') || '{}');
+      // Get athleteId and fetch tokens from backend
+      const athleteId = localStorage.getItem('athleteId');
+      if (!athleteId) {
+        throw new Error('No athlete ID found');
+      }
+
+      // Fetch athlete data from backend to get tokens
+      const athleteResponse = await fetch(`https://gofastbackendv2-fall2025.onrender.com/api/athlete/retrieve`, {
+        method: 'GET',
+        headers: {
+          'Content-Type': 'application/json',
+          // Add auth header if needed
+        }
+      });
+
+      if (!athleteResponse.ok) {
+        throw new Error(`Failed to fetch athlete data: ${athleteResponse.status}`);
+      }
+
+      const athleteData = await athleteResponse.json();
+      const tokens = {
+        access_token: athleteData.garmin?.accessToken,
+        refresh_token: athleteData.garmin?.refreshToken,
+        expires_in: athleteData.garmin?.expiresIn,
+        scope: athleteData.garmin?.scope
+      };
+
       if (!tokens.access_token) {
-        throw new Error('No Garmin tokens found');
+        throw new Error('No Garmin tokens found in database');
       }
 
       // Call Garmin API to get UUID
