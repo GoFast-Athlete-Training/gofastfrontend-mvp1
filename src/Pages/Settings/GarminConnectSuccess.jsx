@@ -15,18 +15,51 @@ const GarminConnectSuccess = () => {
   const completeGarminSetup = async () => {
     try {
       setLoading(true);
-      console.log('🎯 GarminConnectSuccess: Tokens saved, showing success...');
+      console.log('🎯 GarminConnectSuccess: Fetching tokens from backend...');
       
-      // Just show success - UUID fetch is manual
+      // Get athleteId and fetch real data from backend
+      const athleteId = localStorage.getItem('athleteId');
+      if (!athleteId) {
+        throw new Error('No athlete ID found');
+      }
+
+      // Fetch athlete data from backend to get real tokens
+      const athleteResponse = await fetch(`https://gofastbackendv2-fall2025.onrender.com/api/athlete/retrieve`, {
+        method: 'GET',
+        headers: {
+          'Content-Type': 'application/json',
+        }
+      });
+
+      if (!athleteResponse.ok) {
+        throw new Error(`Failed to fetch athlete data: ${athleteResponse.status}`);
+      }
+
+      const athleteData = await athleteResponse.json();
+      console.log('✅ Athlete data fetched:', athleteData);
+
+      // Save tokens to localStorage in the right format
+      if (athleteData.garmin?.accessToken) {
+        const tokens = {
+          access_token: athleteData.garmin.accessToken,
+          refresh_token: athleteData.garmin.refreshToken,
+          expires_in: athleteData.garmin.expiresIn,
+          scope: athleteData.garmin.scope
+        };
+        localStorage.setItem('garminTokens', JSON.stringify(tokens));
+        console.log('✅ Tokens saved to localStorage');
+      }
+
+      // Show real connection data
       setGarminData({
-        connected: true,
-        userId: null, // Will be fetched manually
-        connectedAt: new Date().toISOString(),
-        scope: 'PARTNER_WRITE PARTNER_READ CONNECT_READ CONNECT_WRITE'
+        connected: athleteData.garmin?.connected || false,
+        userId: athleteData.garmin?.userId || null,
+        connectedAt: athleteData.garmin?.connectedAt || new Date().toISOString(),
+        scope: athleteData.garmin?.scope || 'PARTNER_WRITE PARTNER_READ CONNECT_READ CONNECT_WRITE'
       });
       setStatus('success');
       
-      console.log('✅ Garmin OAuth completed - tokens saved!');
+      console.log('✅ GarminConnectSuccess: Real data loaded!');
       
     } catch (error) {
       console.error('❌ GarminConnectSuccess error:', error);
