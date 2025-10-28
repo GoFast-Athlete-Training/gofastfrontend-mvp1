@@ -10,6 +10,8 @@ import AthleteCreateProfile from './Pages/Athlete/AthleteCreateProfile';
 import AthleteHome from './Pages/Athlete/AthleteHome';
 import AthleteProfile from './Pages/Athlete/AthleteProfile';
 import Settings from './Pages/Settings/Settings';
+import GarminConnect from './Pages/Settings/GarminConnect';
+import GarminOAuthCallback from './Pages/Settings/GarminOAuthCallback';
 
 const App = () => {
   return (
@@ -30,6 +32,10 @@ const App = () => {
         <Route path="/athlete-home" element={<AthleteHome />} />
         <Route path="/athlete-profile" element={<AthleteProfile />} />
         <Route path="/settings" element={<Settings />} />
+        
+        {/* Garmin OAuth 1.0a Flow */}
+        <Route path="/garmin/connect" element={<GarminConnect />} />
+        <Route path="/garmin/callback" element={<GarminOAuthCallback />} />
         
         {/* Smart Onboarding Routes */}
         <Route path="/settings/devices" element={<div className="min-h-screen bg-gray-50 flex items-center justify-center"><h1 className="text-4xl font-bold text-gray-900">Device Settings - Coming Soon!</h1></div>} />

@@ -24,7 +24,7 @@ const Settings = () => {
       description: "Sync your runs and activities from Garmin",
       icon: "⌚",
       color: "bg-orange-500",
-      route: "/settings/devices",
+      route: "/garmin/connect",
       service: "garmin"
     },
     {
