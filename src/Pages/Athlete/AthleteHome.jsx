@@ -15,11 +15,11 @@ const AthleteHome = () => {
   useEffect(() => {
     const unsubscribe = onAuthStateChanged(auth, async (user) => {
       if (user) {
-        console.log('✅ ATHLETE HOME: Firebase user detected:', user.email);
+        console.log('✅ ATHLETE HOME: User is here! Loading profile for:', user.email);
         await hydrateAthleteData(user);
       } else {
-        console.log('❌ ATHLETE HOME: No Firebase user - staying on page, showing loading');
-        // DON'T redirect! Let the user stay and see what's happening
+        // This should never happen since Splash redirects unauthenticated users
+        console.log('❌ ATHLETE HOME: No user - this should not happen!');
         setIsLoading(false);
       }
     });
@@ -101,35 +101,6 @@ const AthleteHome = () => {
         <div className="text-center">
           <div className="animate-spin rounded-full h-16 w-16 border-b-2 border-orange-500 mx-auto mb-4"></div>
           <p className="text-gray-600">Loading your profile...</p>
-        </div>
-      </div>
-    );
-  }
-
-  // If no athlete profile and not loading, show a helpful message instead of redirecting
-  if (!athleteProfile && !isLoading) {
-    return (
-      <div className="min-h-screen bg-gradient-to-br from-orange-50 to-orange-100 flex items-center justify-center">
-        <div className="text-center max-w-md mx-auto px-6">
-          <div className="text-orange-500 text-6xl mb-4">🏃‍♂️</div>
-          <h1 className="text-2xl font-bold text-gray-900 mb-4">Welcome to GoFast!</h1>
-          <p className="text-gray-600 mb-6">
-            It looks like you're not signed in yet. Let's get you started!
-          </p>
-          <div className="space-y-3">
-            <button
-              onClick={() => navigate('/athletesignin')}
-              className="w-full bg-orange-500 text-white px-6 py-3 rounded-lg font-medium hover:bg-orange-600 transition"
-            >
-              Sign In
-            </button>
-            <button
-              onClick={() => navigate('/athletesignup')}
-              className="w-full bg-gray-200 text-gray-800 px-6 py-3 rounded-lg font-medium hover:bg-gray-300 transition"
-            >
-              Sign Up
-            </button>
-          </div>
         </div>
       </div>
     );

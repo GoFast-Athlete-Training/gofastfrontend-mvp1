@@ -4,8 +4,8 @@ import ScrollToTop from './Components/ScrollToTop';
 
 // Pages
 import Splash from './Pages/Splash';
-import Signin from './Pages/Athlete/Signin';
-import SignupPage from './Pages/Athlete/SignupPage';
+import Signin from './Pages/Athlete/AthleteSignin';
+import SignupPage from './Pages/Athlete/AthleteSignup';
 import AthleteCreateProfile from './Pages/Athlete/AthleteCreateProfile';
 import AthleteHome from './Pages/Athlete/AthleteHome';
 import AthleteProfile from './Pages/Athlete/AthleteProfile';

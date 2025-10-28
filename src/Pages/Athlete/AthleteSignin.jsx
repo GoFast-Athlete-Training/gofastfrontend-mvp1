@@ -1,7 +1,7 @@
 import { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
-import { signInWithGoogle, auth } from "../firebase";
-import api from "../api/axiosConfig";
+import { signInWithGoogle, auth } from "../../firebase";
+import api from "../../api/axiosConfig";
 
 export default function Signin() {
   const navigate = useNavigate();
