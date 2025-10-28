@@ -24,7 +24,7 @@ const GarminConnectSuccess = () => {
       }
 
       // Fetch athlete data from backend to get real tokens
-      const athleteResponse = await fetch(`https://gofastbackendv2-fall2025.onrender.com/api/athlete/retrieve`, {
+      const athleteResponse = await fetch(`https://gofastbackendv2-fall2025.onrender.com/api/athlete/tokenretrieve?athleteId=${athleteId}`, {
         method: 'GET',
         headers: {
           'Content-Type': 'application/json',
