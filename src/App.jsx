@@ -15,6 +15,16 @@ import GarminOAuthCallback from './Pages/Settings/GarminOAuthCallback';
 // Debug Components
 import FindMyUserId from './Pages/Debug/FindMyUserId';
 
+// Garmin Webhook Components
+import GarminActivityWebhook from './Pages/Garmin/GarminActivityWebhook';
+import GarminDetailsWebhook from './Pages/Garmin/GarminDetailsWebhook';
+import GarminActivityFilesWebhook from './Pages/Garmin/GarminActivityFilesWebhook';
+import GarminActivityManualWebhook from './Pages/Garmin/GarminActivityManualWebhook';
+import GarminMoveIQWebhook from './Pages/Garmin/GarminMoveIQWebhook';
+import GarminPermissionsWebhook from './Pages/Garmin/GarminPermissionsWebhook';
+import GarminDeregisterWebhook from './Pages/Garmin/GarminDeregisterWebhook';
+import GarminRegistrationWebhook from './Pages/Garmin/GarminRegistrationWebhook';
+
 const App = () => {
   return (
     <Router>
@@ -46,6 +56,7 @@ const App = () => {
         <Route path="/garmin/moveiq" element={<GarminMoveIQWebhook />} />
         <Route path="/garmin/permissions" element={<GarminPermissionsWebhook />} />
         <Route path="/garmin/deregistration" element={<GarminDeregisterWebhook />} />
+        <Route path="/garmin/registration" element={<GarminRegistrationWebhook />} />
         
         {/* Debug Routes */}
         <Route path="/debug/userid" element={<FindMyUserId />} />
