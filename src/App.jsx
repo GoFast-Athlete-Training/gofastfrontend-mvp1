@@ -12,6 +12,11 @@ import AthleteProfile from './Pages/Athlete/AthleteProfile';
 import Settings from './Pages/Settings/Settings';
 import GarminOAuthCallback from './Pages/Settings/GarminOAuthCallback';
 
+// Garmin Webhook Components
+import GarminActivityWebhook from './Pages/Garmin/GarminActivityWebhook';
+import GarminPermissionsWebhook from './Pages/Garmin/GarminPermissionsWebhook';
+import GarminDeregisterWebhook from './Pages/Garmin/GarminDeregisterWebhook';
+
 const App = () => {
   return (
     <Router>
@@ -34,6 +39,11 @@ const App = () => {
         
         {/* Garmin OAuth 2.0 PKCE Flow */}
         <Route path="/garmin/callback" element={<GarminOAuthCallback />} />
+        
+        {/* Garmin Webhook Endpoints */}
+        <Route path="/garmin/activity" element={<GarminActivityWebhook />} />
+        <Route path="/garmin/permissions" element={<GarminPermissionsWebhook />} />
+        <Route path="/garmin/deregister" element={<GarminDeregisterWebhook />} />
         
         {/* Smart Onboarding Routes */}
         <Route path="/settings/devices" element={<div className="min-h-screen bg-gray-50 flex items-center justify-center"><h1 className="text-4xl font-bold text-gray-900">Device Settings - Coming Soon!</h1></div>} />
