@@ -10,7 +10,6 @@ import AthleteCreateProfile from './Pages/Athlete/AthleteCreateProfile';
 import AthleteHome from './Pages/Athlete/AthleteHome';
 import AthleteProfile from './Pages/Athlete/AthleteProfile';
 import Settings from './Pages/Settings/Settings';
-import GarminConnect from './Pages/Settings/GarminConnect';
 import GarminOAuthCallback from './Pages/Settings/GarminOAuthCallback';
 
 const App = () => {
@@ -34,7 +33,6 @@ const App = () => {
         <Route path="/settings" element={<Settings />} />
         
         {/* Garmin OAuth 2.0 PKCE Flow */}
-        <Route path="/garmin/connect" element={<GarminConnect />} />
         <Route path="/garmin/callback" element={<GarminOAuthCallback />} />
         
         {/* Smart Onboarding Routes */}

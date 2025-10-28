@@ -1,20 +1,97 @@
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
+import { GARMIN_CONFIG } from "../../config/garminConfig";
 
 const Settings = () => {
   const navigate = useNavigate();
   
-  // Mock connection states - in real app, this would come from API/localStorage
+  // Connection states
   const [connections, setConnections] = useState({
     garmin: false,
     strava: false
   });
+
+  // Garmin OAuth states
+  const [isGarminLoading, setIsGarminLoading] = useState(false);
+
+  // Listen for messages from Garmin OAuth popup
+  useEffect(() => {
+    const handleMessage = (event) => {
+      if (event.data.type === 'garmin-oauth-success') {
+        setIsGarminLoading(false);
+        setConnections(prev => ({ ...prev, garmin: true }));
+        alert('Garmin connected successfully!');
+      } else if (event.data.type === 'garmin-oauth-error') {
+        setIsGarminLoading(false);
+        alert(`Garmin connection failed: ${event.data.error}`);
+      }
+    };
+
+    window.addEventListener('message', handleMessage);
+    return () => window.removeEventListener('message', handleMessage);
+  }, []);
 
   const toggleConnection = (service) => {
     setConnections(prev => ({
       ...prev,
       [service]: !prev[service]
     }));
+  };
+
+  // Inline Garmin OAuth function
+  const initiateGarminOAuth = async () => {
+    try {
+      setIsGarminLoading(true);
+      
+      // Get OAuth 2.0 PKCE authorization URL from backend
+      const response = await fetch(`${GARMIN_CONFIG.API_BASE_URL}/garmin/auth`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          callback_url: GARMIN_CONFIG.CALLBACK_URL
+        })
+      });
+
+      if (response.ok) {
+        const data = await response.json();
+        console.log('Garmin OAuth 2.0 PKCE auth URL:', data.authUrl);
+        
+        // Store codeVerifier for callback
+        localStorage.setItem('garmin_code_verifier', data.codeVerifier);
+        
+        // Open popup window for OAuth
+        const popup = window.open(
+          data.authUrl,
+          'garmin-oauth',
+          'width=600,height=700,scrollbars=yes,resizable=yes'
+        );
+        
+        // Listen for popup completion
+        const checkClosed = setInterval(() => {
+          if (popup.closed) {
+            clearInterval(checkClosed);
+            setIsGarminLoading(false);
+            // Popup closed - check if we got a success/error message
+            // If not, assume user cancelled
+            if (!popup.closed) {
+              alert('Garmin connection cancelled.');
+            }
+          }
+        }, 1000);
+        
+      } else {
+        const errorData = await response.json();
+        console.error('Failed to get Garmin OAuth 2.0 PKCE URL:', errorData);
+        alert('Failed to initiate Garmin connection. Please try again.');
+        setIsGarminLoading(false);
+      }
+    } catch (error) {
+      console.error('Garmin OAuth 2.0 PKCE initiation error:', error);
+      alert('An error occurred while connecting to Garmin. Please try again.');
+      setIsGarminLoading(false);
+    }
   };
 
   // API Connection cards
@@ -24,16 +101,18 @@ const Settings = () => {
       description: "Sync your runs and activities from Garmin",
       icon: "⌚",
       color: "bg-orange-500",
-      route: "/garmin/connect",
-      service: "garmin"
+      service: "garmin",
+      onClick: initiateGarminOAuth,
+      isLoading: isGarminLoading
     },
     {
       name: "Strava Connect", 
       description: "Import your activities from Strava",
       icon: "🏃",
       color: "bg-orange-600",
-      route: "/settings/devices",
-      service: "strava"
+      service: "strava",
+      onClick: () => navigate("/settings/devices"),
+      isLoading: false
     }
   ];
 
@@ -102,10 +181,11 @@ const Settings = () => {
                   {/* Connect Button */}
                   {!connections[card.service] && (
                     <button
-                      onClick={() => navigate(card.route)}
-                      className={`w-full py-3 px-6 rounded-lg font-semibold text-white transition-colors ${card.color} hover:opacity-90`}
+                      onClick={card.onClick}
+                      disabled={card.isLoading}
+                      className={`w-full py-3 px-6 rounded-lg font-semibold text-white transition-colors ${card.color} hover:opacity-90 disabled:opacity-50 disabled:cursor-not-allowed`}
                     >
-                      Connect {card.name}
+                      {card.isLoading ? 'Connecting...' : `Connect ${card.name}`}
                     </button>
                   )}
                   
