@@ -24,6 +24,7 @@ import GarminMoveIQWebhook from './Pages/Garmin/GarminMoveIQWebhook';
 import GarminPermissionsWebhook from './Pages/Garmin/GarminPermissionsWebhook';
 import GarminDeregisterWebhook from './Pages/Garmin/GarminDeregisterWebhook';
 import GarminRegistrationWebhook from './Pages/Garmin/GarminRegistrationWebhook';
+import GarminRegistrationSuccess from './Pages/Garmin/GarminRegistrationSuccess';
 
 const App = () => {
   return (
@@ -57,6 +58,7 @@ const App = () => {
         <Route path="/garmin/permissions" element={<GarminPermissionsWebhook />} />
         <Route path="/garmin/deregistration" element={<GarminDeregisterWebhook />} />
         <Route path="/garmin/registration" element={<GarminRegistrationWebhook />} />
+        <Route path="/garmin/registration-success" element={<GarminRegistrationSuccess />} />
         
         {/* Debug Routes */}
         <Route path="/debug/userid" element={<FindMyUserId />} />

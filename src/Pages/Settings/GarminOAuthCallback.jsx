@@ -54,6 +54,14 @@ const GarminOAuthCallback = () => {
 
         console.log('Garmin OAuth 2.0 callback received:', { code, state });
 
+        // Get athleteId from localStorage (from hydration at home)
+        const athleteId = localStorage.getItem('athleteId');
+        console.log('🔍 DEBUG - AthleteId from localStorage:', athleteId);
+        
+        if (!athleteId) {
+          throw new Error('No athleteId found in localStorage');
+        }
+        
         // Send OAuth 2.0 authorization code to backend to exchange for access tokens
         const response = await fetch('https://gofastbackendv2-fall2025.onrender.com/api/garmin/callback', {
           method: 'POST',
@@ -63,7 +71,8 @@ const GarminOAuthCallback = () => {
           body: JSON.stringify({
             code: code,
             state: state,
-            codeVerifier: localStorage.getItem('garmin_code_verifier') // Get from localStorage
+            codeVerifier: localStorage.getItem('garmin_code_verifier'), // Get from localStorage
+            athleteId: athleteId // Send athleteId for database save
           })
         });
 
