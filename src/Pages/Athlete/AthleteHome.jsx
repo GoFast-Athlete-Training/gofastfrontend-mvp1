@@ -2,6 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { signOut } from 'firebase/auth';
 import { auth } from '../../firebase';
+import { onAuthStateChanged } from 'firebase/auth';
 import UserOnboardingCalculationService from '../../utils/UserOnboardingCalculationService';
 
 const AthleteHome = () => {
@@ -12,25 +13,34 @@ const AthleteHome = () => {
   const [displayCards, setDisplayCards] = useState([]);
 
   useEffect(() => {
-    hydrateAthleteData();
-  }, []);
+    const unsubscribe = onAuthStateChanged(auth, async (user) => {
+      if (user) {
+        console.log('✅ ATHLETE HOME: Firebase user detected:', user.email);
+        await hydrateAthleteData(user);
+      } else {
+        console.log('❌ ATHLETE HOME: No Firebase user - staying on page, showing loading');
+        // DON'T redirect! Let the user stay and see what's happening
+        setIsLoading(false);
+      }
+    });
 
-  const hydrateAthleteData = async () => {
+    return () => unsubscribe();
+  }, [navigate]);
+
+  const hydrateAthleteData = async (user) => {
     setIsLoading(true);
     
     try {
       console.log('🚀 ATHLETE HOME: Starting universal hydration...');
       
-      // Get Firebase token
-      const user = auth.currentUser;
       if (!user) {
-        console.log('❌ ATHLETE HOME: No Firebase user, redirecting to signin');
-        navigate('/athletesignin');
+        console.log('❌ ATHLETE HOME: No Firebase user - this should not happen');
+        setIsLoading(false);
         return;
       }
       
       const token = await user.getIdToken();
-      console.log('🔐 ATHLETE HOME: Got Firebase token');
+      console.log('🔐 ATHLETE HOME: Got Firebase token for user:', user.email);
       
       // Call backend to get athlete data using universal hydrate route
       const response = await fetch('https://gofastbackendv2-fall2025.onrender.com/api/athlete/retrieve', {
@@ -91,6 +101,35 @@ const AthleteHome = () => {
         <div className="text-center">
           <div className="animate-spin rounded-full h-16 w-16 border-b-2 border-orange-500 mx-auto mb-4"></div>
           <p className="text-gray-600">Loading your profile...</p>
+        </div>
+      </div>
+    );
+  }
+
+  // If no athlete profile and not loading, show a helpful message instead of redirecting
+  if (!athleteProfile && !isLoading) {
+    return (
+      <div className="min-h-screen bg-gradient-to-br from-orange-50 to-orange-100 flex items-center justify-center">
+        <div className="text-center max-w-md mx-auto px-6">
+          <div className="text-orange-500 text-6xl mb-4">🏃‍♂️</div>
+          <h1 className="text-2xl font-bold text-gray-900 mb-4">Welcome to GoFast!</h1>
+          <p className="text-gray-600 mb-6">
+            It looks like you're not signed in yet. Let's get you started!
+          </p>
+          <div className="space-y-3">
+            <button
+              onClick={() => navigate('/athletesignin')}
+              className="w-full bg-orange-500 text-white px-6 py-3 rounded-lg font-medium hover:bg-orange-600 transition"
+            >
+              Sign In
+            </button>
+            <button
+              onClick={() => navigate('/athletesignup')}
+              className="w-full bg-gray-200 text-gray-800 px-6 py-3 rounded-lg font-medium hover:bg-gray-300 transition"
+            >
+              Sign Up
+            </button>
+          </div>
         </div>
       </div>
     );
