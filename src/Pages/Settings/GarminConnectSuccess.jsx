@@ -1,7 +1,6 @@
 import React, { useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { CheckCircle, RefreshCw, AlertCircle } from 'lucide-react';
-import toast, { Toaster } from 'react-hot-toast';
 
 const GarminConnectSuccess = () => {
   const navigate = useNavigate();
@@ -60,12 +59,11 @@ const GarminConnectSuccess = () => {
         console.log('✅ Step 2: Dashboard refreshed with fresh data');
       }
 
-      toast.success('Garmin connection completed successfully!');
+      console.log('✅ Garmin connection completed successfully!');
       
     } catch (error) {
       console.error('❌ GarminConnectSuccess error:', error);
       setStatus('error');
-      toast.error('Failed to complete Garmin setup: ' + error.message);
     } finally {
       setLoading(false);
     }
@@ -83,7 +81,6 @@ const GarminConnectSuccess = () => {
 
   return (
     <div className="min-h-screen flex items-center justify-center bg-gray-50 p-4">
-      <Toaster position="top-right" />
       
       <div className="w-full max-w-md bg-white rounded-lg shadow-lg p-6">
         <div className="text-center">
