@@ -8,6 +8,7 @@ import Signin from './Pages/Athlete/Signin';
 import SignupPage from './Pages/Athlete/SignupPage';
 import AthleteCreateProfile from './Pages/Athlete/AthleteCreateProfile';
 import AthleteHome from './Pages/Athlete/AthleteHome';
+import AthleteProfile from './Pages/Athlete/AthleteProfile';
 
 const App = () => {
   return (
@@ -26,8 +27,18 @@ const App = () => {
         
         {/* Main App - Protected Routes */}
         <Route path="/athlete-home" element={<AthleteHome />} />
+        <Route path="/athlete-profile" element={<AthleteProfile />} />
         
-        {/* Placeholder Routes */}
+        {/* Smart Onboarding Routes */}
+        <Route path="/settings/devices" element={<div className="min-h-screen bg-gray-50 flex items-center justify-center"><h1 className="text-4xl font-bold text-gray-900">Device Settings - Coming Soon!</h1></div>} />
+        <Route path="/runcrew/join" element={<div className="min-h-screen bg-gray-50 flex items-center justify-center"><h1 className="text-4xl font-bold text-gray-900">Join RunCrew - Coming Soon!</h1></div>} />
+        <Route path="/runcrew/start" element={<div className="min-h-screen bg-gray-50 flex items-center justify-center"><h1 className="text-4xl font-bold text-gray-900">Start RunCrew - Coming Soon!</h1></div>} />
+        <Route path="/runcrew/dashboard" element={<div className="min-h-screen bg-gray-50 flex items-center justify-center"><h1 className="text-4xl font-bold text-gray-900">RunCrew Dashboard - Coming Soon!</h1></div>} />
+        <Route path="/training/track" element={<div className="min-h-screen bg-gray-50 flex items-center justify-center"><h1 className="text-4xl font-bold text-gray-900">Track Runs - Coming Soon!</h1></div>} />
+        <Route path="/training/analytics" element={<div className="min-h-screen bg-gray-50 flex items-center justify-center"><h1 className="text-4xl font-bold text-gray-900">Training Analytics - Coming Soon!</h1></div>} />
+        <Route path="/connect/partners" element={<div className="min-h-screen bg-gray-50 flex items-center justify-center"><h1 className="text-4xl font-bold text-gray-900">Find Partners - Coming Soon!</h1></div>} />
+        
+        {/* Legacy Placeholder Routes */}
         <Route path="/connect" element={<div className="min-h-screen bg-gray-50 flex items-center justify-center"><h1 className="text-4xl font-bold text-gray-900">Connect - Coming Soon!</h1></div>} />
         <Route path="/training-hub" element={<div className="min-h-screen bg-gray-50 flex items-center justify-center"><h1 className="text-4xl font-bold text-gray-900">Training Hub - Coming Soon!</h1></div>} />
         <Route path="/shop" element={<div className="min-h-screen bg-gray-50 flex items-center justify-center"><h1 className="text-4xl font-bold text-gray-900">Shop - Coming Soon!</h1></div>} />

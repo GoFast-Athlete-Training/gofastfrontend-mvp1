@@ -2,12 +2,14 @@ import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { signOut } from 'firebase/auth';
 import { auth } from '../../firebase';
+import UserOnboardingCalculationService from '../../utils/UserOnboardingCalculationService';
 
 const AthleteHome = () => {
   const navigate = useNavigate();
   const [athleteProfile, setAthleteProfile] = useState(null);
   const [isLoading, setIsLoading] = useState(true);
-  const [hydrating, setHydrating] = useState(false);
+  const [onboardingState, setOnboardingState] = useState(null);
+  const [displayCards, setDisplayCards] = useState([]);
 
   useEffect(() => {
     hydrateAthleteData();
@@ -15,7 +17,6 @@ const AthleteHome = () => {
 
   const hydrateAthleteData = async () => {
     setIsLoading(true);
-    setHydrating(true);
     
     try {
       console.log('🚀 ATHLETE HOME: Starting universal hydration...');
@@ -24,7 +25,7 @@ const AthleteHome = () => {
       const user = auth.currentUser;
       if (!user) {
         console.log('❌ ATHLETE HOME: No Firebase user, redirecting to signin');
-        navigate('/signin');
+        navigate('/athletesignin');
         return;
       }
       
@@ -45,9 +46,21 @@ const AthleteHome = () => {
         console.log('✅ ATHLETE HOME: Hydrated athlete data:', data);
         
         if (data.success && data.athlete) {
-          setAthleteProfile(data.athlete);
+          const athlete = data.athlete;
+          setAthleteProfile(athlete);
+          
+          // Calculate onboarding state
+          const onboarding = UserOnboardingCalculationService.calculateOnboardingState(athlete.createdAt);
+          setOnboardingState(onboarding);
+          
+          // Get appropriate cards for this user
+          const cards = UserOnboardingCalculationService.getCardsForUser(athlete, onboarding);
+          setDisplayCards(cards);
+          
           // Store in localStorage for other components
-          localStorage.setItem('athleteProfile', JSON.stringify(data.athlete));
+          localStorage.setItem('athleteProfile', JSON.stringify(athlete));
+          localStorage.setItem('profileHydrated', 'true');
+          localStorage.setItem('onboardingState', JSON.stringify(onboarding));
         }
       } else {
         console.log('❌ ATHLETE HOME: Failed to hydrate, athlete not found');
@@ -59,7 +72,6 @@ const AthleteHome = () => {
       // Continue anyway - user can still use the app
     } finally {
       setIsLoading(false);
-      setHydrating(false);
     }
   };
 
@@ -78,35 +90,41 @@ const AthleteHome = () => {
       <div className="min-h-screen bg-white flex items-center justify-center">
         <div className="text-center">
           <div className="animate-spin rounded-full h-16 w-16 border-b-2 border-orange-500 mx-auto mb-4"></div>
-          <p className="text-gray-600">
-            {hydrating ? 'Loading your profile...' : 'Loading...'}
-          </p>
+          <p className="text-gray-600">Loading your profile...</p>
         </div>
       </div>
     );
   }
 
-  // Universal greeting - works whether they have profile or not
-  const athleteName = athleteProfile?.firstName || 'Athlete';
-  const hasProfile = athleteProfile?.gofastHandle; // Profile complete = has gofastHandle
-  const athleteLocation = athleteProfile ? `${athleteProfile.city || 'Your City'}, ${athleteProfile.state || 'State'}` : 'Your Location';
+  const isProfileComplete = athleteProfile?.gofastHandle;
+  const welcomeMessage = onboardingState ? 
+    UserOnboardingCalculationService.getOnboardingMessage(onboardingState, athleteProfile) : 
+    `Welcome, ${athleteProfile?.firstName || 'Athlete'}!`;
 
   return (
-    <div className="min-h-screen bg-white">
+    <div className="min-h-screen bg-gradient-to-br from-orange-50 to-orange-100">
       {/* Header */}
       <div className="bg-white shadow-sm">
-        <div className="max-w-4xl mx-auto px-6 py-4">
+        <div className="max-w-6xl mx-auto px-6 py-4">
           <div className="flex items-center justify-between">
             <div className="flex items-center space-x-4">
               <img src="/logo.jpg" alt="GoFast" className="w-8 h-8 rounded-full" />
               <span className="text-xl font-bold text-gray-900">GoFast</span>
             </div>
-            <div className="flex items-center space-x-3">
+            <div className="flex items-center space-x-4">
+              {/* Settings Button */}
+              <button
+                onClick={() => navigate('/athlete-profile')}
+                className="text-gray-600 hover:text-gray-900 px-3 py-2 rounded-lg font-medium hover:bg-gray-100 transition"
+              >
+                Settings
+              </button>
+              {/* Profile Avatar - Clickable */}
               <button
                 onClick={() => navigate('/athlete-create-profile')}
-                className="w-10 h-10 bg-gray-200 rounded-full flex items-center justify-center text-xl hover:bg-gray-300 transition-colors"
+                className="w-10 h-10 bg-orange-500 rounded-full flex items-center justify-center text-white font-bold hover:bg-orange-600 transition"
               >
-                👤
+                {athleteProfile?.firstName ? athleteProfile.firstName[0].toUpperCase() : 'A'}
               </button>
               <button
                 onClick={handleSignOut}
@@ -120,104 +138,78 @@ const AthleteHome = () => {
       </div>
 
       {/* Main Content */}
-      <div className="max-w-4xl mx-auto px-6 py-8">
-        {/* Universal Greeting */}
-        <div className="mb-6">
-          <h1 className="text-3xl font-bold text-gray-900 mb-2">
-            Hi {athleteName}!
+      <div className="max-w-6xl mx-auto px-6 py-12">
+        {/* Welcome Message */}
+        <div className="text-center mb-12">
+          <h1 className="text-4xl md:text-5xl font-bold text-gray-900 mb-4">
+            {welcomeMessage}
           </h1>
-          {hasProfile ? (
-            <p className="text-gray-600">Welcome back! What do you want to do today?</p>
-          ) : (
-            <div className="bg-orange-50 border border-orange-200 rounded-lg p-4">
-              <p className="text-orange-800 font-medium mb-2">Complete your profile to get more out of the experience</p>
-              <p className="text-orange-700 text-sm mb-3">Add your name, location, and running preferences to get better matches and personalized recommendations.</p>
-              <button 
-                onClick={() => navigate('/athlete-create-profile')}
-                className="bg-orange-600 text-white px-4 py-2 rounded-lg hover:bg-orange-700 transition-colors"
-              >
-                Complete Profile →
-              </button>
+          {!isProfileComplete && (
+            <div className="bg-orange-100 border border-orange-300 rounded-lg p-4 max-w-2xl mx-auto">
+              <p className="text-orange-800">
+                Complete your profile to get more out of the experience or search around using the cards below.
+              </p>
+            </div>
+          )}
+          {onboardingState?.isNewUser && (
+            <div className="bg-blue-100 border border-blue-300 rounded-lg p-4 max-w-2xl mx-auto mt-4">
+              <p className="text-blue-800">
+                🎉 You're new here! We'll guide you through the basics for your first 15 days.
+              </p>
             </div>
           )}
         </div>
 
-        {/* Action Cards */}
-        <div className="mb-8">
-          <h2 className="text-2xl font-bold text-gray-900 mb-6">Get Started</h2>
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-            <button
-              onClick={() => navigate('/connect')}
-              className="bg-gradient-to-br from-sky-500 to-sky-600 text-white rounded-xl p-6 shadow-lg hover:shadow-xl transition-shadow text-left"
-            >
-              <div className="text-4xl mb-3">👥</div>
-              <h3 className="text-xl font-bold mb-1">Find Your Crew</h3>
-              <p className="text-sky-100 text-sm">Connect with runners in {athleteProfile?.city || 'your area'}</p>
-            </button>
-
-            <button
-              onClick={() => navigate('/training-hub')}
-              className="bg-gradient-to-br from-orange-500 to-orange-600 text-white rounded-xl p-6 shadow-lg hover:shadow-xl transition-shadow text-left"
-            >
-              <div className="text-4xl mb-3">🏃</div>
-              <h3 className="text-xl font-bold mb-1">Start Training</h3>
-              <p className="text-orange-100 text-sm">Get your personalized {athleteProfile?.primarySport || 'running'} plan</p>
-            </button>
-          </div>
-        </div>
-
-        {/* Next Steps */}
-        <div className="mb-8">
-          <h2 className="text-xl font-bold text-gray-900 mb-4">What's Next?</h2>
-          <div className="space-y-3">
-            {!hasProfile && (
-              <div className="bg-orange-50 rounded-xl p-4 border border-orange-200">
-                <div className="flex items-center justify-between">
-                  <div>
-                    <h3 className="font-bold text-orange-900">Complete Your Profile</h3>
-                    <p className="text-sm text-orange-700">Add more details to get better matches</p>
+        {/* Smart Action Cards */}
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+          {displayCards.map((card, index) => {
+            // Skip cards that have showIf conditions and don't meet them
+            if (card.showIf === false) return null;
+            
+            return (
+              <div 
+                key={index}
+                onClick={() => navigate(card.path)}
+                className="bg-white rounded-xl shadow-lg p-6 hover:shadow-xl transition-all cursor-pointer transform hover:scale-105 text-center"
+              >
+                <div className="text-5xl mb-4">{card.icon}</div>
+                <h3 className="text-xl font-bold text-gray-900 mb-3">{card.title}</h3>
+                <p className="text-gray-600 mb-4">{card.description}</p>
+                <div className={`${card.color} text-white px-4 py-2 rounded-lg font-bold`}>
+                  Get Started
+                </div>
+                {card.priority === 'high' && onboardingState?.isNewUser && (
+                  <div className="mt-2">
+                    <span className="text-xs bg-orange-100 text-orange-800 px-2 py-1 rounded-full">
+                      Recommended
+                    </span>
                   </div>
-                  <button 
-                    onClick={() => navigate('/athlete-create-profile')}
-                    className="text-orange-600 hover:text-orange-700 font-medium"
-                  >
-                    Complete →
-                  </button>
-                </div>
+                )}
               </div>
-            )}
-
-            <div className="bg-white rounded-xl p-4 shadow-sm border border-gray-200">
-              <div className="flex items-center justify-between">
-                <div>
-                  <h3 className="font-bold text-gray-900">Find Running Partners</h3>
-                  <p className="text-sm text-gray-600">Connect with athletes at your level</p>
-                </div>
-                <button 
-                  onClick={() => navigate('/connect')}
-                  className="text-sky-600 hover:text-sky-700 font-medium"
-                >
-                  Explore →
-                </button>
-              </div>
-            </div>
-
-            <div className="bg-white rounded-xl p-4 shadow-sm border border-gray-200">
-              <div className="flex items-center justify-between">
-                <div>
-                  <h3 className="font-bold text-gray-900">Start Training</h3>
-                  <p className="text-sm text-gray-600">Get your personalized workout plan</p>
-                </div>
-                <button 
-                  onClick={() => navigate('/training-hub')}
-                  className="text-orange-600 hover:text-orange-700 font-medium"
-                >
-                  Begin →
-                </button>
-              </div>
-            </div>
-          </div>
+            );
+          })}
         </div>
+
+        {/* Onboarding Progress (for new users) */}
+        {onboardingState?.isNewUser && (
+          <div className="mt-12 bg-white rounded-xl shadow-lg p-6">
+            <h3 className="text-lg font-bold text-gray-900 mb-4">Your GoFast Journey</h3>
+            <div className="flex items-center space-x-4">
+              <div className="flex-1 bg-gray-200 rounded-full h-2">
+                <div 
+                  className="bg-orange-500 h-2 rounded-full transition-all duration-500"
+                  style={{ width: `${(onboardingState.daysSinceCreation / 15) * 100}%` }}
+                ></div>
+              </div>
+              <span className="text-sm text-gray-600">
+                Day {onboardingState.daysSinceCreation} of 15
+              </span>
+            </div>
+            <p className="text-sm text-gray-600 mt-2">
+              Complete your onboarding to unlock all features!
+            </p>
+          </div>
+        )}
       </div>
     </div>
   );
