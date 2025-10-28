@@ -80,6 +80,12 @@ const GarminOAuthCallback = () => {
           const data = await response.json();
           console.log('Garmin OAuth success:', data);
           
+          // Save tokens to localStorage for GarminConnectSuccess
+          if (data.tokens) {
+            localStorage.setItem('garminTokens', JSON.stringify(data.tokens));
+            console.log('✅ Tokens saved to localStorage');
+          }
+          
           setStatus('success');
           setMessage('Garmin connected successfully!');
           
