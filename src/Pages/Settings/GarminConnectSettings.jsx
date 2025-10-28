@@ -6,6 +6,8 @@ const GarminConnectSettings = () => {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
   const [updating, setUpdating] = useState(false);
+  const [debugData, setDebugData] = useState(null);
+  const [debugLoading, setDebugLoading] = useState(false);
 
   // Fetch Garmin status on component mount
   useEffect(() => {
@@ -117,6 +119,61 @@ const GarminConnectSettings = () => {
     updateScopes(newScopes);
   };
 
+  const getMyGarminId = async () => {
+    try {
+      setDebugLoading(true);
+      setError(null);
+      
+      // Try the new user route first
+      const userResponse = await fetch(`${GARMIN_CONFIG.API_BASE_URL}/garmin/user`, {
+        method: 'GET',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        credentials: 'include'
+      });
+      
+      if (userResponse.ok) {
+        const userData = await userResponse.json();
+        setDebugData({
+          source: 'garmin/user endpoint',
+          data: userData
+        });
+        console.log('✅ User data fetched:', userData);
+      } else {
+        // Fallback to debug endpoint
+        const debugResponse = await fetch(`${GARMIN_CONFIG.API_BASE_URL}/garmin/debug`, {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+          },
+          credentials: 'include',
+          body: JSON.stringify({
+            action: 'check_tokens',
+            codeVerifier: localStorage.getItem('garmin_code_verifier')
+          })
+        });
+        
+        if (debugResponse.ok) {
+          const debugData = await debugResponse.json();
+          setDebugData({
+            source: 'garmin/debug endpoint (fallback)',
+            data: debugData
+          });
+          console.log('✅ Debug data fetched:', debugData);
+        } else {
+          const errorData = await debugResponse.json();
+          setError(errorData.message || 'Failed to fetch debug data');
+        }
+      }
+    } catch (err) {
+      console.error('❌ Error fetching data:', err);
+      setError(err.message || 'An unexpected error occurred');
+    } finally {
+      setDebugLoading(false);
+    }
+  };
+
   if (loading) {
     return (
       <div className="bg-white p-6 rounded-lg shadow-md">
@@ -223,11 +280,21 @@ const GarminConnectSettings = () => {
           </div>
 
           {/* Disconnect Button */}
-          <div className="mt-4">
+          <div className="mt-4 space-y-2">
+            {/* Get My ID Button */}
+            <button
+              onClick={getMyGarminId}
+              disabled={debugLoading}
+              className="w-full py-2 px-4 rounded-lg font-medium text-green-600 bg-green-50 hover:bg-green-100 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+            >
+              {debugLoading ? 'Getting ID...' : 'Get My Garmin ID'}
+            </button>
+            
+            {/* Disconnect Button */}
             <button
               onClick={handleDisconnect}
               disabled={updating}
-              className="bg-gray-500 text-white px-4 py-2 rounded-md hover:bg-gray-600 disabled:opacity-50 disabled:cursor-not-allowed"
+              className="w-full py-2 px-4 rounded-lg font-medium text-gray-700 bg-gray-200 hover:bg-gray-300 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
             >
               {updating ? 'Disconnecting...' : 'Disconnect'}
             </button>
@@ -239,6 +306,16 @@ const GarminConnectSettings = () => {
           <p>Last synced: {garminStatus.lastSyncedAt ? new Date(garminStatus.lastSyncedAt).toLocaleString() : 'Never'}</p>
           <p>Connected: {garminStatus.connectedAt ? new Date(garminStatus.connectedAt).toLocaleString() : 'Unknown'}</p>
         </div>
+
+        {/* Debug Data Display */}
+        {debugData && (
+          <div className="mt-4 p-4 bg-gray-50 rounded-md border border-gray-200">
+            <h5 className="text-sm font-medium text-gray-700 mb-2">Debug Information:</h5>
+            <pre className="text-xs text-gray-600 whitespace-pre-wrap break-all">
+              {JSON.stringify(debugData, null, 2)}
+            </pre>
+          </div>
+        )}
       </div>
     </div>
   );
