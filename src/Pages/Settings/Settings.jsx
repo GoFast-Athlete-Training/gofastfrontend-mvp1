@@ -17,7 +17,7 @@ const Settings = () => {
     }));
   };
 
-  // CLEAN Garmin OAuth 2.0 Flow - Backend handles everything
+  // CLEAN Garmin OAuth 2.0 Flow - Backend handles everything (POPUP VERSION)
   const connectGarmin = async () => {
     try {
       // Get athleteId from localStorage
@@ -43,14 +43,56 @@ const Settings = () => {
       
       const data = await response.json();
       
-      console.log('✅ Auth URL received, redirecting to Garmin...');
+      console.log('✅ Auth URL received, opening popup...');
       
-      // Step 2: Redirect to Garmin OAuth (backend handles everything from here)
-      window.location.href = data.authUrl;
+      // Step 2: Open popup for Garmin OAuth
+      const popup = window.open(
+        data.authUrl,
+        'garmin-oauth',
+        'width=600,height=700,scrollbars=yes,resizable=yes'
+      );
+      
+      // Step 3: Listen for popup completion
+      const checkClosed = setInterval(() => {
+        if (popup.closed) {
+          clearInterval(checkClosed);
+          console.log('🔄 Popup closed, checking connection status...');
+          
+          // Check if connection was successful by calling backend
+          checkGarminConnectionStatus();
+        }
+      }, 1000);
       
     } catch (error) {
       console.error('❌ Garmin OAuth error:', error);
       alert('Failed to start Garmin connection: ' + error.message);
+    }
+  };
+
+  // Check Garmin connection status after popup closes
+  const checkGarminConnectionStatus = async () => {
+    try {
+      const athleteId = localStorage.getItem('athleteId');
+      const response = await fetch(`https://gofastbackendv2-fall2025.onrender.com/api/garmin/status?athleteId=${athleteId}`, {
+        method: 'GET',
+        headers: {
+          'Content-Type': 'application/json',
+        }
+      });
+      
+      if (response.ok) {
+        const data = await response.json();
+        if (data.connected) {
+          console.log('✅ Garmin connection successful!');
+          setConnections(prev => ({ ...prev, garmin: true }));
+          alert('Garmin Connect successful! Your account is now connected.');
+        } else {
+          console.log('❌ Garmin connection failed');
+          alert('Garmin connection was not completed. Please try again.');
+        }
+      }
+    } catch (error) {
+      console.error('❌ Error checking Garmin status:', error);
     }
   };
 
