@@ -1,20 +1,85 @@
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
 
 const Settings = () => {
   const navigate = useNavigate();
   
-  // Simple connection states
+  // Connection states - will be hydrated from backend
   const [connections, setConnections] = useState({
     garmin: false,
     strava: false
   });
+  const [loading, setLoading] = useState(true);
 
-  const toggleConnection = (service) => {
-    setConnections(prev => ({
-      ...prev,
-      [service]: !prev[service]
-    }));
+  // Check connection status on component mount
+  useEffect(() => {
+    checkConnectionStatus();
+  }, []);
+
+  const checkConnectionStatus = async () => {
+    try {
+      const athleteId = localStorage.getItem('athleteId');
+      if (!athleteId) {
+        console.log('No athleteId found in localStorage');
+        setLoading(false);
+        return;
+      }
+
+      console.log('🔍 Checking connection status for athleteId:', athleteId);
+      
+      const response = await fetch(`https://gofastbackendv2-fall2025.onrender.com/api/garmin/status?athleteId=${athleteId}`, {
+        method: 'GET',
+        headers: {
+          'Content-Type': 'application/json',
+        }
+      });
+
+      if (response.ok) {
+        const data = await response.json();
+        console.log('✅ Connection status received:', data);
+        
+        setConnections(prev => ({
+          ...prev,
+          garmin: data.connected || false,
+          strava: false // TODO: Add Strava status check
+        }));
+      } else {
+        console.log('❌ Failed to get connection status:', response.status);
+      }
+    } catch (error) {
+      console.error('❌ Error checking connection status:', error);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const disconnectGarmin = async () => {
+    try {
+      const athleteId = localStorage.getItem('athleteId');
+      if (!athleteId) {
+        throw new Error('AthleteId not found in localStorage');
+      }
+
+      const response = await fetch(`https://gofastbackendv2-fall2025.onrender.com/api/garmin/disconnect`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({ athleteId })
+      });
+
+      if (response.ok) {
+        console.log('✅ Garmin disconnected successfully');
+        await checkConnectionStatus();
+        alert('Garmin disconnected successfully');
+      } else {
+        const errorData = await response.json();
+        throw new Error(errorData.error || 'Failed to disconnect Garmin');
+      }
+    } catch (error) {
+      console.error('❌ Garmin disconnect error:', error);
+      alert('Failed to disconnect Garmin: ' + error.message);
+    }
   };
 
   // CLEAN Garmin OAuth 2.0 Flow - Backend handles everything (POPUP VERSION)
@@ -59,7 +124,7 @@ const Settings = () => {
           console.log('🔄 Popup closed, checking connection status...');
           
           // Check if connection was successful by calling backend
-          checkGarminConnectionStatus();
+          checkConnectionStatus();
         }
       }, 1000);
       
@@ -69,32 +134,6 @@ const Settings = () => {
     }
   };
 
-  // Check Garmin connection status after popup closes
-  const checkGarminConnectionStatus = async () => {
-    try {
-      const athleteId = localStorage.getItem('athleteId');
-      const response = await fetch(`https://gofastbackendv2-fall2025.onrender.com/api/garmin/status?athleteId=${athleteId}`, {
-        method: 'GET',
-        headers: {
-          'Content-Type': 'application/json',
-        }
-      });
-      
-      if (response.ok) {
-        const data = await response.json();
-        if (data.connected) {
-          console.log('✅ Garmin connection successful!');
-          setConnections(prev => ({ ...prev, garmin: true }));
-          alert('Garmin Connect successful! Your account is now connected.');
-        } else {
-          console.log('❌ Garmin connection failed');
-          alert('Garmin connection was not completed. Please try again.');
-        }
-      }
-    } catch (error) {
-      console.error('❌ Error checking Garmin status:', error);
-    }
-  };
 
   return (
     <div className="min-h-screen bg-gray-50">
@@ -129,29 +168,35 @@ const Settings = () => {
                 <h3 className="text-2xl font-semibold mb-3">Garmin Connect</h3>
                 <p className="text-gray-600 text-lg mb-4">Sync your runs and activities from Garmin</p>
                 
-                <div className="flex items-center justify-center space-x-4 mb-4">
-                  <div className={`px-4 py-2 rounded-full text-sm font-medium ${
-                    connections.garmin 
-                      ? 'bg-green-100 text-green-800' 
-                      : 'bg-gray-100 text-gray-600'
-                  }`}>
-                    {connections.garmin ? 'Connected' : 'Not Connected'}
+                {connections.garmin && (
+                  <div className="flex items-center justify-center space-x-2 mb-4">
+                    <svg className="w-5 h-5 text-green-500" fill="currentColor" viewBox="0 0 20 20">
+                      <path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z" clipRule="evenodd" />
+                    </svg>
+                    <span className="text-green-600 font-medium">Connected</span>
                   </div>
-                </div>
+                )}
 
-                {!connections.garmin ? (
+                {loading ? (
+                  <button
+                    disabled
+                    className="w-full py-3 px-6 rounded-lg font-semibold text-white bg-gray-400 cursor-not-allowed"
+                  >
+                    Checking...
+                  </button>
+                ) : connections.garmin ? (
+                  <button
+                    onClick={disconnectGarmin}
+                    className="w-full py-3 px-6 rounded-lg font-semibold text-white bg-red-500 hover:bg-red-600 transition-colors"
+                  >
+                    Disconnect Garmin
+                  </button>
+                ) : (
                   <button
                     onClick={connectGarmin}
                     className="w-full py-3 px-6 rounded-lg font-semibold text-white bg-orange-500 hover:bg-orange-600 transition-colors"
                   >
                     Connect Garmin
-                  </button>
-                ) : (
-                  <button
-                    onClick={() => toggleConnection('garmin')}
-                    className="w-full py-2 px-4 rounded-lg font-medium text-gray-700 bg-gray-200 hover:bg-gray-300 transition-colors"
-                  >
-                    Disconnect
                   </button>
                 )}
               </div>
