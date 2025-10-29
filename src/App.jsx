@@ -15,17 +15,6 @@ import GarminConnectSuccess from './Pages/Settings/GarminConnectSuccess';
 // Debug Components
 import FindMyUserId from './Pages/Debug/FindMyUserId';
 
-// Garmin Webhook Components
-import GarminActivityWebhook from './Pages/Garmin/GarminActivityWebhook';
-import GarminDetailsWebhook from './Pages/Garmin/GarminDetailsWebhook';
-import GarminActivityFilesWebhook from './Pages/Garmin/GarminActivityFilesWebhook';
-import GarminActivityManualWebhook from './Pages/Garmin/GarminActivityManualWebhook';
-import GarminMoveIQWebhook from './Pages/Garmin/GarminMoveIQWebhook';
-import GarminPermissionsWebhook from './Pages/Garmin/GarminPermissionsWebhook';
-import GarminDeregisterWebhook from './Pages/Garmin/GarminDeregisterWebhook';
-import GarminRegistrationWebhook from './Pages/Garmin/GarminRegistrationWebhook';
-import GarminRegistrationSuccess from './Pages/Garmin/GarminRegistrationSuccess';
-
 const App = () => {
   return (
     <Router>
@@ -48,17 +37,6 @@ const App = () => {
         
         {/* Garmin OAuth 2.0 PKCE Flow */}
         <Route path="/garmin/success" element={<GarminConnectSuccess />} />
-        
-        {/* Garmin Webhook Endpoints */}
-        <Route path="/garmin/activity" element={<GarminActivityWebhook />} />
-        <Route path="/garmin/details" element={<GarminDetailsWebhook />} />
-        <Route path="/garmin/activity-files" element={<GarminActivityFilesWebhook />} />
-        <Route path="/garmin/activity-manual" element={<GarminActivityManualWebhook />} />
-        <Route path="/garmin/moveiq" element={<GarminMoveIQWebhook />} />
-        <Route path="/garmin/permissions" element={<GarminPermissionsWebhook />} />
-        <Route path="/garmin/deregistration" element={<GarminDeregisterWebhook />} />
-        <Route path="/garmin/registration" element={<GarminRegistrationWebhook />} />
-        <Route path="/garmin/registration-success" element={<GarminRegistrationSuccess />} />
         
         {/* Debug Routes */}
         <Route path="/debug/userid" element={<FindMyUserId />} />

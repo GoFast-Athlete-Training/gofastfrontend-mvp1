@@ -2,7 +2,9 @@ import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { signOut } from 'firebase/auth';
 import { auth } from '../../firebase';
-import { GARMIN_CONFIG } from '../../config/garminConfig';
+
+// Hardcoded API URL since we deleted the config file
+const API_BASE_URL = 'https://gofastbackendv2-fall2025.onrender.com/api';
 
 const AthleteProfile = () => {
   const [activeSection, setActiveSection] = useState('profile');
@@ -23,7 +25,7 @@ const AthleteProfile = () => {
 
   const fetchGarminStatus = async () => {
     try {
-      const response = await fetch(`${GARMIN_CONFIG.API_BASE_URL}/garmin/status`, {
+      const response = await fetch(`${API_BASE_URL}/garmin/status`, {
         method: 'GET',
         headers: {
           'Content-Type': 'application/json',

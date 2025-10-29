@@ -1,5 +1,7 @@
 import React, { useState } from 'react';
-import { GARMIN_CONFIG } from '../../config/garminConfig';
+
+// Hardcoded API URL since we deleted the config file
+const API_BASE_URL = 'https://gofastbackendv2-fall2025.onrender.com/api';
 
 const FindMyUserId = () => {
   const [result, setResult] = useState(null);
@@ -15,7 +17,7 @@ const FindMyUserId = () => {
       console.log('🔍 Code Verifier in localStorage:', codeVerifier);
 
       // Try to get user profile using a test endpoint
-      const response = await fetch(`${GARMIN_CONFIG.API_BASE_URL}/garmin/debug`, {
+      const response = await fetch(`${API_BASE_URL}/garmin/debug`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
