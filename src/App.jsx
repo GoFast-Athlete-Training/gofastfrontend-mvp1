@@ -10,6 +10,7 @@ import AthleteCreateProfile from './Pages/Athlete/AthleteCreateProfile';
 import AthleteHome from './Pages/Athlete/AthleteHome';
 import AthleteProfile from './Pages/Athlete/AthleteProfile';
 import Settings from './Pages/Settings/Settings';
+import GarminOAuthCallback from './Pages/Settings/GarminOAuthCallback';
 import GarminConnectSuccess from './Pages/Settings/GarminConnectSuccess';
 
 // Debug Components
@@ -36,6 +37,7 @@ const App = () => {
         <Route path="/settings" element={<Settings />} />
         
         {/* Garmin OAuth 2.0 PKCE Flow */}
+        <Route path="/garmin/callback" element={<GarminOAuthCallback />} />
         <Route path="/garmin/success" element={<GarminConnectSuccess />} />
         
         {/* Debug Routes */}
