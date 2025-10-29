@@ -21,12 +21,16 @@ const GarminConnectSettings = () => {
       setLoading(true);
       setError(null);
       
-      const response = await fetch(`${API_BASE_URL}/garmin/status`, {
+      const athleteId = localStorage.getItem('athleteId');
+      if (!athleteId) {
+        throw new Error('No athleteId found in localStorage');
+      }
+
+      const response = await fetch(`${API_BASE_URL}/garmin/status?athleteId=${athleteId}`, {
         method: 'GET',
         headers: {
           'Content-Type': 'application/json',
-        },
-        credentials: 'include' // Include cookies for auth
+        }
       });
       
       if (response.ok) {

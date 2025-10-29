@@ -25,12 +25,17 @@ const AthleteProfile = () => {
 
   const fetchGarminStatus = async () => {
     try {
-      const response = await fetch(`${API_BASE_URL}/garmin/status`, {
+      const athleteId = localStorage.getItem('athleteId');
+      if (!athleteId) {
+        console.log('No athleteId found in localStorage');
+        return;
+      }
+
+      const response = await fetch(`${API_BASE_URL}/garmin/status?athleteId=${athleteId}`, {
         method: 'GET',
         headers: {
           'Content-Type': 'application/json',
-        },
-        credentials: 'include'
+        }
       });
       
       if (response.ok) {
