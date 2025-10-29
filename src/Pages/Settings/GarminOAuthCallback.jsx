@@ -60,7 +60,7 @@ const GarminOAuthCallback = () => {
         setMessage('Garmin connected successfully!');
         
         // Redirect to success page after 1 second
-        setTimeout(() => navigate('/garmin/success'), 1000);
+        setTimeout(() => navigate(`/garmin/success?athleteId=${athleteId}`), 1000);
         
       } catch (error) {
         console.error('❌ OAuth callback error:', error);
