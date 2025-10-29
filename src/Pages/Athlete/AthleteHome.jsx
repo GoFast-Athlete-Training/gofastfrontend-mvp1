@@ -43,7 +43,7 @@ const AthleteHome = () => {
       console.log('🔐 ATHLETE HOME: Got Firebase token for user:', user.email);
       
       // Call backend to get athlete data using universal hydrate route
-      const response = await fetch('https://gofastbackendv2-fall2025.onrender.com/api/athlete/retrieve', {
+      const response = await fetch(`https://gofastbackendv2-fall2025.onrender.com/api/athlete/retrieve?firebaseId=${user.uid}`, {
         method: 'GET',
         headers: {
           'Content-Type': 'application/json',
