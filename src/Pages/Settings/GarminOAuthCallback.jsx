@@ -80,35 +80,7 @@ const GarminOAuthCallback = () => {
           const data = await response.json();
           console.log('Garmin OAuth success:', data);
           
-            // Save tokens to localStorage individually - NOT as a set
-            localStorage.setItem('garminTokens', data.tokens.access_token);
-            localStorage.setItem('garminRefreshToken', data.tokens.refresh_token);
-            localStorage.setItem('garminExpiresIn', data.tokens.expires_in.toString());
-            console.log('✅ Individual tokens saved to localStorage from Garmin');
-            
-            // Now send tokens to backend to save to database
-            try {
-              const saveResponse = await fetch('https://gofastbackendv2-fall2025.onrender.com/api/garmin/save-tokens', {
-                method: 'POST',
-                headers: {
-                  'Content-Type': 'application/json',
-                },
-                body: JSON.stringify({
-                  athleteId: athleteId,
-                  tokens: data.tokens
-                })
-              });
-              
-              if (saveResponse.ok) {
-                console.log('✅ Tokens saved to backend database');
-              } else {
-                console.error('❌ Failed to save tokens to backend');
-              }
-            } catch (error) {
-              console.error('❌ Error saving tokens to backend:', error);
-            }
-          }
-          
+          // NO TOKEN HANDLING - Backend does everything!
           setStatus('success');
           setMessage('Garmin connected successfully!');
           

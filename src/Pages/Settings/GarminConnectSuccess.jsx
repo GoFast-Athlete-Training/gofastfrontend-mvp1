@@ -15,7 +15,7 @@ const GarminConnectSuccess = () => {
   const completeGarminSetup = async () => {
     try {
       setLoading(true);
-      console.log('🎯 GarminConnectSuccess: Reading tokens from localStorage...');
+      console.log('🎯 GarminConnectSuccess: Checking connection status...');
       
       // Get athleteId from localStorage
       const athleteId = localStorage.getItem('athleteId');
@@ -23,26 +23,23 @@ const GarminConnectSuccess = () => {
         throw new Error('No athlete ID found');
       }
 
-      // Get tokens directly from localStorage (no hydration needed!)
-      const accessToken = localStorage.getItem('garminTokens');
-      const refreshToken = localStorage.getItem('garminRefreshToken');
+      // Check connection status from backend (no tokens needed)
+      const statusResponse = await fetch(`https://gofastbackendv2-fall2025.onrender.com/api/athlete/tokenretrieve?athleteId=${athleteId}`);
       
-      if (!accessToken) {
-        throw new Error('No Garmin tokens found in localStorage');
+      if (statusResponse.ok) {
+        const athleteData = await statusResponse.json();
+        console.log('✅ Connection status checked:', athleteData.garmin?.connected);
+        
+        setGarminData({
+          connected: athleteData.garmin?.connected || false,
+          userId: athleteData.garmin?.userId || null,
+          connectedAt: athleteData.garmin?.connectedAt || new Date().toISOString(),
+          scope: athleteData.garmin?.scope || 'PARTNER_WRITE PARTNER_READ CONNECT_READ CONNECT_WRITE'
+        });
+        setStatus('success');
+      } else {
+        throw new Error('Failed to check connection status');
       }
-
-      console.log('✅ Tokens found in localStorage:', !!accessToken, !!refreshToken);
-
-      // Show connection data
-      setGarminData({
-        connected: true,
-        userId: null, // Will be fetched manually
-        connectedAt: new Date().toISOString(),
-        scope: 'PARTNER_WRITE PARTNER_READ CONNECT_READ CONNECT_WRITE'
-      });
-      setStatus('success');
-      
-      console.log('✅ GarminConnectSuccess: Ready for UUID fetch!');
       
     } catch (error) {
       console.error('❌ GarminConnectSuccess error:', error);
