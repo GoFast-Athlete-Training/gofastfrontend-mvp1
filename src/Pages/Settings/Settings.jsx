@@ -17,9 +17,41 @@ const Settings = () => {
     }));
   };
 
-  // SUPER SIMPLE Garmin OAuth - just redirect!
-  const connectGarmin = () => {
-    window.location.href = 'https://gofastbackendv2-fall2025.onrender.com/api/garmin/auth';
+  // CLEAN Garmin OAuth 2.0 Flow - Backend handles everything
+  const connectGarmin = async () => {
+    try {
+      // Get athleteId from localStorage
+      const athleteId = localStorage.getItem('athleteId');
+      if (!athleteId) {
+        throw new Error('AthleteId not found in localStorage');
+      }
+      
+      console.log(`🔍 Starting Garmin OAuth for athleteId: ${athleteId}`);
+      
+      // Step 1: Get auth URL from backend (backend generates PKCE and stores code verifier)
+      const response = await fetch(`https://gofastbackendv2-fall2025.onrender.com/api/garmin/auth-url?athleteId=${athleteId}`, {
+        method: 'GET',
+        headers: {
+          'Content-Type': 'application/json',
+        }
+      });
+      
+      if (!response.ok) {
+        const errorData = await response.json();
+        throw new Error(errorData.error || 'Failed to get auth URL');
+      }
+      
+      const data = await response.json();
+      
+      console.log('✅ Auth URL received, redirecting to Garmin...');
+      
+      // Step 2: Redirect to Garmin OAuth (backend handles everything from here)
+      window.location.href = data.authUrl;
+      
+    } catch (error) {
+      console.error('❌ Garmin OAuth error:', error);
+      alert('Failed to start Garmin connection: ' + error.message);
+    }
   };
 
   return (

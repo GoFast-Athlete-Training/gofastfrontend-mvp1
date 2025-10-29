@@ -1,5 +1,7 @@
 import React, { useState, useEffect } from 'react';
-import { GARMIN_CONFIG } from '../../config/garminConfig';
+
+// Hardcoded config since we deleted the config file
+const API_BASE_URL = 'https://gofastbackendv2-fall2025.onrender.com/api';
 
 const GarminConnectSettings = () => {
   const [garminStatus, setGarminStatus] = useState(null);
@@ -19,7 +21,7 @@ const GarminConnectSettings = () => {
       setLoading(true);
       setError(null);
       
-      const response = await fetch(`${GARMIN_CONFIG.API_BASE_URL}/garmin/status`, {
+      const response = await fetch(`${API_BASE_URL}/garmin/status`, {
         method: 'GET',
         headers: {
           'Content-Type': 'application/json',
@@ -47,7 +49,7 @@ const GarminConnectSettings = () => {
     try {
       setUpdating(true);
       
-      const response = await fetch(`${GARMIN_CONFIG.API_BASE_URL}/garmin/scopes`, {
+      const response = await fetch(`${API_BASE_URL}/garmin/scopes`, {
         method: 'PATCH',
         headers: {
           'Content-Type': 'application/json',
