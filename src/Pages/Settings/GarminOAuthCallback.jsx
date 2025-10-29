@@ -1,179 +1,54 @@
 import React, { useEffect, useState } from 'react';
-import { useNavigate, useSearchParams } from 'react-router-dom';
+import { useNavigate } from 'react-router-dom';
+import { CheckCircle, RefreshCw, AlertCircle } from 'lucide-react';
 
 const GarminOAuthCallback = () => {
   const navigate = useNavigate();
-  const [searchParams] = useSearchParams();
-  const [status, setStatus] = useState('processing');
-  const [message, setMessage] = useState('Processing Garmin connection...');
-
-  console.log('🔍 DEBUG - GarminOAuthCallback component mounted');
-  console.log('🔍 DEBUG - Current URL:', window.location.href);
-  console.log('🔍 DEBUG - Search params:', Object.fromEntries(searchParams.entries()));
+  const [status, setStatus] = useState('loading'); // loading, success, error
+  const [message, setMessage] = useState('');
 
   useEffect(() => {
-    console.log('🔍 DEBUG - useEffect triggered');
-    const handleOAuthCallback = async () => {
-      console.log('🔍 DEBUG - handleOAuthCallback started');
-      try {
-      // Get OAuth 2.0 parameters from URL
-      const code = searchParams.get('code');
-      const state = searchParams.get('state');
-      const error = searchParams.get('error');
-
-      console.log('🔍 DEBUG - OAuth Callback received:');
-      console.log('🔍 DEBUG - Code:', code);
-      console.log('🔍 DEBUG - State:', state);
-      console.log('🔍 DEBUG - Error:', error);
-      console.log('🔍 DEBUG - Full URL:', window.location.href);
-      console.log('🔍 DEBUG - Code Verifier from localStorage:', localStorage.getItem('garmin_code_verifier'));
-
-      if (error) {
-        console.error('🔍 DEBUG - Garmin OAuth 2.0 error:', error);
-        setStatus('error');
-        setMessage(`OAuth error: ${error}`);
-        // Close popup and notify parent
-        if (window.opener) {
-          window.opener.postMessage({ type: 'garmin-oauth-error', error }, '*');
-          window.close();
-        }
-        return;
-      }
-
-        if (!code) {
-          console.error('Missing OAuth 2.0 authorization code');
-          setStatus('error');
-          setMessage('Missing authorization code from Garmin');
-          // Close popup and notify parent
-          if (window.opener) {
-            window.opener.postMessage({ type: 'garmin-oauth-error', error: 'Missing code' }, '*');
-            window.close();
-          }
-          return;
-        }
-
-        console.log('Garmin OAuth 2.0 callback received:', { code, state });
-
-        // Get athleteId from localStorage (from hydration at home)
-        const athleteId = localStorage.getItem('athleteId');
-        console.log('🔍 DEBUG - AthleteId from localStorage:', athleteId);
-        
-        if (!athleteId) {
-          throw new Error('No athleteId found in localStorage');
-        }
-        
-        // Send OAuth 2.0 authorization code to backend to exchange for access tokens
-        const response = await fetch('https://gofastbackendv2-fall2025.onrender.com/api/garmin/callback', {
-          method: 'POST',
-          headers: {
-            'Content-Type': 'application/json',
-          },
-          body: JSON.stringify({
-            code: code,
-            state: state,
-            codeVerifier: localStorage.getItem('garmin_code_verifier'), // Get from localStorage
-            athleteId: athleteId // Send athleteId for database save
-          })
-        });
-
-        if (response.ok) {
-          const data = await response.json();
-          console.log('Garmin OAuth success:', data);
-          
-          // NO TOKEN HANDLING - Backend does everything!
-          setStatus('success');
-          setMessage('Garmin connected successfully!');
-          
-          // Redirect to success page
-          setTimeout(() => navigate('/garmin/success'), 2000);
-        } else {
-          const errorData = await response.json();
-          console.error('Backend OAuth error:', errorData);
-          setStatus('error');
-          setMessage(errorData.message || 'Failed to connect Garmin');
-          
-          // Notify parent window of error
-          if (window.opener) {
-            window.opener.postMessage({ type: 'garmin-oauth-error', error: errorData.message }, '*');
-          }
-        }
-
-      } catch (error) {
-        console.error('OAuth callback error:', error);
-        setStatus('error');
-        setMessage('An error occurred while connecting Garmin');
-        
-        // Notify parent window of error
-        if (window.opener) {
-          window.opener.postMessage({ type: 'garmin-oauth-error', error: error.message }, '*');
-        }
-      }
-    };
-
-    handleOAuthCallback();
-  }, [searchParams]);
-
-  const getStatusIcon = () => {
-    switch (status) {
-      case 'success':
-        return '✅';
-      case 'error':
-        return '❌';
-      default:
-        return '⏳';
-    }
-  };
-
-  const getStatusColor = () => {
-    switch (status) {
-      case 'success':
-        return 'text-green-600';
-      case 'error':
-        return 'text-red-600';
-      default:
-        return 'text-blue-600';
-    }
-  };
+    // This is just a landing page - backend does all the work
+    console.log('🎯 GarminOAuthCallback: Landing page loaded');
+    
+    // Show processing for 2 seconds, then redirect to success
+    setTimeout(() => {
+      setStatus('success');
+      setMessage('Garmin connected successfully!');
+      
+      // Redirect to success page after 1 second
+      setTimeout(() => navigate('/garmin/success'), 1000);
+    }, 2000);
+  }, [navigate]);
 
   return (
-    <div className="min-h-screen bg-gray-50 flex items-center justify-center">
-      <div className="max-w-md mx-auto bg-white rounded-xl shadow-lg p-8 text-center">
-        <div className="text-6xl mb-4">{getStatusIcon()}</div>
-        <h1 className="text-2xl font-bold text-gray-900 mb-4">
-          Garmin Connection
-        </h1>
-        <p className={`text-lg mb-6 ${getStatusColor()}`}>
-          {message}
-        </p>
-        
-        {status === 'success' && (
-          <p className="text-sm text-gray-600 mb-4">
-            Redirecting to settings...
+    <div className="min-h-screen flex items-center justify-center bg-gray-50 p-4">
+      <div className="w-full max-w-md bg-white rounded-lg shadow-lg p-6">
+        <div className="text-center">
+          <div className="mx-auto mb-4 flex h-16 w-16 items-center justify-center rounded-full">
+            {status === 'loading' && (
+              <RefreshCw className="h-8 w-8 text-orange-600 animate-spin" />
+            )}
+            {status === 'success' && (
+              <CheckCircle className="h-8 w-8 text-green-600" />
+            )}
+            {status === 'error' && (
+              <AlertCircle className="h-8 w-8 text-red-600" />
+            )}
+          </div>
+          
+          <h1 className="text-2xl font-bold mb-2">
+            {status === 'loading' && 'Processing Garmin Connection...'}
+            {status === 'success' && 'Garmin Connected Successfully!'}
+            {status === 'error' && 'Connection Failed'}
+          </h1>
+          
+          <p className="text-gray-600 mb-6">
+            {status === 'loading' && 'Please wait while we complete your Garmin connection...'}
+            {status === 'success' && 'Redirecting to your dashboard...'}
+            {status === 'error' && 'There was an issue connecting to Garmin.'}
           </p>
-        )}
-        
-        {status === 'error' && (
-          <div className="space-y-4">
-            <button
-              onClick={() => navigate('/settings')}
-              className="w-full bg-orange-500 text-white py-3 px-6 rounded-lg font-semibold hover:bg-orange-600 transition"
-            >
-              Back to Settings
-            </button>
-            <button
-              onClick={() => window.location.reload()}
-              className="w-full bg-gray-200 text-gray-700 py-3 px-6 rounded-lg font-semibold hover:bg-gray-300 transition"
-            >
-              Try Again
-            </button>
-          </div>
-        )}
-        
-        {status === 'processing' && (
-          <div className="flex justify-center">
-            <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-orange-500"></div>
-          </div>
-        )}
+        </div>
       </div>
     </div>
   );

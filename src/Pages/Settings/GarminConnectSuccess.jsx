@@ -4,125 +4,38 @@ import { CheckCircle, RefreshCw, AlertCircle } from 'lucide-react';
 
 const GarminConnectSuccess = () => {
   const navigate = useNavigate();
-  const [status, setStatus] = useState('loading'); // loading, success, error
-  const [garminData, setGarminData] = useState(null);
-  const [loading, setLoading] = useState(true);
-
-  useEffect(() => {
-    completeGarminSetup();
-  }, []);
-
-  const completeGarminSetup = async () => {
-    try {
-      setLoading(true);
-      console.log('🎯 GarminConnectSuccess: Checking connection status...');
-      
-      // Get athleteId from localStorage
-      const athleteId = localStorage.getItem('athleteId');
-      if (!athleteId) {
-        throw new Error('No athlete ID found');
-      }
-
-      // Check connection status from backend (no tokens needed)
-      const statusResponse = await fetch(`https://gofastbackendv2-fall2025.onrender.com/api/athlete/tokenretrieve?athleteId=${athleteId}`);
-      
-      if (statusResponse.ok) {
-        const athleteData = await statusResponse.json();
-        console.log('✅ Connection status checked:', athleteData.garmin?.connected);
-        
-        setGarminData({
-          connected: athleteData.garmin?.connected || false,
-          userId: athleteData.garmin?.userId || null,
-          connectedAt: athleteData.garmin?.connectedAt || new Date().toISOString(),
-          scope: athleteData.garmin?.scope || 'PARTNER_WRITE PARTNER_READ CONNECT_READ CONNECT_WRITE'
-        });
-        setStatus('success');
-      } else {
-        throw new Error('Failed to check connection status');
-      }
-      
-    } catch (error) {
-      console.error('❌ GarminConnectSuccess error:', error);
-      setStatus('error');
-    } finally {
-      setLoading(false);
-    }
-  };
+  const [status, setStatus] = useState('success');
+  const [garminData, setGarminData] = useState({
+    connected: true,
+    userId: null,
+    connectedAt: new Date().toISOString()
+  });
+  const [loading, setLoading] = useState(false);
 
   const handleGetUUID = async () => {
     try {
       setLoading(true);
-      console.log('🔍 Getting Garmin UUID...');
+      console.log('🔍 Getting Garmin UUID via backend...');
       
-      // Get athleteId and fetch tokens from backend
+      // Call OUR backend to get UUID (backend calls Garmin)
       const athleteId = localStorage.getItem('athleteId');
-      if (!athleteId) {
-        throw new Error('No athlete ID found');
-      }
-
-      // Fetch athlete data from backend to get tokens
-      const athleteResponse = await fetch(`https://gofastbackendv2-fall2025.onrender.com/api/athlete/retrieve`, {
-        method: 'GET',
-        headers: {
-          'Content-Type': 'application/json',
-          // Add auth header if needed
-        }
-      });
-
-      if (!athleteResponse.ok) {
-        throw new Error(`Failed to fetch athlete data: ${athleteResponse.status}`);
-      }
-
-      const athleteData = await athleteResponse.json();
-      const tokens = {
-        access_token: athleteData.garmin?.accessToken,
-        refresh_token: athleteData.garmin?.refreshToken,
-        expires_in: athleteData.garmin?.expiresIn,
-        scope: athleteData.garmin?.scope
-      };
-
-      if (!tokens.access_token) {
-        throw new Error('No Garmin tokens found in database');
-      }
-
-      // Call Garmin API to get UUID
-      const garminResponse = await fetch('https://connectapi.garmin.com/oauth-service/oauth/user-info', {
-        method: 'GET',
-        headers: {
-          'Authorization': `Bearer ${tokens.access_token}`,
-          'Content-Type': 'application/json'
-        }
-      });
-
-      if (!garminResponse.ok) {
-        throw new Error(`Garmin API error: ${garminResponse.status}`);
-      }
-
-      const garminData = await garminResponse.json();
-      const garminUserId = garminData.userId;
-      
-      if (!garminUserId) {
-        throw new Error('No userId in Garmin response');
-      }
-
-      // Save UUID to backend
-      const saveResponse = await fetch('https://gofastbackendv2-fall2025.onrender.com/api/garmin/user/connect', {
+      const uuidResponse = await fetch('https://gofastbackendv2-fall2025.onrender.com/api/garmin/user/get-uuid', {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
         },
-        body: JSON.stringify({
-          userId: athleteId,
-          garminUserId: garminUserId,
-          accessToken: tokens.access_token,
-          refreshToken: tokens.refresh_token,
-          expiresIn: tokens.expires_in,
-          scope: tokens.scope
-        })
+        body: JSON.stringify({ athleteId })
       });
 
-      if (!saveResponse.ok) {
-        throw new Error(`Failed to save UUID: ${saveResponse.status}`);
+      if (!uuidResponse.ok) {
+        throw new Error(`Failed to get UUID: ${uuidResponse.status}`);
+      }
+
+      const uuidData = await uuidResponse.json();
+      const garminUserId = uuidData.garminUserId;
+      
+      if (!garminUserId) {
+        throw new Error('No userId returned from backend');
       }
 
       // Update UI with UUID
@@ -131,7 +44,7 @@ const GarminConnectSuccess = () => {
         userId: garminUserId
       }));
       
-      console.log('✅ UUID fetched and saved:', garminUserId);
+      console.log('✅ UUID fetched via backend:', garminUserId);
       
     } catch (error) {
       console.error('❌ Failed to get UUID:', error);
@@ -145,112 +58,51 @@ const GarminConnectSuccess = () => {
     navigate('/settings');
   };
 
-  const handleRetry = () => {
-    setStatus('loading');
-    setLoading(true);
-    completeGarminSetup();
-  };
-
   return (
     <div className="min-h-screen flex items-center justify-center bg-gray-50 p-4">
-      
       <div className="w-full max-w-md bg-white rounded-lg shadow-lg p-6">
         <div className="text-center">
           <div className="mx-auto mb-4 flex h-16 w-16 items-center justify-center rounded-full">
-            {status === 'loading' && (
-              <RefreshCw className="h-8 w-8 text-orange-600 animate-spin" />
-            )}
-            {status === 'success' && (
-              <CheckCircle className="h-8 w-8 text-green-600" />
-            )}
-            {status === 'error' && (
-              <AlertCircle className="h-8 w-8 text-red-600" />
-            )}
+            <CheckCircle className="h-8 w-8 text-green-600" />
           </div>
           
-          <h1 className="text-2xl font-bold mb-2">
-            {status === 'loading' && 'Garmin Connected!'}
-            {status === 'success' && 'Garmin Connected Successfully!'}
-            {status === 'error' && 'Setup Failed'}
-          </h1>
+          <h1 className="text-2xl font-bold mb-2">Garmin Connected Successfully!</h1>
           
           <p className="text-gray-600 mb-6">
-            {status === 'loading' && 'Tokens saved to your account...'}
-            {status === 'success' && 'Your Garmin account is connected. Go to Settings to complete setup.'}
-            {status === 'error' && 'There was an issue completing the setup.'}
+            Your Garmin account is connected. Click below to get your User ID.
           </p>
         </div>
         
         <div className="space-y-4">
-          {status === 'success' && garminData && (
-            <div className="bg-green-50 p-4 rounded-lg">
-              <h3 className="font-semibold text-green-800 mb-2">Connection Details:</h3>
-              <div className="text-sm text-green-700 space-y-1">
-                <div><strong>Status:</strong> {garminData.connected ? 'Connected' : 'Not Connected'}</div>
-                <div><strong>User ID:</strong> {garminData.userId || 'Unknown'}</div>
-                <div><strong>Connected:</strong> {garminData.connectedAt ? new Date(garminData.connectedAt).toLocaleString() : 'Unknown'}</div>
-                <div><strong>Scope:</strong> {garminData.scope || 'Unknown'}</div>
-              </div>
+          <div className="bg-green-50 p-4 rounded-lg">
+            <h3 className="font-semibold text-green-800 mb-2">Connection Details:</h3>
+            <div className="text-sm text-green-700 space-y-1">
+              <div><strong>Status:</strong> Connected</div>
+              <div><strong>User ID:</strong> {garminData.userId || 'Unknown'}</div>
+              <div><strong>Connected:</strong> {new Date(garminData.connectedAt).toLocaleString()}</div>
             </div>
-          )}
-          
-          {status === 'error' && (
-            <div className="bg-red-50 p-4 rounded-lg">
-              <p className="text-red-700 text-sm">
-                The Garmin connection was established, but we couldn't complete the final setup step.
-                You can try again or continue to your settings.
-              </p>
-            </div>
-          )}
+          </div>
           
           <div className="space-y-2">
-            {status === 'success' && (
-              <>
-                {!garminData?.userId ? (
-                  <button 
-                    onClick={handleGetUUID} 
-                    disabled={loading}
-                    className="w-full bg-blue-600 text-white px-4 py-2 rounded-lg hover:bg-blue-700 transition-colors disabled:bg-gray-400"
-                  >
-                    {loading ? 'Getting UUID...' : 'Get My Garmin User ID'}
-                  </button>
-                ) : (
-                  <div className="bg-green-50 p-3 rounded-lg text-center">
-                    <p className="text-green-800 font-medium">✅ UUID: {garminData.userId}</p>
-                  </div>
-                )}
-                <button 
-                  onClick={handleContinue} 
-                  className="w-full bg-orange-600 text-white px-4 py-2 rounded-lg hover:bg-orange-700 transition-colors"
-                >
-                  Continue to Settings
-                </button>
-              </>
-            )}
-            
-            {status === 'error' && (
-              <>
-                <button 
-                  onClick={handleRetry} 
-                  className="w-full border border-gray-300 text-gray-700 px-4 py-2 rounded-lg hover:bg-gray-50 transition-colors"
-                >
-                  Try Again
-                </button>
-                <button 
-                  onClick={handleContinue} 
-                  className="w-full bg-orange-600 text-white px-4 py-2 rounded-lg hover:bg-orange-700 transition-colors"
-                >
-                  Continue Anyway
-                </button>
-              </>
-            )}
-            
-            {status === 'loading' && (
-              <button disabled className="w-full bg-gray-400 text-white px-4 py-2 rounded-lg cursor-not-allowed">
-                <RefreshCw className="h-4 w-4 mr-2 animate-spin inline" />
-                Setting up...
+            {!garminData.userId ? (
+              <button 
+                onClick={handleGetUUID} 
+                disabled={loading}
+                className="w-full bg-blue-600 text-white px-4 py-2 rounded-lg hover:bg-blue-700 transition-colors disabled:bg-gray-400"
+              >
+                {loading ? 'Getting UUID...' : 'Get My Garmin User ID'}
               </button>
+            ) : (
+              <div className="bg-green-50 p-3 rounded-lg text-center">
+                <p className="text-green-800 font-medium">✅ UUID: {garminData.userId}</p>
+              </div>
             )}
+            <button 
+              onClick={handleContinue} 
+              className="w-full bg-orange-600 text-white px-4 py-2 rounded-lg hover:bg-orange-700 transition-colors"
+            >
+              Continue to Settings
+            </button>
           </div>
         </div>
       </div>
