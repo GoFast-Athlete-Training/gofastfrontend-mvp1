@@ -15,51 +15,34 @@ const GarminConnectSuccess = () => {
   const completeGarminSetup = async () => {
     try {
       setLoading(true);
-      console.log('🎯 GarminConnectSuccess: Fetching tokens from backend...');
+      console.log('🎯 GarminConnectSuccess: Reading tokens from localStorage...');
       
-      // Get athleteId and fetch real data from backend
+      // Get athleteId from localStorage
       const athleteId = localStorage.getItem('athleteId');
       if (!athleteId) {
         throw new Error('No athlete ID found');
       }
 
-      // Fetch athlete data from backend to get real tokens
-      const athleteResponse = await fetch(`https://gofastbackendv2-fall2025.onrender.com/api/athlete/tokenretrieve?athleteId=${athleteId}`, {
-        method: 'GET',
-        headers: {
-          'Content-Type': 'application/json',
-        }
-      });
-
-      if (!athleteResponse.ok) {
-        throw new Error(`Failed to fetch athlete data: ${athleteResponse.status}`);
+      // Get tokens directly from localStorage (no hydration needed!)
+      const accessToken = localStorage.getItem('garminTokens');
+      const refreshToken = localStorage.getItem('garminRefreshToken');
+      
+      if (!accessToken) {
+        throw new Error('No Garmin tokens found in localStorage');
       }
 
-      const athleteData = await athleteResponse.json();
-      console.log('✅ Athlete data fetched:', athleteData);
+      console.log('✅ Tokens found in localStorage:', !!accessToken, !!refreshToken);
 
-      // Save tokens to localStorage in the right format
-      if (athleteData.garmin?.accessToken) {
-        const tokens = {
-          access_token: athleteData.garmin.accessToken,
-          refresh_token: athleteData.garmin.refreshToken,
-          expires_in: athleteData.garmin.expiresIn,
-          scope: athleteData.garmin.scope
-        };
-        localStorage.setItem('garminTokens', JSON.stringify(tokens));
-        console.log('✅ Tokens saved to localStorage');
-      }
-
-      // Show real connection data
+      // Show connection data
       setGarminData({
-        connected: athleteData.garmin?.connected || false,
-        userId: athleteData.garmin?.userId || null,
-        connectedAt: athleteData.garmin?.connectedAt || new Date().toISOString(),
-        scope: athleteData.garmin?.scope || 'PARTNER_WRITE PARTNER_READ CONNECT_READ CONNECT_WRITE'
+        connected: true,
+        userId: null, // Will be fetched manually
+        connectedAt: new Date().toISOString(),
+        scope: 'PARTNER_WRITE PARTNER_READ CONNECT_READ CONNECT_WRITE'
       });
       setStatus('success');
       
-      console.log('✅ GarminConnectSuccess: Real data loaded!');
+      console.log('✅ GarminConnectSuccess: Ready for UUID fetch!');
       
     } catch (error) {
       console.error('❌ GarminConnectSuccess error:', error);
