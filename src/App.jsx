@@ -12,6 +12,10 @@ import AthleteProfile from './Pages/Athlete/AthleteProfile';
 import Settings from './Pages/Settings/Settings';
 import GarminOAuthCallback from './Pages/Settings/GarminOAuthCallback';
 import GarminConnectSuccess from './Pages/Settings/GarminConnectSuccess';
+import JoinOrStartCrew from './Pages/RunCrew/JoinOrStartCrew';
+import JoinCrew from './Pages/RunCrew/JoinCrew';
+import CreateCrew from './Pages/RunCrew/CreateCrew';
+import RunCrewHome from './Pages/RunCrew/RunCrewHome';
 
 // Debug Components
 import FindMyUserId from './Pages/Debug/FindMyUserId';
@@ -45,9 +49,10 @@ const App = () => {
         
         {/* Smart Onboarding Routes */}
         <Route path="/settings/devices" element={<div className="min-h-screen bg-gray-50 flex items-center justify-center"><h1 className="text-4xl font-bold text-gray-900">Device Settings - Coming Soon!</h1></div>} />
-        <Route path="/runcrew/join" element={<div className="min-h-screen bg-gray-50 flex items-center justify-center"><h1 className="text-4xl font-bold text-gray-900">Join RunCrew - Coming Soon!</h1></div>} />
-        <Route path="/runcrew/start" element={<div className="min-h-screen bg-gray-50 flex items-center justify-center"><h1 className="text-4xl font-bold text-gray-900">Start RunCrew - Coming Soon!</h1></div>} />
-        <Route path="/runcrew/dashboard" element={<div className="min-h-screen bg-gray-50 flex items-center justify-center"><h1 className="text-4xl font-bold text-gray-900">RunCrew Dashboard - Coming Soon!</h1></div>} />
+        <Route path="/runcrew/join" element={<JoinOrStartCrew />} />
+        <Route path="/run-crew-join" element={<JoinCrew />} />
+        <Route path="/form-run-crew" element={<CreateCrew />} />
+        <Route path="/runcrew-home" element={<RunCrewHome />} />
         <Route path="/training/track" element={<div className="min-h-screen bg-gray-50 flex items-center justify-center"><h1 className="text-4xl font-bold text-gray-900">Track Runs - Coming Soon!</h1></div>} />
         <Route path="/training/analytics" element={<div className="min-h-screen bg-gray-50 flex items-center justify-center"><h1 className="text-4xl font-bold text-gray-900">Training Analytics - Coming Soon!</h1></div>} />
         <Route path="/connect/partners" element={<div className="min-h-screen bg-gray-50 flex items-center justify-center"><h1 className="text-4xl font-bold text-gray-900">Find Partners - Coming Soon!</h1></div>} />
