@@ -1,24 +1,68 @@
 import React, { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
+import { auth } from '../../firebase';
 
 export default function CreateCrew() {
-  const [name, setName] = useState("");
-  const [inviteCode, setInviteCode] = useState("");
+  // DEMO MODE: Pre-fill with fake data so you can click through
+  const [name, setName] = useState("Morning Warriors");
+  const [inviteCode, setInviteCode] = useState("FAST123");
   const [loading, setLoading] = useState(false);
   const navigate = useNavigate();
 
   const handleCreate = async () => {
-    if (!name || !inviteCode) return alert("All fields required.");
+    // DEMO MODE: Skip validation if fields are pre-filled
+    if (!name?.trim() || !inviteCode?.trim()) {
+      return alert("All fields required.");
+    }
+    
+    // DEMO MODE: For demo purposes, skip API call and just navigate
+    const isDemo = localStorage.getItem('demoMode') === 'true' || !localStorage.getItem('athleteId');
+    if (isDemo) {
+      console.log('🎭 DEMO MODE: Skipping API call, navigating to crew home');
+      navigate("/runcrew-home");
+      return;
+    }
+    
+    // Get athleteId from localStorage (hydrated on AthleteHome)
+    const athleteId = localStorage.getItem('athleteId');
+    if (!athleteId) {
+      alert('Please sign in again');
+      navigate('/athlete-home');
+      return;
+    }
+    
     setLoading(true);
     try {
-      // Placeholder API; backend will be implemented later
-      const res = await fetch("/api/crew/create", {
+      // Get Firebase token for auth
+      const user = auth.currentUser;
+      if (!user) {
+        alert('Please sign in again');
+        navigate('/athlete-home');
+        return;
+      }
+      const token = await user.getIdToken();
+      
+      const res = await fetch("https://gofastbackendv2-fall2025.onrender.com/api/runcrew/create", {
         method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ name, inviteCode })
+        headers: {
+          "Content-Type": "application/json",
+          "Authorization": `Bearer ${token}`
+        },
+        body: JSON.stringify({ 
+          name, 
+          joinCode: inviteCode,
+          athleteId 
+        })
       });
-      await res.json();
-      navigate("/runcrew-home");
+      
+      const data = await res.json();
+      
+      if (res.ok && data.success) {
+        console.log('✅ RunCrew created:', data.runCrew);
+        navigate("/runcrew-home");
+      } else {
+        alert(data.message || data.error || "Failed to create crew");
+      }
     } catch (err) {
       console.error("Error creating crew", err);
       alert("Something went wrong.");

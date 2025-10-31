@@ -16,6 +16,8 @@ import JoinOrStartCrew from './Pages/RunCrew/JoinOrStartCrew';
 import JoinCrew from './Pages/RunCrew/JoinCrew';
 import CreateCrew from './Pages/RunCrew/CreateCrew';
 import RunCrewHome from './Pages/RunCrew/RunCrewHome';
+import CrewExplainer from './Pages/RunCrew/CrewExplainer';
+import RunCrewDemoNav from './Pages/RunCrew/RunCrewDemoNav';
 
 // Debug Components
 import FindMyUserId from './Pages/Debug/FindMyUserId';
@@ -49,6 +51,8 @@ const App = () => {
         
         {/* Smart Onboarding Routes */}
         <Route path="/settings/devices" element={<div className="min-h-screen bg-gray-50 flex items-center justify-center"><h1 className="text-4xl font-bold text-gray-900">Device Settings - Coming Soon!</h1></div>} />
+        <Route path="/runcrew-demo-nav" element={<RunCrewDemoNav />} />
+        <Route path="/crew-explainer" element={<CrewExplainer />} />
         <Route path="/runcrew/join" element={<JoinOrStartCrew />} />
         <Route path="/run-crew-join" element={<JoinCrew />} />
         <Route path="/form-run-crew" element={<CreateCrew />} />

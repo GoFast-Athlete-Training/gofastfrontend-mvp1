@@ -170,7 +170,7 @@ const AthleteHome = () => {
         </div>
 
         {/* Smart Action Cards */}
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+        <div className="flex flex-wrap justify-center gap-6">
           {displayCards.map((card, index) => {
             // Skip cards that have showIf conditions and don't meet them
             if (card.showIf === false) return null;
@@ -179,7 +179,7 @@ const AthleteHome = () => {
               <div 
                 key={index}
                 onClick={() => navigate(card.path)}
-                className="bg-white rounded-xl shadow-lg p-6 hover:shadow-xl transition-all cursor-pointer transform hover:scale-105 text-center"
+                className="bg-white rounded-xl shadow-lg p-6 hover:shadow-xl transition-all cursor-pointer transform hover:scale-105 text-center w-full max-w-sm"
               >
                 <div className="text-5xl mb-4">{card.icon}</div>
                 <h3 className="text-xl font-bold text-gray-900 mb-3">{card.title}</h3>

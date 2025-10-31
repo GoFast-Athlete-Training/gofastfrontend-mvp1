@@ -58,6 +58,15 @@ export class UserOnboardingCalculationService {
           path: "/training/track",
           color: "bg-orange-500",
           priority: "high"
+        },
+        {
+          title: "Connect Garmin",
+          description: "Sync your Garmin device to track activities automatically",
+          icon: "⌚",
+          path: "/garmin/connect",
+          color: "bg-blue-500",
+          priority: "high",
+          showIf: !athlete.garmin?.connected // Only show if not connected
         }
       ];
     }

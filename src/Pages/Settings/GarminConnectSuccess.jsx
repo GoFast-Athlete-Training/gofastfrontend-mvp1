@@ -22,10 +22,21 @@ const GarminConnectSuccess = () => {
 
     console.log('🔍 URL params:', { urlStatus, athleteId, message });
 
+    // Check if we're in a popup window
+    const isInPopup = window.opener !== null;
+
     if (urlStatus === 'error') {
       setStatus('error');
       setErrorMessage(message || 'Unknown error occurred');
       setGarminData(prev => ({ ...prev, connected: false }));
+      
+      // If in popup, close it and redirect parent
+      if (isInPopup) {
+        const errorUrl = `/garmin/success?status=error&message=${encodeURIComponent(message || 'Unknown error occurred')}`;
+        window.opener.location.href = errorUrl;
+        window.close();
+        return;
+      }
     } else if (urlStatus === 'success' || athleteId) {
       setStatus('success');
       setGarminData(prev => ({ 
@@ -33,8 +44,25 @@ const GarminConnectSuccess = () => {
         connected: true, 
         connectedAt: new Date().toISOString() 
       }));
+      
+      // If in popup, close it and redirect parent to success page
+      if (isInPopup) {
+        const successUrl = athleteId 
+          ? `/garmin/success?athleteId=${athleteId}` 
+          : `/garmin/success?status=success`;
+        window.opener.location.href = successUrl;
+        window.close();
+        return;
+      }
     } else {
       setStatus('unknown');
+      
+      // If in popup with unknown status, close it and redirect parent
+      if (isInPopup) {
+        window.opener.location.href = '/garmin/success?status=unknown';
+        window.close();
+        return;
+      }
     }
   }, []);
 
