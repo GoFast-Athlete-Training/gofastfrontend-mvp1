@@ -215,10 +215,18 @@ const AthleteHome = () => {
             {welcomeMessage}
           </h1>
           {!isProfileComplete && (
-            <div className="bg-orange-100 border border-orange-300 rounded-lg p-4 max-w-2xl mx-auto">
-              <p className="text-orange-800">
-                Complete your profile to get more out of the experience or search around using the cards below.
-              </p>
+            <div className="bg-orange-500 border-2 border-orange-600 rounded-lg p-6 max-w-2xl mx-auto shadow-lg">
+              <div className="flex flex-col items-center space-y-3">
+                <p className="text-white font-semibold text-lg">
+                  Complete your profile to unlock all features!
+                </p>
+                <button
+                  onClick={() => navigate('/athlete-create-profile')}
+                  className="bg-white text-orange-600 px-6 py-3 rounded-lg font-bold hover:bg-orange-50 transition-colors shadow-md"
+                >
+                  Complete Profile →
+                </button>
+              </div>
             </div>
           )}
           <div className="bg-sky-100 border border-sky-300 rounded-lg p-4 max-w-2xl mx-auto mt-4">
