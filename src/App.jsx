@@ -63,7 +63,7 @@ const App = () => {
         <Route path="/run-crew-join" element={<JoinCrew />} />
         <Route path="/form-run-crew" element={<CreateCrew />} />
         <Route path="/run-crew-success" element={<RunCrewSuccess />} />
-        <Route path="/runcrew-central" element={<RunCrewCentral />} />
+        <Route path="/runcrew-central/:id?" element={<RunCrewCentral />} />
         <Route path="/runcrew-central-admin" element={<RunCrewCentralAdmin />} />
         <Route path="/runcrew-settings" element={<RunCrewSettings />} />
         <Route path="/runcrew-run-detail/:runId?" element={<RunCrewRunDetail />} />

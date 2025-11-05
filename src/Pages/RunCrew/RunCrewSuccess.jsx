@@ -14,7 +14,13 @@ const RunCrewSuccess = () => {
   };
 
   const handleGoToCentral = () => {
-    navigate('/runcrew-central');
+    // Navigate with crew ID if available
+    const crewId = crewData.id;
+    if (crewId) {
+      navigate(`/runcrew-central/${crewId}`);
+    } else {
+      navigate('/runcrew-central');
+    }
   };
 
   const createShareMessage = () => {

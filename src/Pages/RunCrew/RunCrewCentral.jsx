@@ -1,201 +1,209 @@
 import React, { useState, useRef, useEffect } from 'react';
-import { useNavigate } from 'react-router-dom';
+import { useNavigate, useParams } from 'react-router-dom';
+import { auth } from '../../firebase';
+
+const API_BASE = 'https://gofastbackendv2-fall2025.onrender.com/api';
 
 export default function RunCrewCentral() {
   const navigate = useNavigate();
+  const { id: crewIdFromUrl } = useParams();
   const [leaderboardType, setLeaderboardType] = useState('miles');
   const [messageInput, setMessageInput] = useState('');
   const [activeTopic, setActiveTopic] = useState('general');
+  
+  // State for crew data
+  const [crew, setCrew] = useState(null);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState(null);
   
   // Refs for auto-scroll and input handling
   const chatMessagesRef = useRef(null);
   const inputRef = useRef(null);
 
-  // Mock crew data
-  const crew = {
-    name: 'Morning Warriors',
-    joinCode: 'ABC123',
-    members: 8
+  // Fetch crew data
+  useEffect(() => {
+    fetchCrewData();
+  }, [crewIdFromUrl]);
+
+  const fetchCrewData = async () => {
+    setLoading(true);
+    setError(null);
+    
+    try {
+      // Get Firebase token
+      const user = auth.currentUser;
+      if (!user) {
+        setError('Please sign in to view your crew');
+        navigate('/athlete-home');
+        return;
+      }
+      const token = await user.getIdToken();
+      
+      let crewId = crewIdFromUrl;
+      
+      // If no ID in URL, try localStorage
+      if (!crewId) {
+        const currentCrew = JSON.parse(localStorage.getItem('currentCrew') || '{}');
+        if (currentCrew.id) {
+          crewId = currentCrew.id;
+        }
+      }
+      
+      // If still no ID, fetch user's first crew
+      if (!crewId) {
+        const mineRes = await fetch(`${API_BASE}/runcrew/mine`, {
+          headers: {
+            'Authorization': `Bearer ${token}`
+          }
+        });
+        
+        if (!mineRes.ok) {
+          throw new Error('Failed to fetch crews');
+        }
+        
+        const mineData = await mineRes.json();
+        if (mineData.success && mineData.runCrews && mineData.runCrews.length > 0) {
+          crewId = mineData.runCrews[0].id;
+        } else {
+          // No crews found - redirect to create/join
+          setError('No crews found. Create or join a crew to get started!');
+          setLoading(false);
+          return;
+        }
+      }
+      
+      // Fetch crew details
+      const res = await fetch(`${API_BASE}/runcrew/${crewId}`, {
+        headers: {
+          'Authorization': `Bearer ${token}`
+        }
+      });
+      
+      if (!res.ok) {
+        throw new Error('Failed to fetch crew data');
+      }
+      
+      const data = await res.json();
+      if (data.success && data.runCrew) {
+        setCrew(data.runCrew);
+        // Store current crew for future reference
+        localStorage.setItem('currentCrew', JSON.stringify({
+          id: data.runCrew.id,
+          name: data.runCrew.name,
+          joinCode: data.runCrew.joinCode
+        }));
+      } else {
+        throw new Error('Crew not found');
+      }
+    } catch (err) {
+      console.error('Error fetching crew:', err);
+      setError(err.message || 'Failed to load crew data');
+    } finally {
+      setLoading(false);
+    }
   };
 
-  const crewMembers = [
-    { id: 1, name: 'Emma Rodriguez', avatar: 'https://images.unsplash.com/photo-1438761681033-6461ffad8d80?w=150&h=150&fit=crop&crop=face', status: 'Active', isTopMiler: true, initials: 'ER' },
-    { id: 2, name: 'Sarah Johnson', avatar: 'https://images.unsplash.com/photo-1494790108755-2616b612b786?w=150&h=150&fit=crop&crop=face', status: 'Active', initials: 'SJ' },
-    { id: 3, name: 'Mike Chen', avatar: 'https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?w=150&h=150&fit=crop&crop=face', status: 'Active', initials: 'MC' },
-    { id: 4, name: 'David Lee', avatar: 'https://images.unsplash.com/photo-1500648767791-00dcc994a43e?w=150&h=150&fit=crop&crop=face', status: 'Active', initials: 'DL' },
-    { id: 5, name: 'Maria Garcia', avatar: 'https://images.unsplash.com/photo-1534528741775-53994a69daeb?w=150&h=150&fit=crop&crop=face', status: 'Active', initials: 'MG' },
-    { id: 6, name: 'James Wilson', avatar: 'https://images.unsplash.com/photo-1519244703995-f4e0f30006d5?w=150&h=150&fit=crop&crop=face', status: 'Active', initials: 'JW' }
-  ];
+  // Get crew members from API data
+  const crewMembers = crew?.memberships?.map(membership => {
+    const athlete = membership.athlete;
+    const firstName = athlete?.firstName || '';
+    const lastName = athlete?.lastName || '';
+    const name = `${firstName} ${lastName}`.trim() || athlete?.email || 'Unknown';
+    const initials = `${firstName?.[0] || ''}${lastName?.[0] || ''}`.toUpperCase() || 'U';
+    
+    return {
+      id: athlete?.id,
+      name,
+      avatar: athlete?.photoURL || null,
+      status: 'Active',
+      initials,
+      athlete
+    };
+  }) || [];
+
+  // Get leaderboard entries from API data
+  const getLeaderboardData = (type) => {
+    if (!crew?.leaderboardEntries) return [];
+    
+    // Filter by period (weekly, monthly, all-time)
+    // For now, use all entries
+    const entries = crew.leaderboardEntries.filter(entry => {
+      // You can filter by period here if needed
+      return true;
+    });
+    
+    if (type === 'miles') {
+      return entries
+        .map(entry => ({
+          rank: 0, // Will be set below
+          athleteId: entry.athleteId,
+          name: `${entry.athlete?.firstName || ''} ${entry.athlete?.lastName || ''}`.trim() || entry.athlete?.email || 'Unknown',
+          value: entry.totalMiles || 0,
+          runs: entry.totalRuns || 0,
+          lastRun: entry.lastRunDate ? new Date(entry.lastRunDate).toLocaleDateString('en-US', { month: 'short', day: 'numeric' }) : 'N/A'
+        }))
+        .sort((a, b) => b.value - a.value)
+        .map((entry, index) => ({ ...entry, rank: index + 1 }));
+    }
+    
+    // Add other leaderboard types as needed
+    return [];
+  };
 
   const leaderboards = {
-    miles: [
-      { rank: 1, name: 'Emma Rodriguez', value: 52.1, runs: 9, lastRun: 'Dec 15' },
-      { rank: 2, name: 'Sarah Johnson', value: 45.2, runs: 8, lastRun: 'Dec 14' },
-      { rank: 3, name: 'Mike Chen', value: 38.5, runs: 7, lastRun: 'Dec 13' },
-      { rank: 4, name: 'David Lee', value: 32.3, runs: 6, lastRun: 'Dec 12' },
-      { rank: 5, name: 'Maria Garcia', value: 28.7, runs: 5, lastRun: 'Dec 11' },
-      { rank: 6, name: 'James Wilson', value: 24.1, runs: 4, lastRun: 'Dec 10' }
-    ],
-    bestSplit: [
-      { rank: 1, name: 'Sarah Johnson', value: '6:25', runs: 8, lastRun: 'Dec 14' },
-      { rank: 2, name: 'Mike Chen', value: '6:42', runs: 7, lastRun: 'Dec 13' },
-      { rank: 3, name: 'Emma Rodriguez', value: '6:58', runs: 9, lastRun: 'Dec 15' },
-      { rank: 4, name: 'David Lee', value: '7:15', runs: 6, lastRun: 'Dec 12' },
-      { rank: 5, name: 'Maria Garcia', value: '7:32', runs: 5, lastRun: 'Dec 11' },
-      { rank: 6, name: 'James Wilson', value: '7:48', runs: 4, lastRun: 'Dec 10' }
-    ],
-    calories: [
-      { rank: 1, name: 'Emma Rodriguez', value: 3120, runs: 9, lastRun: 'Dec 15' },
-      { rank: 2, name: 'Sarah Johnson', value: 2780, runs: 8, lastRun: 'Dec 14' },
-      { rank: 3, name: 'David Lee', value: 2350, runs: 6, lastRun: 'Dec 12' },
-      { rank: 4, name: 'Mike Chen', value: 2240, runs: 7, lastRun: 'Dec 13' },
-      { rank: 5, name: 'Maria Garcia', value: 1980, runs: 5, lastRun: 'Dec 11' },
-      { rank: 6, name: 'James Wilson', value: 1720, runs: 4, lastRun: 'Dec 10' }
-    ]
+    miles: getLeaderboardData('miles'),
+    bestSplit: [], // TODO: Calculate from activities
+    calories: [] // TODO: Calculate from activities
   };
 
-  // Topic-specific messages - organized by topic
+  // Get posts from API data and format them
+  const formatPost = (post) => {
+    const athlete = post.athlete;
+    const firstName = athlete?.firstName || '';
+    const lastName = athlete?.lastName || '';
+    const name = `${firstName} ${lastName}`.trim() || athlete?.email || 'Unknown';
+    const initials = `${firstName?.[0] || ''}${lastName?.[0] || ''}`.toUpperCase() || 'U';
+    
+    // Format time ago
+    const timeAgo = post.createdAt 
+      ? formatTimeAgo(new Date(post.createdAt))
+      : 'Recently';
+    
+    return {
+      id: post.id,
+      author: name,
+      initials,
+      avatar: athlete?.photoURL || null,
+      message: post.content || '',
+      time: timeAgo,
+      reactions: [] // TODO: Add reactions from API
+    };
+  };
+
+  const formatTimeAgo = (date) => {
+    const now = new Date();
+    const diffMs = now - date;
+    const diffMins = Math.floor(diffMs / 60000);
+    const diffHours = Math.floor(diffMs / 3600000);
+    const diffDays = Math.floor(diffMs / 86400000);
+    
+    if (diffMins < 1) return 'Just now';
+    if (diffMins < 60) return `${diffMins} min${diffMins > 1 ? 's' : ''} ago`;
+    if (diffHours < 24) return `${diffHours} hour${diffHours > 1 ? 's' : ''} ago`;
+    if (diffDays < 7) return `${diffDays} day${diffDays > 1 ? 's' : ''} ago`;
+    return date.toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
+  };
+
+  // Topic-specific messages - use actual posts from API
+  // For now, all posts go to general (topic filtering can be added later)
   const topicMessages = {
-    general: [
-      { 
-        id: 1, 
-        author: 'Emma Rodriguez', 
-        initials: 'ER',
-        avatar: 'https://images.unsplash.com/photo-1438761681033-6461ffad8d80?w=150&h=150&fit=crop&crop=face', 
-        message: 'Just crushed a 5.2 mile run! Who else is feeling the Friday energy? 💪', 
-        time: '2 hours ago',
-        reactions: [{ emoji: '❤️', count: 5 }, { emoji: '🔥', count: 3 }]
-      },
-      { 
-        id: 2, 
-        author: 'Sarah Johnson', 
-        initials: 'SJ',
-        avatar: 'https://images.unsplash.com/photo-1494790108755-2616b612b786?w=150&h=150&fit=crop&crop=face', 
-        message: 'Crushed my fastest mile today: 6:25! Who else is pushing for PRs this week? ⚡', 
-        time: '5 hours ago',
-        reactions: [{ emoji: '⚡', count: 8 }, { emoji: '👏', count: 4 }]
-      },
-      { 
-        id: 3, 
-        author: 'Mike Chen', 
-        initials: 'MC',
-        avatar: 'https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?w=150&h=150&fit=crop&crop=face', 
-        message: 'Morning run done! 4.8 miles through the park. Coffee time ☕', 
-        time: '8 hours ago',
-        reactions: [{ emoji: '☕', count: 6 }]
-      }
-    ],
-    tips: [
-      { 
-        id: 1, 
-        author: 'David Lee', 
-        initials: 'DL',
-        avatar: 'https://images.unsplash.com/photo-1500648767791-00dcc994a43e?w=150&h=150&fit=crop&crop=face', 
-        message: 'Pro tip: Always warm up for 5-10 min before speed work. Your body will thank you! 🏃‍♂️', 
-        time: '1 day ago',
-        reactions: [{ emoji: '👍', count: 12 }]
-      },
-      { 
-        id: 2, 
-        author: 'Maria Garcia', 
-        initials: 'MG',
-        avatar: 'https://images.unsplash.com/photo-1534528741775-53994a69daeb?w=150&h=150&fit=crop&crop=face', 
-        message: 'For anyone hitting the wall on long runs - try a gel every 45 min. Game changer! 💪', 
-        time: '2 days ago',
-        reactions: [{ emoji: '💡', count: 8 }]
-      },
-      { 
-        id: 3, 
-        author: 'James Wilson', 
-        initials: 'JW',
-        avatar: 'https://images.unsplash.com/photo-1519244703995-f4e0f30006d5?w=150&h=150&fit=crop&crop=face', 
-        message: 'Remember to replace your shoes every 300-500 miles. Old shoes = injuries waiting to happen 👟', 
-        time: '3 days ago',
-        reactions: [{ emoji: '👍', count: 5 }]
-      }
-    ],
-    social: [
-      { 
-        id: 1, 
-        author: 'Sarah Johnson', 
-        initials: 'SJ',
-        avatar: 'https://images.unsplash.com/photo-1494790108755-2616b612b786?w=150&h=150&fit=crop&crop=face', 
-        message: 'Post-run brunch this Sunday? Who\'s in? 🥞☕', 
-        time: '5 hours ago',
-        reactions: [{ emoji: '🍳', count: 6 }]
-      },
-      { 
-        id: 2, 
-        author: 'Mike Chen', 
-        initials: 'MC',
-        avatar: 'https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?w=150&h=150&fit=crop&crop=face', 
-        message: 'Anyone want to catch the marathon coverage together this weekend? 🎬', 
-        time: '1 day ago',
-        reactions: [{ emoji: '👍', count: 4 }]
-      }
-    ],
-    training: [
-      { 
-        id: 1, 
-        author: 'David Lee', 
-        initials: 'DL',
-        avatar: 'https://images.unsplash.com/photo-1500648767791-00dcc994a43e?w=150&h=150&fit=crop&crop=face', 
-        message: 'Who\'s running tomorrow at 6am? Let\'s meet at the usual spot!', 
-        time: '12 hours ago',
-        reactions: [{ emoji: '👍', count: 7 }]
-      },
-      { 
-        id: 2, 
-        author: 'Maria Garcia', 
-        initials: 'MG',
-        avatar: 'https://images.unsplash.com/photo-1534528741775-53994a69daeb?w=150&h=150&fit=crop&crop=face', 
-        message: 'Count me in! See you all at the trailhead 🏃‍♀️', 
-        time: '11 hours ago',
-        reactions: [{ emoji: '❤️', count: 3 }]
-      },
-      { 
-        id: 3, 
-        author: 'James Wilson', 
-        initials: 'JW',
-        avatar: 'https://images.unsplash.com/photo-1519244703995-f4e0f30006d5?w=150&h=150&fit=crop&crop=face', 
-        message: 'I\'m down! Bringing the energy tomorrow morning 🔥', 
-        time: '10 hours ago',
-        reactions: [{ emoji: '🔥', count: 4 }]
-      }
-    ],
-    goals: [
-      { 
-        id: 1, 
-        author: 'Emma Rodriguez', 
-        initials: 'ER',
-        avatar: 'https://images.unsplash.com/photo-1438761681033-6461ffad8d80?w=150&h=150&fit=crop&crop=face', 
-        message: '2024 goal: Sub-20 min 5K. Starting training block next week! Who\'s with me? 🎯', 
-        time: '3 days ago',
-        reactions: [{ emoji: '💪', count: 10 }]
-      }
-    ],
-    food: [
-      { 
-        id: 1, 
-        author: 'Sarah Johnson', 
-        initials: 'SJ',
-        avatar: 'https://images.unsplash.com/photo-1494790108755-2616b612b786?w=150&h=150&fit=crop&crop=face', 
-        message: 'Best post-run meal? I swear by eggs + avocado toast + coffee. Perfect recovery combo! 🥑☕', 
-        time: '2 days ago',
-        reactions: [{ emoji: '🍳', count: 5 }]
-      }
-    ],
-    recovery: [
-      { 
-        id: 1, 
-        author: 'Mike Chen', 
-        initials: 'MC',
-        avatar: 'https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?w=150&h=150&fit=crop&crop=face', 
-        message: 'Just did my first ice bath. Brutal but my legs feel amazing! Who\'s tried it? 🧊', 
-        time: '1 day ago',
-        reactions: [{ emoji: '🧊', count: 3 }]
-      }
-    ]
+    general: posts.map(formatPost),
+    tips: [], // TODO: Filter posts by topic
+    social: [], // TODO: Filter posts by topic
+    training: [], // TODO: Filter posts by topic
+    goals: [], // TODO: Filter posts by topic
+    food: [], // TODO: Filter posts by topic
+    recovery: [] // TODO: Filter posts by topic
   };
 
   // Get messages for active topic
@@ -246,74 +254,74 @@ export default function RunCrewCentral() {
     }, 300); // Wait for keyboard animation
   };
 
-  // Real chat messages - like iMessage group chat (legacy - keeping for reference)
-  const legacyChatMessages = [
-    { 
-      id: 1, 
-      author: 'Emma Rodriguez', 
-      initials: 'ER',
-      avatar: 'https://images.unsplash.com/photo-1438761681033-6461ffad8d80?w=150&h=150&fit=crop&crop=face', 
-      message: 'Just crushed a 5.2 mile run! Who else is feeling the Friday energy? 💪', 
-      time: '2 hours ago',
-      reactions: [{ emoji: '❤️', count: 5 }, { emoji: '🔥', count: 3 }]
-    },
-    { 
-      id: 2, 
-      author: 'Sarah Johnson', 
-      initials: 'SJ',
-      avatar: 'https://images.unsplash.com/photo-1494790108755-2616b612b786?w=150&h=150&fit=crop&crop=face', 
-      message: 'Crushed my fastest mile today: 6:25! Who else is pushing for PRs this week? ⚡', 
-      time: '5 hours ago',
-      reactions: [{ emoji: '⚡', count: 8 }, { emoji: '👏', count: 4 }]
-    },
-    { 
-      id: 3, 
-      author: 'Mike Chen', 
-      initials: 'MC',
-      avatar: 'https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?w=150&h=150&fit=crop&crop=face', 
-      message: 'Morning run done! 4.8 miles through the park. Coffee time ☕', 
-      time: '8 hours ago',
-      reactions: [{ emoji: '☕', count: 6 }]
-    },
-    { 
-      id: 4, 
-      author: 'David Lee', 
-      initials: 'DL',
-      avatar: 'https://images.unsplash.com/photo-1500648767791-00dcc994a43e?w=150&h=150&fit=crop&crop=face', 
-      message: 'Who\'s running tomorrow at 6am? Let\'s meet at the usual spot!', 
-      time: '12 hours ago',
-      reactions: [{ emoji: '👍', count: 7 }]
-    },
-    { 
-      id: 5, 
-      author: 'Maria Garcia', 
-      initials: 'MG',
-      avatar: 'https://images.unsplash.com/photo-1534528741775-53994a69daeb?w=150&h=150&fit=crop&crop=face', 
-      message: 'Count me in! See you all at the trailhead 🏃‍♀️', 
-      time: '11 hours ago',
-      reactions: [{ emoji: '❤️', count: 3 }]
-    },
-    { 
-      id: 6, 
-      author: 'James Wilson', 
-      initials: 'JW',
-      avatar: 'https://images.unsplash.com/photo-1519244703995-f4e0f30006d5?w=150&h=150&fit=crop&crop=face', 
-      message: 'I\'m down! Bringing the energy tomorrow morning 🔥', 
-      time: '10 hours ago',
-      reactions: [{ emoji: '🔥', count: 4 }]
-    }
-  ];
-
-  // Next run info
-  const nextRun = {
-    date: 'Tomorrow',
-    time: '6:00 AM',
-    location: 'Trailhead Park',
-    attendees: 5,
-    confirmed: ['Emma Rodriguez', 'Sarah Johnson', 'Mike Chen', 'David Lee', 'Maria Garcia']
+  // Check if current user is admin
+  const isAdmin = crew?.isAdmin || false;
+  const memberCount = crew?.memberCount || crewMembers.length;
+  
+  // Handle invite people - copy join code
+  const handleInvitePeople = () => {
+    const joinCode = crew?.joinCode || '';
+    const inviteMessage = `Hi! I created a run crew on GoFast. Go to runcrewjoin.gofastcrushgoals.com, click "Join a Crew", and use this code: ${joinCode}`;
+    navigator.clipboard.writeText(inviteMessage);
+    alert('Invite message copied to clipboard!');
   };
 
-  const isAdmin = true;
+  // Loading state
+  if (loading) {
+    return (
+      <div className="min-h-screen bg-gray-50 flex items-center justify-center">
+        <div className="text-center">
+          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-orange-500 mx-auto mb-4"></div>
+          <p className="text-gray-600">Loading your crew...</p>
+        </div>
+      </div>
+    );
+  }
+
+  // Error state
+  if (error) {
+    return (
+      <div className="min-h-screen bg-gray-50 flex items-center justify-center">
+        <div className="text-center max-w-md mx-auto px-6">
+          <div className="text-red-500 text-6xl mb-4">⚠️</div>
+          <h1 className="text-2xl font-bold text-gray-900 mb-2">Oops!</h1>
+          <p className="text-gray-600 mb-6">{error}</p>
+          <div className="space-y-3">
+            <button
+              onClick={() => navigate('/runcrew/join')}
+              className="w-full bg-orange-500 text-white py-3 rounded-lg font-medium hover:bg-orange-600"
+            >
+              Create or Join a Crew
+            </button>
+            <button
+              onClick={() => navigate('/athlete-home')}
+              className="w-full bg-white border-2 border-gray-300 text-gray-900 py-3 rounded-lg font-medium hover:bg-gray-50"
+            >
+              Go to Athlete Home
+            </button>
+          </div>
+        </div>
+      </div>
+    );
+  }
+
+  // No crew data
+  if (!crew) {
+    return (
+      <div className="min-h-screen bg-gray-50 flex items-center justify-center">
+        <div className="text-center max-w-md mx-auto px-6">
+          <h1 className="text-2xl font-bold text-gray-900 mb-2">No Crew Found</h1>
+          <p className="text-gray-600 mb-6">Create or join a crew to get started!</p>
+          <button
+            onClick={() => navigate('/runcrew/join')}
+            className="w-full bg-orange-500 text-white py-3 rounded-lg font-medium hover:bg-orange-600"
+          >
+            Create or Join a Crew
+          </button>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className="min-h-screen bg-gray-50 flex flex-col">
@@ -363,20 +371,30 @@ export default function RunCrewCentral() {
           <div className="flex items-center space-x-3 mb-3">
             {/* Member avatars */}
             <div className="flex -space-x-2">
-              {crewMembers.slice(0, 6).map((member) => (
-                <div key={member.id} className="relative">
-                  <img
-                    src={member.avatar}
-                    alt={member.name}
-                    className="w-10 h-10 rounded-full border-2 border-white object-cover"
-                  />
-                  <div className="absolute bottom-0 right-0 w-3 h-3 bg-green-500 rounded-full border-2 border-white"></div>
-                </div>
-              ))}
+              {crewMembers.length > 0 ? (
+                crewMembers.slice(0, 6).map((member) => (
+                  <div key={member.id} className="relative">
+                    {member.avatar ? (
+                      <img
+                        src={member.avatar}
+                        alt={member.name}
+                        className="w-10 h-10 rounded-full border-2 border-white object-cover"
+                      />
+                    ) : (
+                      <div className="w-10 h-10 rounded-full border-2 border-white bg-gray-200 flex items-center justify-center text-xs font-semibold text-gray-600">
+                        {member.initials}
+                      </div>
+                    )}
+                    <div className="absolute bottom-0 right-0 w-3 h-3 bg-green-500 rounded-full border-2 border-white"></div>
+                  </div>
+                ))
+              ) : (
+                <div className="text-sm text-gray-500">No members yet</div>
+              )}
             </div>
           </div>
-          <h1 className="text-2xl font-bold text-gray-900">{crew.name}</h1>
-          <p className="text-sm text-gray-500">{crew.members} members</p>
+          <h1 className="text-2xl font-bold text-gray-900">{crew.name || 'Unnamed Crew'}</h1>
+          <p className="text-sm text-gray-500">{memberCount} {memberCount === 1 ? 'member' : 'members'}</p>
         </div>
       </div>
 
@@ -585,74 +603,69 @@ export default function RunCrewCentral() {
           {/* Right Sidebar */}
           <div className="space-y-6">
             {/* Next Run */}
-            <div className="bg-white rounded-lg shadow-sm p-4 cursor-pointer hover:shadow-md transition-shadow" onClick={() => navigate('/runcrew-run-detail')}>
+            <div className="bg-white rounded-lg shadow-sm p-4">
               <h3 className="font-bold text-gray-900 mb-3">Next Run</h3>
-              <div className="space-y-3">
-                <div className="flex items-center space-x-2">
-                  <svg className="w-5 h-5 text-orange-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z" />
-                  </svg>
-                  <div>
-                    <p className="font-semibold text-gray-900">{nextRun.date}</p>
-                    <p className="text-sm text-gray-600">{nextRun.time}</p>
-                  </div>
-                </div>
-                <div className="flex items-center space-x-2">
-                  <svg className="w-5 h-5 text-orange-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17.657 16.657L13.414 20.9a1.998 1.998 0 01-2.827 0l-4.244-4.243a8 8 0 1111.314 0z" />
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 11a3 3 0 11-6 0 3 3 0 016 0z" />
-                  </svg>
-                  <p className="text-sm text-gray-600">{nextRun.location}</p>
-                </div>
-                <div className="pt-3 border-t border-gray-200">
-                  <p className="text-sm font-semibold text-gray-900 mb-2">{nextRun.attendees} Going</p>
-                  <div className="flex -space-x-2 mb-2">
-                    {crewMembers.slice(0, 5).map((member) => (
-                      <img
-                        key={member.id}
-                        src={member.avatar}
-                        alt={member.name}
-                        className="w-7 h-7 rounded-full border-2 border-white object-cover"
-                      />
-                    ))}
-                  </div>
-                  <button 
-                    onClick={(e) => {
-                      e.stopPropagation();
-                      navigate('/runcrew-run-detail');
-                    }}
-                    className="w-full mt-3 bg-orange-500 text-white py-2 rounded-lg font-medium hover:bg-orange-600 transition-colors text-sm"
+              {/* TODO: Add events/RSVP functionality */}
+              <div className="text-center py-6">
+                <p className="text-sm text-gray-500">No upcoming runs scheduled</p>
+                {isAdmin && (
+                  <button
+                    onClick={() => navigate('/runcrew-central-admin')}
+                    className="mt-3 text-sm text-orange-600 hover:text-orange-700 font-medium"
                   >
-                    View Details & RSVP
+                    Create Event
                   </button>
-                </div>
+                )}
               </div>
             </div>
 
             {/* Who's Here */}
             <div className="bg-white rounded-lg shadow-sm p-4">
               <h3 className="font-bold text-gray-900 mb-4">Who's Here</h3>
-              <div className="space-y-3">
-                {crewMembers.map((member) => (
-                  <div key={member.id} className="flex items-center space-x-3">
-                    <div className="relative">
-                      <img
-                        src={member.avatar}
-                        alt={member.name}
-                        className="w-10 h-10 rounded-full object-cover"
-                      />
-                      <div className="absolute bottom-0 right-0 w-3 h-3 bg-green-500 rounded-full border-2 border-white"></div>
-                    </div>
-                    <div className="flex-1">
-                      <p className="text-sm font-medium text-gray-900">{member.name}</p>
-                      <p className="text-xs text-gray-500">{member.status}</p>
-                    </div>
+              {crewMembers.length === 0 ? (
+                <div className="text-center py-8">
+                  <div className="text-4xl mb-3">👥</div>
+                  <p className="text-sm text-gray-600 mb-4">No members yet. Invite people to join your crew!</p>
+                  <button
+                    onClick={handleInvitePeople}
+                    className="w-full bg-orange-500 text-white py-2 rounded-lg font-medium hover:bg-orange-600 transition-colors text-sm"
+                  >
+                    Invite People
+                  </button>
+                </div>
+              ) : (
+                <>
+                  <div className="space-y-3">
+                    {crewMembers.map((member) => (
+                      <div key={member.id} className="flex items-center space-x-3">
+                        <div className="relative">
+                          {member.avatar ? (
+                            <img
+                              src={member.avatar}
+                              alt={member.name}
+                              className="w-10 h-10 rounded-full object-cover"
+                            />
+                          ) : (
+                            <div className="w-10 h-10 rounded-full bg-gray-200 flex items-center justify-center text-xs font-semibold text-gray-600">
+                              {member.initials}
+                            </div>
+                          )}
+                          <div className="absolute bottom-0 right-0 w-3 h-3 bg-green-500 rounded-full border-2 border-white"></div>
+                        </div>
+                        <div className="flex-1">
+                          <p className="text-sm font-medium text-gray-900">{member.name}</p>
+                          <p className="text-xs text-gray-500">{member.status}</p>
+                        </div>
+                      </div>
+                    ))}
                   </div>
-                ))}
-              </div>
-              <button className="w-full mt-4 text-sm text-orange-600 hover:text-orange-700 font-medium">
-                View all {crew.members} members
-              </button>
+                  {memberCount > crewMembers.length && (
+                    <button className="w-full mt-4 text-sm text-orange-600 hover:text-orange-700 font-medium">
+                      View all {memberCount} members
+                    </button>
+                  )}
+                </>
+              )}
             </div>
 
             {/* Leaderboard */}
@@ -690,31 +703,37 @@ export default function RunCrewCentral() {
                   Cals
                 </button>
               </div>
-              <div className="space-y-2">
-                {leaderboards[leaderboardType].slice(0, 5).map((member, index) => (
-                  <div 
-                    key={index} 
-                    className="flex items-center justify-between p-2 rounded-lg hover:bg-gray-50"
-                  >
-                    <div className="flex items-center space-x-2">
-                      <div className={`w-6 h-6 rounded-full flex items-center justify-center text-xs font-bold ${
-                        index === 0 ? 'bg-yellow-500 text-white' : 
-                        index === 1 ? 'bg-gray-400 text-white' : 
-                        index === 2 ? 'bg-orange-600 text-white' : 
-                        'bg-gray-300 text-gray-700'
-                      }`}>
-                        {index + 1}
+              {leaderboards[leaderboardType].length === 0 ? (
+                <div className="text-center py-6">
+                  <p className="text-sm text-gray-500">No leaderboard data yet. Start running to see stats!</p>
+                </div>
+              ) : (
+                <div className="space-y-2">
+                  {leaderboards[leaderboardType].slice(0, 5).map((member, index) => (
+                    <div 
+                      key={member.athleteId || index} 
+                      className="flex items-center justify-between p-2 rounded-lg hover:bg-gray-50"
+                    >
+                      <div className="flex items-center space-x-2">
+                        <div className={`w-6 h-6 rounded-full flex items-center justify-center text-xs font-bold ${
+                          index === 0 ? 'bg-yellow-500 text-white' : 
+                          index === 1 ? 'bg-gray-400 text-white' : 
+                          index === 2 ? 'bg-orange-600 text-white' : 
+                          'bg-gray-300 text-gray-700'
+                        }`}>
+                          {member.rank}
+                        </div>
+                        <p className="text-sm font-medium text-gray-900">{member.name.split(' ')[0]}</p>
                       </div>
-                      <p className="text-sm font-medium text-gray-900">{member.name.split(' ')[0]}</p>
+                      <p className="text-xs font-bold text-orange-600">
+                        {leaderboardType === 'miles' && `${member.value.toFixed(1)}mi`}
+                        {leaderboardType === 'bestSplit' && member.value}
+                        {leaderboardType === 'calories' && `${member.value}`}
+                      </p>
                     </div>
-                    <p className="text-xs font-bold text-orange-600">
-                      {leaderboardType === 'miles' && `${member.value}mi`}
-                      {leaderboardType === 'bestSplit' && member.value}
-                      {leaderboardType === 'calories' && `${member.value}`}
-                    </p>
-                  </div>
-                ))}
-              </div>
+                  ))}
+                </div>
+              )}
             </div>
           </div>
         </div>

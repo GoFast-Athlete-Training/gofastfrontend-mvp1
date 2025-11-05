@@ -6,11 +6,13 @@ import { getAuth } from 'firebase/auth';
 export default function AthleteWelcome() {
   const navigate = useNavigate();
   const [isLoading, setIsLoading] = useState(true);
+  const [isHydrated, setIsHydrated] = useState(false);
   const [error, setError] = useState(null);
 
   useEffect(() => {
     const hydrateAthlete = async () => {
       try {
+        console.log('🚀 ATHLETE WELCOME: ===== STARTING HYDRATION =====');
         setIsLoading(true);
         setError(null);
 
@@ -19,63 +21,92 @@ export default function AthleteWelcome() {
         const firebaseUser = auth.currentUser;
         
         if (!firebaseUser) {
-          console.log('❌ No Firebase user found → redirecting to signup');
+          console.log('❌ ATHLETE WELCOME: No Firebase user found → redirecting to signup');
           navigate('/athletesignup');
           return;
         }
 
-        console.log('🚀 ATHLETE WELCOME: Hydrating Athlete data...');
+        console.log('✅ ATHLETE WELCOME: Firebase user found');
+        console.log('✅ ATHLETE WELCOME: Firebase UID:', firebaseUser.uid);
+        console.log('✅ ATHLETE WELCOME: Firebase Email:', firebaseUser.email);
+        console.log('🚀 ATHLETE WELCOME: Calling hydration endpoint...');
         
         // Call hydration endpoint (token automatically added by api interceptor)
         const response = await api.get('/athlete/hydrate');
         
+        console.log('📡 ATHLETE WELCOME: Response received:', response.status);
+        
         if (!response.data.success) {
-          console.error('❌ Hydration failed:', response.data.error);
+          console.error('❌ ATHLETE WELCOME: Hydration failed:', response.data.error);
           setError(response.data.error || 'Failed to load athlete data');
           setIsLoading(false);
           return;
         }
 
         const hydratedAthlete = response.data.athlete;
-        console.log('✅ ATHLETE WELCOME: Athlete hydrated:', hydratedAthlete);
+        console.log('✅ ATHLETE WELCOME: Athlete hydrated successfully');
+        console.log('✅ ATHLETE WELCOME: Athlete ID:', hydratedAthlete.athleteId);
+        console.log('✅ ATHLETE WELCOME: Email:', hydratedAthlete.email);
+        console.log('✅ ATHLETE WELCOME: Name:', hydratedAthlete.firstName, hydratedAthlete.lastName);
+        console.log('✅ ATHLETE WELCOME: RunCrews count:', hydratedAthlete.runCrews?.length || 0);
+        
+        if (hydratedAthlete.runCrews && hydratedAthlete.runCrews.length > 0) {
+          console.log('✅ ATHLETE WELCOME: RunCrews:', hydratedAthlete.runCrews.map(c => c.name).join(', '));
+        }
 
         // Cache Athlete data to localStorage
+        console.log('💾 ATHLETE WELCOME: Caching athlete data to localStorage...');
         localStorage.setItem('athleteId', hydratedAthlete.athleteId);
         localStorage.setItem('athleteProfile', JSON.stringify(hydratedAthlete));
         localStorage.setItem('profileHydrated', 'true');
+        console.log('✅ ATHLETE WELCOME: athleteId cached:', hydratedAthlete.athleteId);
         
         // Store RunCrews if available
         if (hydratedAthlete.runCrews && hydratedAthlete.runCrews.length > 0) {
           localStorage.setItem('myCrews', JSON.stringify(hydratedAthlete.runCrews));
+          console.log('✅ ATHLETE WELCOME: RunCrews cached:', hydratedAthlete.runCrews.length);
         }
         
-        // Hydration complete - navigate to athlete home
-        console.log('✅ ATHLETE WELCOME: Hydration complete, navigating to athlete-home');
-        navigate('/athlete-home');
+        // Hydration complete - show button for user to click
+        console.log('🎯 ATHLETE WELCOME: Hydration complete, ready for user action');
+        console.log('✅ ATHLETE WELCOME: ===== HYDRATION SUCCESS =====');
+        setIsHydrated(true);
+        setIsLoading(false);
         
       } catch (error) {
-        console.error('❌ ATHLETE WELCOME: Hydration error:', error);
+        console.error('❌ ATHLETE WELCOME: ===== HYDRATION ERROR =====');
+        console.error('❌ ATHLETE WELCOME: Error message:', error.message);
+        console.error('❌ ATHLETE WELCOME: Error status:', error.response?.status);
+        console.error('❌ ATHLETE WELCOME: Error data:', error.response?.data);
+        
         setError(error.response?.data?.message || error.message || 'Failed to load athlete data');
         setIsLoading(false);
         
         // If 401, user not authenticated or token expired
         if (error.response?.status === 401) {
-          console.log('🚫 Unauthorized → redirecting to signup');
+          console.log('🚫 ATHLETE WELCOME: Unauthorized (401) → redirecting to signup');
           navigate('/athletesignup');
           return;
         }
         
         // If user not found, redirect to signup
         if (error.response?.status === 404) {
-          console.log('👤 Athlete not found → redirecting to signup');
+          console.log('👤 ATHLETE WELCOME: Athlete not found (404) → redirecting to signup');
           navigate('/athletesignup');
           return;
         }
+        
+        console.error('❌ ATHLETE WELCOME: ===== END ERROR =====');
       }
     };
 
     hydrateAthlete();
   }, [navigate]);
+
+  const handleLetsTrain = () => {
+    console.log('🎯 ATHLETE WELCOME: User clicked "Let\'s Train!" → navigating to athlete-home');
+    navigate('/athlete-home');
+  };
 
 
   if (error) {
@@ -105,10 +136,22 @@ export default function AthleteWelcome() {
         <p className="text-2xl md:text-3xl text-sky-100 font-medium mb-8">
           Start your running journey
         </p>
+        
         {isLoading && (
           <div className="mt-8">
             <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-white mx-auto mb-4"></div>
             <p className="text-xl text-sky-100">Loading your account...</p>
+          </div>
+        )}
+
+        {isHydrated && !isLoading && (
+          <div className="mt-8">
+            <button
+              onClick={handleLetsTrain}
+              className="bg-gradient-to-r from-orange-600 to-orange-500 text-white px-12 py-4 rounded-xl font-bold text-2xl hover:from-orange-700 hover:to-orange-600 transition shadow-2xl transform hover:scale-105"
+            >
+              Let's Train! →
+            </button>
           </div>
         )}
       </div>
