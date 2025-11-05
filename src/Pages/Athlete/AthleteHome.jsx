@@ -2,7 +2,8 @@ import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { signOut } from 'firebase/auth';
 import { auth } from '../../firebase';
-import { onAuthStateChanged, onIdTokenChanged } from 'firebase/auth';
+import { onAuthStateChanged } from 'firebase/auth';
+import api from '../../api/axiosConfig';
 import UserOnboardingCalculationService from '../../utils/UserOnboardingCalculationService';
 
 const AthleteHome = () => {
@@ -15,22 +16,10 @@ const AthleteHome = () => {
   const [myCrews, setMyCrews] = useState([]);
 
   useEffect(() => {
-    let authUnsubscribe = null;
-    let tokenUnsubscribe = null;
-
-    // Listen for auth state changes (user login/logout)
-    authUnsubscribe = onAuthStateChanged(auth, (user) => {
+    const unsubscribe = onAuthStateChanged(auth, async (user) => {
       if (user) {
         console.log('✅ ATHLETE HOME: User authenticated:', user.email);
-        
-        // Listen for token refreshes - Firebase auto-refreshes tokens
-        // This ensures we always have a valid token before making API calls
-        tokenUnsubscribe = onIdTokenChanged(auth, async (firebaseUser) => {
-          if (firebaseUser) {
-            console.log('🔄 ATHLETE HOME: Token refreshed, hydrating athlete data...');
-            await hydrateAthleteData(firebaseUser);
-          }
-        });
+        await hydrateAthleteData(user);
       } else {
         // This should never happen since Splash redirects unauthenticated users
         console.log('❌ ATHLETE HOME: No user - this should not happen!');
@@ -38,11 +27,7 @@ const AthleteHome = () => {
       }
     });
 
-    // Cleanup
-    return () => {
-      if (authUnsubscribe) authUnsubscribe();
-      if (tokenUnsubscribe) tokenUnsubscribe();
-    };
+    return () => unsubscribe();
   }, [navigate]);
 
   const hydrateAthleteData = async (user) => {
@@ -57,26 +42,16 @@ const AthleteHome = () => {
         return;
       }
       
-      // Get token - Firebase SDK automatically refreshes if needed
-      // onIdTokenChanged ensures we only call this when token is fresh
-      const token = await user.getIdToken();
-      console.log('🔐 ATHLETE HOME: Got Firebase token for user:', user.email);
-      
       // Call universal hydration endpoint - includes RunCrews, everything in one call
       // Mirror of Ignite's /api/owner/hydrate pattern
-      const response = await fetch('https://gofastbackendv2-fall2025.onrender.com/api/athlete/hydrate', {
-        method: 'GET',
-        headers: {
-          'Content-Type': 'application/json',
-          'Authorization': `Bearer ${token}`
-        }
-      });
+      // Token automatically added by axios interceptor (Firebase SDK auto-refreshes)
+      const response = await api.get('/athlete/hydrate');
       
-      if (response.ok) {
-        const data = await response.json();
+      if (response.data.success && response.data.athlete) {
+        const data = response.data;
         console.log('✅ ATHLETE HOME: Hydrated athlete data:', data);
         
-        if (data.success && data.athlete) {
+        if (data.athlete) {
           const athlete = data.athlete;
           setAthleteProfile(athlete);
           
