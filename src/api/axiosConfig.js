@@ -11,8 +11,8 @@ const api = axios.create({
   timeout: 10000,
   headers: {
     'Content-Type': 'application/json',
-  },
-  withCredentials: true
+  }
+  // NO withCredentials - we use Bearer tokens, not cookies
 });
 
 // Request interceptor - AUTOMATICALLY adds Firebase token to all requests
@@ -43,21 +43,46 @@ api.interceptors.request.use(
   }
 );
 
-// Response interceptor - Handles errors and logging
+// Response interceptor - Handles errors and token refresh
 api.interceptors.response.use(
   response => {
     console.log('✅ API Response:', response.status, response.data);
     return response;
   },
-  error => {
+  async error => {
     console.error('❌ API Error:', error.response?.status, error.response?.data || error.message);
     
-    // Handle 401 (Unauthorized) - token expired or invalid
+    // Handle 401 (Unauthorized) - try to refresh token if expired
     if (error.response?.status === 401) {
+      const errorData = error.response?.data;
+      
+      // If token expired, try to refresh it
+      if (errorData?.code === 'TOKEN_EXPIRED' || errorData?.shouldRefresh) {
+        console.log('🔄 Token expired, attempting refresh...');
+        
+        const firebaseAuth = getAuth();
+        const user = firebaseAuth.currentUser;
+        
+        if (user) {
+          try {
+            // Force token refresh
+            const newToken = await user.getIdToken(true); // Force refresh
+            console.log('✅ Token refreshed, retrying request...');
+            
+            // Retry the original request with new token
+            const config = error.config;
+            config.headers.Authorization = `Bearer ${newToken}`;
+            return api.request(config);
+          } catch (refreshError) {
+            console.error('❌ Token refresh failed:', refreshError);
+            // Fall through to redirect
+          }
+        }
+      }
+      
+      // If refresh failed or not expired, redirect to signup
       console.error('🚫 Unauthorized - redirecting to signup');
-      // Clear any stored auth data
       localStorage.clear();
-      // Redirect to signup
       window.location.href = '/athletesignup';
     }
     

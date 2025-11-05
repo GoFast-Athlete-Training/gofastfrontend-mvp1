@@ -2,8 +2,6 @@ import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { signOut } from 'firebase/auth';
 import { auth } from '../../firebase';
-import { onAuthStateChanged } from 'firebase/auth';
-import api from '../../api/axiosConfig';
 import UserOnboardingCalculationService from '../../utils/UserOnboardingCalculationService';
 
 const AthleteHome = () => {
@@ -16,81 +14,60 @@ const AthleteHome = () => {
   const [myCrews, setMyCrews] = useState([]);
 
   useEffect(() => {
-    const unsubscribe = onAuthStateChanged(auth, async (user) => {
-      if (user) {
-        console.log('✅ ATHLETE HOME: User authenticated:', user.email);
-        await hydrateAthleteData(user);
-      } else {
-        // This should never happen since Splash redirects unauthenticated users
-        console.log('❌ ATHLETE HOME: No user - this should not happen!');
-        setIsLoading(false);
-      }
-    });
-
-    return () => unsubscribe();
-  }, [navigate]);
-
-  const hydrateAthleteData = async (user) => {
-    setIsLoading(true);
-    
-    try {
-      console.log('🚀 ATHLETE HOME: Starting universal hydration...');
+    // Load athlete data from localStorage (hydrated by Welcome page)
+    const loadAthleteData = () => {
+      setIsLoading(true);
       
-      if (!user) {
-        console.log('❌ ATHLETE HOME: No Firebase user - this should not happen');
-        setIsLoading(false);
-        return;
-      }
-      
-      // Call universal hydration endpoint - includes RunCrews, everything in one call
-      // Mirror of Ignite's /api/owner/hydrate pattern
-      // Token automatically added by axios interceptor (Firebase SDK auto-refreshes)
-      const response = await api.get('/athlete/hydrate');
-      
-      if (response.data.success && response.data.athlete) {
-        const data = response.data;
-        console.log('✅ ATHLETE HOME: Hydrated athlete data:', data);
+      try {
+        const storedProfile = localStorage.getItem('athleteProfile');
+        const storedOnboarding = localStorage.getItem('onboardingState');
+        const storedCrews = localStorage.getItem('myCrews');
         
-        if (data.athlete) {
-          const athlete = data.athlete;
+        if (storedProfile) {
+          const athlete = JSON.parse(storedProfile);
           setAthleteProfile(athlete);
           
-          // Calculate onboarding state
-          const onboarding = UserOnboardingCalculationService.calculateOnboardingState(athlete.createdAt);
-          setOnboardingState(onboarding);
-          
-          // Get appropriate cards for this user
-          const cards = UserOnboardingCalculationService.getCardsForUser(athlete, onboarding);
-          setDisplayCards(cards);
-          
-          // Store in localStorage for other components
-          localStorage.setItem('athleteProfile', JSON.stringify(athlete));
-          localStorage.setItem('profileHydrated', 'true');
-          localStorage.setItem('onboardingState', JSON.stringify(onboarding));
-          localStorage.setItem('athleteId', athlete.athleteId);
-          
-          // Use RunCrews from hydration response (no separate API call needed!)
-          if (athlete.runCrews && athlete.runCrews.length > 0) {
-            setHasCrews(true);
-            setMyCrews(athlete.runCrews);
-            updateCardsForCrews(athlete.runCrews);
+          // Load onboarding state
+          if (storedOnboarding) {
+            const onboarding = JSON.parse(storedOnboarding);
+            setOnboardingState(onboarding);
+            
+            // Get appropriate cards for this user
+            const cards = UserOnboardingCalculationService.getCardsForUser(athlete, onboarding);
+            setDisplayCards(cards);
           } else {
-            setHasCrews(false);
-            setMyCrews([]);
+            // Calculate if not stored
+            const onboarding = UserOnboardingCalculationService.calculateOnboardingState(athlete.createdAt);
+            setOnboardingState(onboarding);
+            localStorage.setItem('onboardingState', JSON.stringify(onboarding));
+            
+            const cards = UserOnboardingCalculationService.getCardsForUser(athlete, onboarding);
+            setDisplayCards(cards);
           }
+          
+          // Load RunCrews if available
+          if (storedCrews) {
+            const crews = JSON.parse(storedCrews);
+            setHasCrews(crews.length > 0);
+            setMyCrews(crews);
+            updateCardsForCrews(crews);
+          }
+        } else {
+          // No profile data - redirect to welcome for hydration
+          console.log('⚠️ ATHLETE HOME: No profile data found, redirecting to welcome');
+          navigate('/welcome');
+          return;
         }
-      } else {
-        console.log('❌ ATHLETE HOME: Failed to hydrate, athlete not found');
-        // User might not exist in backend yet, that's ok
+      } catch (error) {
+        console.error('❌ ATHLETE HOME: Error loading athlete data:', error);
+        navigate('/welcome');
+      } finally {
+        setIsLoading(false);
       }
-      
-    } catch (error) {
-      console.error('❌ ATHLETE HOME: Hydration error:', error);
-      // Continue anyway - user can still use the app
-    } finally {
-      setIsLoading(false);
-    }
-  };
+    };
+    
+    loadAthleteData();
+  }, [navigate]);
 
 
   const updateCardsForCrews = (crews) => {

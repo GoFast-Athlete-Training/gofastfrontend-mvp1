@@ -31,7 +31,7 @@ const SplashPage = () => {
 
       const timer3 = setTimeout(() => {
         if (isAuthenticated) {
-          navigate('/athlete-home');
+          navigate('/athlete-welcome'); // Route to AthleteWelcome for hydration
         } else {
           navigate('/athletesignup');
         }
