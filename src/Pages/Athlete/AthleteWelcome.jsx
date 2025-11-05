@@ -78,20 +78,9 @@ export default function AthleteWelcome() {
   }, [navigate]);
 
 
-  if (isLoading) {
-    return (
-      <div className="min-h-screen bg-gradient-to-br from-sky-50 to-sky-100 flex items-center justify-center">
-        <div className="text-center">
-          <div className="animate-spin rounded-full h-16 w-16 border-b-2 border-orange-500 mx-auto mb-4"></div>
-          <p className="text-gray-600 text-xl">Loading your account...</p>
-        </div>
-      </div>
-    );
-  }
-
   if (error) {
     return (
-      <div className="min-h-screen bg-gradient-to-br from-sky-50 to-sky-100 flex items-center justify-center">
+      <div className="min-h-screen bg-gradient-to-br from-sky-400 to-sky-600 flex items-center justify-center">
         <div className="text-center bg-white rounded-xl shadow-lg p-8 max-w-md mx-4">
           <div className="text-6xl mb-4">⚠️</div>
           <h1 className="text-2xl font-bold text-gray-900 mb-4">Error Loading Account</h1>
@@ -107,8 +96,23 @@ export default function AthleteWelcome() {
     );
   }
 
-  // This page just hydrates - navigates to athlete-home automatically
-  // No display needed - user goes straight to the app
-  return null;
+  return (
+    <div className="min-h-screen bg-gradient-to-br from-sky-400 to-sky-600 flex items-center justify-center">
+      <div className="text-center animate-fade-in">
+        <h1 className="text-6xl md:text-8xl font-bold text-white mb-8 animate-pulse">
+          Let's Go <span className="text-orange-400">Crush</span> Goals!
+        </h1>
+        <p className="text-2xl md:text-3xl text-sky-100 font-medium mb-8">
+          Start your running journey
+        </p>
+        {isLoading && (
+          <div className="mt-8">
+            <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-white mx-auto mb-4"></div>
+            <p className="text-xl text-sky-100">Loading your account...</p>
+          </div>
+        )}
+      </div>
+    </div>
+  );
 }
 
