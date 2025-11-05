@@ -15,8 +15,12 @@ import GarminConnectSuccess from './Pages/Settings/GarminConnectSuccess';
 import JoinOrStartCrew from './Pages/RunCrew/JoinOrStartCrew';
 import JoinCrew from './Pages/RunCrew/JoinCrew';
 import CreateCrew from './Pages/RunCrew/CreateCrew';
-import RunCrewHome from './Pages/RunCrew/RunCrewHome';
+import RunCrewCentral from './Pages/RunCrew/RunCrewCentral';
+import RunCrewCentralAdmin from './Pages/RunCrew/RunCrewCentralAdmin';
+import RunCrewSettings from './Pages/RunCrew/RunCrewSettings';
+import RunCrewRunDetail from './Pages/RunCrew/RunCrewRunDetail';
 import CrewExplainer from './Pages/RunCrew/CrewExplainer';
+import RunCrewSuccess from './Pages/RunCrew/RunCrewSuccess';
 
 // Debug Components
 import FindMyUserId from './Pages/Debug/FindMyUserId';
@@ -54,7 +58,13 @@ const App = () => {
         <Route path="/runcrew/join" element={<JoinOrStartCrew />} />
         <Route path="/run-crew-join" element={<JoinCrew />} />
         <Route path="/form-run-crew" element={<CreateCrew />} />
-        <Route path="/runcrew-home" element={<RunCrewHome />} />
+        <Route path="/run-crew-success" element={<RunCrewSuccess />} />
+        <Route path="/runcrew-central" element={<RunCrewCentral />} />
+        <Route path="/runcrew-central-admin" element={<RunCrewCentralAdmin />} />
+        <Route path="/runcrew-settings" element={<RunCrewSettings />} />
+        <Route path="/runcrew-run-detail/:runId?" element={<RunCrewRunDetail />} />
+        {/* Legacy route - redirect to central */}
+        <Route path="/runcrew-home" element={<RunCrewCentral />} />
         <Route path="/training/track" element={<div className="min-h-screen bg-gray-50 flex items-center justify-center"><h1 className="text-4xl font-bold text-gray-900">Track Runs - Coming Soon!</h1></div>} />
         <Route path="/training/analytics" element={<div className="min-h-screen bg-gray-50 flex items-center justify-center"><h1 className="text-4xl font-bold text-gray-900">Training Analytics - Coming Soon!</h1></div>} />
         <Route path="/connect/partners" element={<div className="min-h-screen bg-gray-50 flex items-center justify-center"><h1 className="text-4xl font-bold text-gray-900">Find Partners - Coming Soon!</h1></div>} />

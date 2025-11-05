@@ -18,8 +18,14 @@ export default function CreateCrew() {
     // DEMO MODE: For demo purposes, skip API call and just navigate
     const isDemo = localStorage.getItem('demoMode') === 'true' || !localStorage.getItem('athleteId');
     if (isDemo) {
-      console.log('🎭 DEMO MODE: Skipping API call, navigating to crew home');
-      navigate("/runcrew-home");
+      console.log('🎭 DEMO MODE: Skipping API call, navigating to success page');
+      // Store demo crew data for success page
+      localStorage.setItem('currentCrew', JSON.stringify({
+        name: name,
+        joinCode: inviteCode,
+        crewCode: inviteCode
+      }));
+      navigate("/run-crew-success");
       return;
     }
     
@@ -59,7 +65,15 @@ export default function CreateCrew() {
       
       if (res.ok && data.success) {
         console.log('✅ RunCrew created:', data.runCrew);
-        navigate("/runcrew-home");
+        // Store crew data for success page
+        localStorage.setItem('currentCrew', JSON.stringify({
+          id: data.runCrew.id,
+          name: data.runCrew.name,
+          joinCode: data.runCrew.joinCode,
+          description: data.runCrew.description
+        }));
+        // Navigate to success page first, then user can go to central
+        navigate("/run-crew-success");
       } else {
         alert(data.message || data.error || "Failed to create crew");
       }

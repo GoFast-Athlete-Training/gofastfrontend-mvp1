@@ -11,6 +11,8 @@ const AthleteHome = () => {
   const [isLoading, setIsLoading] = useState(true);
   const [onboardingState, setOnboardingState] = useState(null);
   const [displayCards, setDisplayCards] = useState([]);
+  const [hasCrews, setHasCrews] = useState(false);
+  const [myCrews, setMyCrews] = useState([]);
 
   useEffect(() => {
     const unsubscribe = onAuthStateChanged(auth, async (user) => {
@@ -72,6 +74,10 @@ const AthleteHome = () => {
           localStorage.setItem('athleteProfile', JSON.stringify(athlete));
           localStorage.setItem('profileHydrated', 'true');
           localStorage.setItem('onboardingState', JSON.stringify(onboarding));
+          localStorage.setItem('athleteId', athlete.athleteId);
+          
+          // Fetch user's crews after athlete is loaded
+          await fetchMyCrews(user);
         }
       } else {
         console.log('❌ ATHLETE HOME: Failed to hydrate, athlete not found');
@@ -84,6 +90,59 @@ const AthleteHome = () => {
     } finally {
       setIsLoading(false);
     }
+  };
+
+  const fetchMyCrews = async (user) => {
+    try {
+      const token = await user.getIdToken();
+      const response = await fetch('https://gofastbackendv2-fall2025.onrender.com/api/runcrew/mine', {
+        method: 'GET',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${token}`
+        }
+      });
+      
+      if (response.ok) {
+        const data = await response.json();
+        if (data.success && data.count > 0) {
+          setHasCrews(true);
+          setMyCrews(data.runCrews);
+          // Update cards to show "Go to RunCrew Central" instead of "Join/Create"
+          updateCardsForCrews(data.runCrews);
+        } else {
+          setHasCrews(false);
+          setMyCrews([]);
+        }
+      }
+    } catch (error) {
+      console.error('Error fetching crews:', error);
+      setHasCrews(false);
+      setMyCrews([]);
+    }
+  };
+
+  const updateCardsForCrews = (crews) => {
+    // Update the display cards to show RunCrew Central if user has crews
+    setDisplayCards(prevCards => {
+      return prevCards.map(card => {
+        // Replace "Join RunCrew" or "RunCrew Dashboard" cards with "Go to RunCrew Central"
+        if (card.path === '/runcrew/join' || card.path === '/runcrew/dashboard' || card.path === '/runcrew/start') {
+          return {
+            ...card,
+            title: 'My RunCrew',
+            description: crews.length === 1 
+              ? `View ${crews[0].name}` 
+              : `View ${crews.length} RunCrews`,
+            icon: '👥',
+            path: '/runcrew-central',
+            color: 'bg-blue-500',
+            showIf: true
+          };
+        }
+        return card;
+      });
+    });
   };
 
   const handleSignOut = async () => {
