@@ -41,18 +41,32 @@ const AthleteHome = () => {
         return;
       }
       
-      const token = await user.getIdToken();
-      console.log('🔐 ATHLETE HOME: Got Firebase token for user:', user.email);
+      // Force token refresh to avoid expired tokens (getIdToken(true) forces refresh)
+      const token = await user.getIdToken(true);
+      console.log('🔐 ATHLETE HOME: Got fresh Firebase token for user:', user.email);
       
       // Call universal hydration endpoint - includes RunCrews, everything in one call
       // Mirror of Ignite's /api/owner/hydrate pattern
-      const response = await fetch('https://gofastbackendv2-fall2025.onrender.com/api/athlete/hydrate', {
+      let response = await fetch('https://gofastbackendv2-fall2025.onrender.com/api/athlete/hydrate', {
         method: 'GET',
         headers: {
           'Content-Type': 'application/json',
           'Authorization': `Bearer ${token}`
         }
       });
+      
+      // If token expired, get fresh token and retry once
+      if (response.status === 401) {
+        console.log('⚠️ ATHLETE HOME: Token expired, getting fresh token and retrying...');
+        const freshToken = await user.getIdToken(true);
+        response = await fetch('https://gofastbackendv2-fall2025.onrender.com/api/athlete/hydrate', {
+          method: 'GET',
+          headers: {
+            'Content-Type': 'application/json',
+            'Authorization': `Bearer ${freshToken}`
+          }
+        });
+      }
       
       if (response.ok) {
         const data = await response.json();
