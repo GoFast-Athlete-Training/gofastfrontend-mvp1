@@ -30,12 +30,13 @@ const GarminConnectSuccess = () => {
       setErrorMessage(message || 'Unknown error occurred');
       setGarminData(prev => ({ ...prev, connected: false }));
       
-      // If in popup, close it and redirect parent
+      // If in popup, notify parent and keep popup open to show error
       if (isInPopup) {
-        const errorUrl = `/garmin/success?status=error&message=${encodeURIComponent(message || 'Unknown error occurred')}`;
-        window.opener.location.href = errorUrl;
-        window.close();
-        return;
+        window.opener.postMessage({
+          type: 'GARMIN_CONNECTION_ERROR',
+          message: message || 'Unknown error occurred'
+        }, '*');
+        // Don't close - let user see error and close manually
       }
     } else if (urlStatus === 'success' || athleteId) {
       setStatus('success');
@@ -45,29 +46,53 @@ const GarminConnectSuccess = () => {
         connectedAt: new Date().toISOString() 
       }));
       
-      // If in popup, close it and redirect parent to success page
+      // If in popup, notify parent but KEEP POPUP OPEN to show success message
       if (isInPopup) {
-        const successUrl = athleteId 
-          ? `/garmin/success?athleteId=${athleteId}` 
-          : `/garmin/success?status=success`;
-        window.opener.location.href = successUrl;
-        window.close();
-        return;
+        window.opener.postMessage({
+          type: 'GARMIN_CONNECTED',
+          success: true,
+          athleteId: athleteId
+        }, '*');
+        // Don't auto-close - let user see success and close when ready
       }
     } else {
       setStatus('unknown');
       
-      // If in popup with unknown status, close it and redirect parent
+      // If in popup with unknown status, notify parent
       if (isInPopup) {
-        window.opener.location.href = '/garmin/success?status=unknown';
-        window.close();
-        return;
+        window.opener.postMessage({
+          type: 'GARMIN_CONNECTION_UNKNOWN',
+          message: 'Unable to determine connection status'
+        }, '*');
+        // Keep popup open
       }
     }
   }, []);
 
-  const handleReturnHome = () => {
-    navigate('/athlete-home');
+  const handleStartTracking = () => {
+    // If in popup, notify parent and close
+    if (window.opener) {
+      window.opener.postMessage({
+        type: 'GARMIN_CONNECTED',
+        success: true,
+        action: 'start_tracking'
+      }, '*');
+      // Small delay to ensure message is sent
+      setTimeout(() => window.close(), 100);
+    } else {
+      // Not in popup, navigate to home
+      navigate('/athlete-home');
+    }
+  };
+
+  const handleClose = () => {
+    // If in popup, close it
+    if (window.opener) {
+      window.close();
+    } else {
+      // Not in popup, go to settings
+      navigate('/settings');
+    }
   };
 
   // Render different content based on status
@@ -79,7 +104,7 @@ const GarminConnectSuccess = () => {
             <RefreshCw className="h-8 w-8 text-blue-600 animate-spin" />
           </div>
           <h1 className="text-2xl font-bold mb-2">Processing...</h1>
-          <p className="text-gray-600 mb-6">Checking your Garmin connection status.</p>
+          <p className="text-gray-600 mb-6">Checking your Garmin Connect connection status.</p>
         </div>
       );
     }
@@ -92,7 +117,7 @@ const GarminConnectSuccess = () => {
           </div>
           <h1 className="text-2xl font-bold mb-2 text-red-600">Connection Failed</h1>
           <p className="text-gray-600 mb-6">
-            {errorMessage || 'There was an error connecting your Garmin account.'}
+            {errorMessage || 'There was an error connecting your Garmin Connect account.'}
           </p>
         </div>
       );
@@ -101,12 +126,22 @@ const GarminConnectSuccess = () => {
     if (status === 'success') {
       return (
         <div className="text-center">
-          <div className="mx-auto mb-4 flex h-16 w-16 items-center justify-center rounded-full">
-            <CheckCircle className="h-8 w-8 text-green-600" />
+          <div className="mx-auto mb-4 flex h-16 w-16 items-center justify-center rounded-full bg-green-100">
+            <CheckCircle className="h-10 w-10 text-green-600" />
           </div>
-          <h1 className="text-2xl font-bold mb-2">Garmin Connected Successfully!</h1>
+          <div className="mb-4 flex justify-center">
+            <img 
+              src="/Garmin_connect_badge_digital_RESOURCE_FILE-01.png" 
+              alt="Garmin Connect" 
+              className="h-12 w-auto"
+            />
+          </div>
+          <h1 className="text-2xl font-bold mb-3 text-gray-900">Garmin Connect Connected! 🎉</h1>
+          <p className="text-gray-700 mb-2 text-lg font-medium">
+            You're all set! Your runs will now sync automatically.
+          </p>
           <p className="text-gray-600 mb-6">
-            Your Garmin account is now connected and ready to sync your activities.
+            Track your progress, hit your goals, and let's go fast together! 🚀
           </p>
         </div>
       );
@@ -144,30 +179,46 @@ const GarminConnectSuccess = () => {
           <div className="space-y-2">
             {status === 'error' && (
               <button 
-                onClick={() => navigate('/settings')} 
-                className="w-full bg-red-600 text-white px-4 py-2 rounded-lg hover:bg-red-700 transition-colors"
+                onClick={handleClose} 
+                className="w-full bg-red-600 text-white px-4 py-2 rounded-lg hover:bg-red-700 transition-colors font-semibold"
               >
-                Back to Settings
+                Close
               </button>
             )}
             
             {status === 'success' && (
-              <button 
-                onClick={handleReturnHome} 
-                className="w-full bg-orange-600 text-white px-4 py-2 rounded-lg hover:bg-orange-700 transition-colors"
-              >
-                Return Home
-              </button>
+              <>
+                <button 
+                  onClick={handleStartTracking} 
+                  className="w-full bg-orange-600 text-white px-4 py-2 rounded-lg hover:bg-orange-700 transition-colors font-semibold mb-2"
+                >
+                  Start Tracking 🚀
+                </button>
+                <button 
+                  onClick={handleClose} 
+                  className="w-full bg-gray-200 text-gray-700 px-4 py-2 rounded-lg hover:bg-gray-300 transition-colors"
+                >
+                  Close
+                </button>
+              </>
             )}
             
             {status === 'unknown' && (
               <button 
-                onClick={() => navigate('/settings')} 
-                className="w-full bg-gray-600 text-white px-4 py-2 rounded-lg hover:bg-gray-700 transition-colors"
+                onClick={handleClose} 
+                className="w-full bg-gray-600 text-white px-4 py-2 rounded-lg hover:bg-gray-700 transition-colors font-semibold"
               >
-                Back to Settings
+                Close
               </button>
             )}
+          </div>
+          
+          {/* Garmin Attribution */}
+          <div className="mt-6 pt-4 border-t border-gray-200">
+            <p className="text-xs text-gray-500 text-center">
+              Garmin Connect is a trademark of Garmin Ltd. or its subsidiaries. 
+              GoFast is not affiliated with Garmin Ltd. or its subsidiaries.
+            </p>
           </div>
         </div>
       </div>

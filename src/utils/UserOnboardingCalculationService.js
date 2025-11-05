@@ -61,9 +61,9 @@ export class UserOnboardingCalculationService {
         },
         {
           title: "Connect Garmin",
-          description: "Sync your Garmin device to track activities automatically",
-          icon: "⌚",
-          path: "/garmin/connect",
+          description: "Sync your Garmin Connect account to track activities automatically",
+          icon: "garmin", // Special icon type - will render Garmin logo
+          path: "/settings",
           color: "bg-blue-500",
           priority: "high",
           showIf: !athlete.garmin?.connected // Only show if not connected

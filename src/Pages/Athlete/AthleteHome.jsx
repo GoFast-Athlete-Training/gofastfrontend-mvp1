@@ -44,9 +44,9 @@ const AthleteHome = () => {
       const token = await user.getIdToken();
       console.log('🔐 ATHLETE HOME: Got Firebase token for user:', user.email);
       
-      // Call backend to get athlete data using athlete person hydrate route
-      // Firebase ID comes from verified token (middleware handles it)
-      const response = await fetch('https://gofastbackendv2-fall2025.onrender.com/api/athlete/athletepersonhydrate', {
+      // Call universal hydration endpoint - includes RunCrews, everything in one call
+      // Mirror of Ignite's /api/owner/hydrate pattern
+      const response = await fetch('https://gofastbackendv2-fall2025.onrender.com/api/athlete/hydrate', {
         method: 'GET',
         headers: {
           'Content-Type': 'application/json',
@@ -76,8 +76,15 @@ const AthleteHome = () => {
           localStorage.setItem('onboardingState', JSON.stringify(onboarding));
           localStorage.setItem('athleteId', athlete.athleteId);
           
-          // Fetch user's crews after athlete is loaded
-          await fetchMyCrews(user);
+          // Use RunCrews from hydration response (no separate API call needed!)
+          if (athlete.runCrews && athlete.runCrews.length > 0) {
+            setHasCrews(true);
+            setMyCrews(athlete.runCrews);
+            updateCardsForCrews(athlete.runCrews);
+          } else {
+            setHasCrews(false);
+            setMyCrews([]);
+          }
         }
       } else {
         console.log('❌ ATHLETE HOME: Failed to hydrate, athlete not found');
@@ -92,35 +99,6 @@ const AthleteHome = () => {
     }
   };
 
-  const fetchMyCrews = async (user) => {
-    try {
-      const token = await user.getIdToken();
-      const response = await fetch('https://gofastbackendv2-fall2025.onrender.com/api/runcrew/mine', {
-        method: 'GET',
-        headers: {
-          'Content-Type': 'application/json',
-          'Authorization': `Bearer ${token}`
-        }
-      });
-      
-      if (response.ok) {
-        const data = await response.json();
-        if (data.success && data.count > 0) {
-          setHasCrews(true);
-          setMyCrews(data.runCrews);
-          // Update cards to show "Go to RunCrew Central" instead of "Join/Create"
-          updateCardsForCrews(data.runCrews);
-        } else {
-          setHasCrews(false);
-          setMyCrews([]);
-        }
-      }
-    } catch (error) {
-      console.error('Error fetching crews:', error);
-      setHasCrews(false);
-      setMyCrews([]);
-    }
-  };
 
   const updateCardsForCrews = (crews) => {
     // Update the display cards to show RunCrew Central if user has crews
@@ -248,7 +226,17 @@ const AthleteHome = () => {
                 onClick={() => navigate(card.path)}
                 className="bg-white rounded-xl shadow-lg p-6 hover:shadow-xl transition-all cursor-pointer transform hover:scale-105 text-center w-full max-w-sm"
               >
-                <div className="text-5xl mb-4">{card.icon}</div>
+                <div className="mb-4 flex justify-center">
+                  {card.icon === 'garmin' ? (
+                    <img 
+                      src="/Garmin_connect_badge_digital_RESOURCE_FILE-01.png" 
+                      alt="Garmin Connect" 
+                      className="h-16 w-auto"
+                    />
+                  ) : (
+                    <div className="text-5xl">{card.icon}</div>
+                  )}
+                </div>
                 <h3 className="text-xl font-bold text-gray-900 mb-3">{card.title}</h3>
                 <p className="text-gray-600 mb-4">{card.description}</p>
                 <div className={`${card.color} text-white px-4 py-2 rounded-lg font-bold`}>

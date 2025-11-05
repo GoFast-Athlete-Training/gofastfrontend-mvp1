@@ -212,13 +212,20 @@ const GarminConnectSettings = () => {
   if (!garminStatus?.connected) {
     return (
       <div className="bg-white p-6 rounded-lg shadow-md">
-        <h3 className="text-lg font-semibold text-gray-800 mb-4">Garmin Connect</h3>
+        <div className="flex items-center space-x-3 mb-4">
+          <img 
+            src="/Garmin_connect_badge_digital_RESOURCE_FILE-01.png" 
+            alt="Garmin Connect" 
+            className="h-8 w-auto"
+          />
+          <h3 className="text-lg font-semibold text-gray-800">Garmin Connect</h3>
+        </div>
         <p className="text-gray-600 mb-4">Not connected to Garmin Connect</p>
         <button
           onClick={() => window.location.href = '/settings'}
           className="bg-blue-600 text-white px-4 py-2 rounded-md hover:bg-blue-700"
         >
-          Connect Garmin
+          Connect Garmin Connect
         </button>
       </div>
     );
@@ -226,13 +233,20 @@ const GarminConnectSettings = () => {
 
   return (
     <div className="bg-white p-6 rounded-lg shadow-md">
-      <h3 className="text-lg font-semibold text-gray-800 mb-4">Garmin Connect</h3>
+      <div className="flex items-center space-x-3 mb-4">
+        <img 
+          src="/Garmin_connect_badge_digital_RESOURCE_FILE-01.png" 
+          alt="Garmin Connect" 
+          className="h-8 w-auto"
+        />
+        <h3 className="text-lg font-semibold text-gray-800">Garmin Connect</h3>
+      </div>
       
       <div className="mb-4">
         <p className="text-gray-600 text-sm mb-2">
           You've given the following applications permission to interact with your Garmin Connect account.
         </p>
-        <a href="#" className="text-blue-600 text-sm hover:underline">Learn More</a>
+        <a href="https://developer.garmin.com" target="_blank" rel="noopener noreferrer" className="text-blue-600 text-sm hover:underline">Learn More</a>
       </div>
 
       <div className="border-t pt-4">
@@ -311,6 +325,14 @@ const GarminConnectSettings = () => {
         <div className="text-xs text-gray-500 mt-4 pt-4 border-t">
           <p>Last synced: {garminStatus.lastSyncedAt ? new Date(garminStatus.lastSyncedAt).toLocaleString() : 'Never'}</p>
           <p>Connected: {garminStatus.connectedAt ? new Date(garminStatus.connectedAt).toLocaleString() : 'Unknown'}</p>
+        </div>
+        
+        {/* Garmin Attribution */}
+        <div className="mt-4 pt-4 border-t border-gray-200">
+          <p className="text-xs text-gray-500">
+            Garmin Connect is a trademark of Garmin Ltd. or its subsidiaries. 
+            GoFast is not affiliated with Garmin Ltd. or its subsidiaries.
+          </p>
         </div>
 
         {/* Debug Data Display */}

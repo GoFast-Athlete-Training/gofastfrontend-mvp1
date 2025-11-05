@@ -117,12 +117,25 @@ const Settings = () => {
         'width=600,height=700,scrollbars=yes,resizable=yes'
       );
       
-      // Step 3: Listen for popup completion
+      // Step 3: Listen for messages from popup
+      window.addEventListener('message', (event) => {
+        // Verify origin for security (in production, check actual origin)
+        if (event.data.type === 'GARMIN_CONNECTED') {
+          console.log('✅ Garmin connected successfully!');
+          // Refresh connection status
+          checkConnectionStatus();
+          // Optionally show success toast
+        } else if (event.data.type === 'GARMIN_CONNECTION_ERROR') {
+          console.error('❌ Garmin connection error:', event.data.message);
+          alert('Garmin connection failed: ' + event.data.message);
+        }
+      });
+      
+      // Fallback: Check if popup closed without message
       const checkClosed = setInterval(() => {
         if (popup.closed) {
           clearInterval(checkClosed);
           console.log('🔄 Popup closed, checking connection status...');
-          
           // Check if connection was successful by calling backend
           checkConnectionStatus();
         }
@@ -164,9 +177,15 @@ const Settings = () => {
             {/* Garmin Card */}
             <div className="bg-white rounded-xl shadow-lg p-8 hover:shadow-xl transition-all duration-200 border-2 border-gray-200">
               <div className="text-center">
-                <div className="text-5xl mb-4">⌚</div>
+                <div className="mb-4 flex justify-center">
+                  <img 
+                    src="/Garmin_connect_badge_digital_RESOURCE_FILE-01.png" 
+                    alt="Garmin Connect" 
+                    className="h-16 w-auto"
+                  />
+                </div>
                 <h3 className="text-2xl font-semibold mb-3">Garmin Connect</h3>
-                <p className="text-gray-600 text-lg mb-4">Sync your runs and activities from Garmin</p>
+                <p className="text-gray-600 text-lg mb-4">Sync your runs and activities from Garmin Connect</p>
                 
                 {connections.garmin && (
                   <div className="flex items-center justify-center space-x-2 mb-4">
@@ -242,10 +261,18 @@ const Settings = () => {
         {/* Info Section */}
         <div className="bg-blue-50 rounded-xl p-6">
           <h3 className="text-lg font-semibold text-blue-900 mb-2">Why Connect?</h3>
-          <p className="text-blue-800">
+          <p className="text-blue-800 mb-4">
             Connecting your devices allows GoFast to automatically track your runs, 
             sync your activities, and provide personalized insights and recommendations.
           </p>
+          
+          {/* Garmin Attribution */}
+          <div className="mt-4 pt-4 border-t border-blue-200">
+            <p className="text-xs text-blue-700">
+              Garmin Connect is a trademark of Garmin Ltd. or its subsidiaries. 
+              GoFast is not affiliated with Garmin Ltd. or its subsidiaries.
+            </p>
+          </div>
         </div>
       </div>
     </div>
