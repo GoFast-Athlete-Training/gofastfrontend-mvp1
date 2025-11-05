@@ -197,7 +197,7 @@ export default function RunCrewCentral() {
   // Topic-specific messages - use actual posts from API
   // For now, all posts go to general (topic filtering can be added later)
   const topicMessages = {
-    general: posts.map(formatPost),
+    general: (posts || []).map(formatPost),
     tips: [], // TODO: Filter posts by topic
     social: [], // TODO: Filter posts by topic
     training: [], // TODO: Filter posts by topic
@@ -514,12 +514,21 @@ export default function RunCrewCentral() {
                   scrollBehavior: 'smooth'
                 }}
               >
-                {/* Date separator */}
-                <div className="text-center">
-                  <span className="text-xs text-gray-500 bg-gray-100 px-3 py-1 rounded-full">Today</span>
-                </div>
+                {chatMessages.length === 0 ? (
+                  <div className="flex items-center justify-center h-full">
+                    <div className="text-center">
+                      <div className="text-4xl mb-3">💬</div>
+                      <p className="text-gray-500 text-sm">No messages yet. Start the conversation!</p>
+                    </div>
+                  </div>
+                ) : (
+                  <>
+                    {/* Date separator */}
+                    <div className="text-center">
+                      <span className="text-xs text-gray-500 bg-gray-100 px-3 py-1 rounded-full">Today</span>
+                    </div>
 
-                {chatMessages.map((msg) => (
+                    {chatMessages.map((msg) => (
                   <div key={msg.id} className="flex items-start space-x-2">
                     <div className="flex-shrink-0">
                       <div className="w-8 h-8 rounded-full bg-gray-200 flex items-center justify-center text-xs font-semibold text-gray-600 overflow-hidden">
@@ -554,7 +563,9 @@ export default function RunCrewCentral() {
                       </div>
                     </div>
                   </div>
-                ))}
+                    ))}
+                  </>
+                )}
               </div>
 
               {/* Message Input - iMessage style (Mobile Native UX) */}
