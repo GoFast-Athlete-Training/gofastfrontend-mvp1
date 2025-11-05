@@ -2,7 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { signOut } from 'firebase/auth';
 import { auth } from '../../firebase';
-import { onAuthStateChanged } from 'firebase/auth';
+import { onAuthStateChanged, onIdTokenChanged } from 'firebase/auth';
 import UserOnboardingCalculationService from '../../utils/UserOnboardingCalculationService';
 
 const AthleteHome = () => {
@@ -15,10 +15,22 @@ const AthleteHome = () => {
   const [myCrews, setMyCrews] = useState([]);
 
   useEffect(() => {
-    const unsubscribe = onAuthStateChanged(auth, async (user) => {
+    let authUnsubscribe = null;
+    let tokenUnsubscribe = null;
+
+    // Listen for auth state changes (user login/logout)
+    authUnsubscribe = onAuthStateChanged(auth, (user) => {
       if (user) {
-        console.log('✅ ATHLETE HOME: User is here! Loading profile for:', user.email);
-        await hydrateAthleteData(user);
+        console.log('✅ ATHLETE HOME: User authenticated:', user.email);
+        
+        // Listen for token refreshes - Firebase auto-refreshes tokens
+        // This ensures we always have a valid token before making API calls
+        tokenUnsubscribe = onIdTokenChanged(auth, async (firebaseUser) => {
+          if (firebaseUser) {
+            console.log('🔄 ATHLETE HOME: Token refreshed, hydrating athlete data...');
+            await hydrateAthleteData(firebaseUser);
+          }
+        });
       } else {
         // This should never happen since Splash redirects unauthenticated users
         console.log('❌ ATHLETE HOME: No user - this should not happen!');
@@ -26,7 +38,11 @@ const AthleteHome = () => {
       }
     });
 
-    return () => unsubscribe();
+    // Cleanup
+    return () => {
+      if (authUnsubscribe) authUnsubscribe();
+      if (tokenUnsubscribe) tokenUnsubscribe();
+    };
   }, [navigate]);
 
   const hydrateAthleteData = async (user) => {
@@ -41,32 +57,20 @@ const AthleteHome = () => {
         return;
       }
       
-      // Force token refresh to avoid expired tokens (getIdToken(true) forces refresh)
-      const token = await user.getIdToken(true);
-      console.log('🔐 ATHLETE HOME: Got fresh Firebase token for user:', user.email);
+      // Get token - Firebase SDK automatically refreshes if needed
+      // onIdTokenChanged ensures we only call this when token is fresh
+      const token = await user.getIdToken();
+      console.log('🔐 ATHLETE HOME: Got Firebase token for user:', user.email);
       
       // Call universal hydration endpoint - includes RunCrews, everything in one call
       // Mirror of Ignite's /api/owner/hydrate pattern
-      let response = await fetch('https://gofastbackendv2-fall2025.onrender.com/api/athlete/hydrate', {
+      const response = await fetch('https://gofastbackendv2-fall2025.onrender.com/api/athlete/hydrate', {
         method: 'GET',
         headers: {
           'Content-Type': 'application/json',
           'Authorization': `Bearer ${token}`
         }
       });
-      
-      // If token expired, get fresh token and retry once
-      if (response.status === 401) {
-        console.log('⚠️ ATHLETE HOME: Token expired, getting fresh token and retrying...');
-        const freshToken = await user.getIdToken(true);
-        response = await fetch('https://gofastbackendv2-fall2025.onrender.com/api/athlete/hydrate', {
-          method: 'GET',
-          headers: {
-            'Content-Type': 'application/json',
-            'Authorization': `Bearer ${freshToken}`
-          }
-        });
-      }
       
       if (response.ok) {
         const data = await response.json();
