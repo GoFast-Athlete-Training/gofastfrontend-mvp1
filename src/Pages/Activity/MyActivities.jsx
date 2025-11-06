@@ -157,7 +157,12 @@ const MyActivities = () => {
         )}
 
         {/* Activities List */}
-        {activities.length === 0 ? (
+        {/* Filter for running activities only (MVP1) - backend already filters, but client-side safety */}
+        {activities.filter(activity => {
+          if (!activity.activityType) return false;
+          const type = activity.activityType.toLowerCase();
+          return type.includes('run') || type === 'running';
+        }).length === 0 ? (
           <div className="bg-white rounded-xl shadow-lg p-12 text-center">
             <div className="text-6xl mb-4">🏃‍♂️</div>
             <h3 className="text-xl font-bold text-gray-900 mb-2">No Activities Yet</h3>
@@ -171,7 +176,14 @@ const MyActivities = () => {
           </div>
         ) : (
           <div className="space-y-4">
-            {activities.map((activity, index) => (
+            {activities
+              .filter(activity => {
+                // MVP1: Only show running activities
+                if (!activity.activityType) return false;
+                const type = activity.activityType.toLowerCase();
+                return type.includes('run') || type === 'running';
+              })
+              .map((activity, index) => (
               <div
                 key={activity.id || index}
                 onClick={() => navigate(`/activity/${activity.id}`)}
@@ -181,16 +193,37 @@ const MyActivities = () => {
                   <div className="flex-1">
                     <div className="flex items-center gap-3 mb-3">
                       <span className="text-2xl">🏃‍♂️</span>
-                      <div>
-                        <h3 className="text-lg font-bold text-gray-900">
-                          {activity.activityName || (activity.activityType ? 
-                            activity.activityType
-                              .replace(/_/g, ' ')
-                              .toLowerCase()
-                              .replace(/\b\w/g, l => l.toUpperCase())
-                            : 'Activity')}
+                      <div className="flex-1">
+                        {/* ActivityName (bigger) */}
+                        <h3 className="text-xl font-bold text-gray-900 mb-1">
+                          {(activity.activityName && !activity.activityName.includes('Sample')) 
+                            ? activity.activityName 
+                            : (activity.activityType ? 
+                                activity.activityType
+                                  .replace(/_/g, ' ')
+                                  .toLowerCase()
+                                  .replace(/\b\w/g, l => l.toUpperCase())
+                                : 'Activity')}
                         </h3>
-                        <p className="text-sm text-gray-600">
+                        {/* ActivityType (smaller with icon) */}
+                        <div className="flex items-center gap-2">
+                          <span className="text-xs text-gray-500">🏃</span>
+                          <span className="text-sm text-gray-600">
+                            {activity.activityType ? 
+                              activity.activityType
+                                .replace(/_/g, ' ')
+                                .toLowerCase()
+                                .replace(/\b\w/g, l => l.toUpperCase())
+                              : 'Run'}
+                          </span>
+                          {activity.deviceName && (
+                            <>
+                              <span className="text-xs text-gray-400">•</span>
+                              <span className="text-xs text-gray-500">{activity.deviceName}</span>
+                            </>
+                          )}
+                        </div>
+                        <p className="text-sm text-gray-600 mt-1">
                           {formatDate(activity.startTime)} at {formatTime(activity.startTime)}
                         </p>
                       </div>

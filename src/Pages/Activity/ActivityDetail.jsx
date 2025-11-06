@@ -157,15 +157,36 @@ const ActivityDetail = () => {
         <div className="bg-white rounded-xl shadow-lg p-6 mb-6">
           <div className="flex items-center gap-4 mb-4">
             <div className="text-4xl">🏃‍♂️</div>
-            <div>
-              <h2 className="text-2xl font-bold text-gray-900">
-                {activity.activityName || (activity.activityType ? 
-                  activity.activityType
-                    .replace(/_/g, ' ')
-                    .toLowerCase()
-                    .replace(/\b\w/g, l => l.toUpperCase())
-                  : 'Activity')}
+            <div className="flex-1">
+              {/* ActivityName (bigger) */}
+              <h2 className="text-3xl font-bold text-gray-900 mb-2">
+                {(activity.activityName && !activity.activityName.includes('Sample')) 
+                  ? activity.activityName 
+                  : (activity.activityType ? 
+                      activity.activityType
+                        .replace(/_/g, ' ')
+                        .toLowerCase()
+                        .replace(/\b\w/g, l => l.toUpperCase())
+                      : 'Activity')}
               </h2>
+              {/* ActivityType (smaller with icon) */}
+              <div className="flex items-center gap-2 mb-2">
+                <span className="text-sm text-gray-500">🏃</span>
+                <span className="text-base text-gray-600">
+                  {activity.activityType ? 
+                    activity.activityType
+                      .replace(/_/g, ' ')
+                      .toLowerCase()
+                      .replace(/\b\w/g, l => l.toUpperCase())
+                    : 'Run'}
+                </span>
+                {activity.deviceName && (
+                  <>
+                    <span className="text-sm text-gray-400">•</span>
+                    <span className="text-sm text-gray-500">{activity.deviceName}</span>
+                  </>
+                )}
+              </div>
               <p className="text-gray-600">
                 {formatDate(activity.startTime)} at {formatTime(activity.startTime)}
               </p>
