@@ -1,5 +1,6 @@
 import React, { useState, useRef, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
+import { auth } from '../../firebase';
 
 const AthleteCreateProfile = () => {
   const navigate = useNavigate();
@@ -20,26 +21,69 @@ const AthleteCreateProfile = () => {
     profilePhotoPreview: null
   });
 
-  // Pre-fill form with Adam's data for testing
+  // Load existing profile data and Firebase photo when editing
   useEffect(() => {
-    const adamData = {
-      firstName: 'Adam',
-      lastName: 'Cole',
-      phoneNumber: '(555) 123-4567',
-      gofastHandle: 'adam_cole',
-      birthday: '1990-01-15',
-      gender: 'male',
-      city: 'Charlotte',
-      state: 'NC',
-      primarySport: 'running',
-      bio: 'Passionate runner focused on marathon training and community building.',
-      instagram: '@adamcole_runs'
+    const loadExistingProfile = async () => {
+      try {
+        // Check if we're editing an existing profile
+        const storedProfile = localStorage.getItem('athleteProfile');
+        const firebaseUser = auth.currentUser;
+        
+        let existingData = {};
+        
+        // Load from stored profile if editing
+        if (storedProfile) {
+          const athlete = JSON.parse(storedProfile);
+          existingData = {
+            firstName: athlete.firstName || '',
+            lastName: athlete.lastName || '',
+            phoneNumber: athlete.phoneNumber || '',
+            birthday: athlete.birthday || '',
+            gender: athlete.gender || '',
+            city: athlete.city || '',
+            state: athlete.state || '',
+            primarySport: athlete.primarySport || '',
+            gofastHandle: athlete.gofastHandle || '',
+            bio: athlete.bio || '',
+            instagram: athlete.instagram || ''
+          };
+          
+          // Load photo from Firebase or stored profile
+          if (athlete.photoURL) {
+            existingData.profilePhotoPreview = athlete.photoURL;
+          } else if (firebaseUser?.photoURL) {
+            existingData.profilePhotoPreview = firebaseUser.photoURL;
+          }
+        } else if (firebaseUser?.photoURL) {
+          // New profile but has Firebase photo
+          existingData.profilePhotoPreview = firebaseUser.photoURL;
+        }
+        
+        // Pre-fill with existing data or test data
+        const defaultData = storedProfile ? existingData : {
+          firstName: 'Adam',
+          lastName: 'Cole',
+          phoneNumber: '(555) 123-4567',
+          gofastHandle: 'adam_cole',
+          birthday: '1990-01-15',
+          gender: 'male',
+          city: 'Charlotte',
+          state: 'NC',
+          primarySport: 'running',
+          bio: 'Passionate runner focused on marathon training and community building.',
+          instagram: '@adamcole_runs'
+        };
+        
+        setFormData(prev => ({
+          ...prev,
+          ...defaultData
+        }));
+      } catch (error) {
+        console.error('Error loading profile:', error);
+      }
     };
     
-    setFormData(prev => ({
-      ...prev,
-      ...adamData
-    }));
+    loadExistingProfile();
   }, []);
 
   const handleInputChange = (field, value) => {
@@ -89,19 +133,25 @@ const AthleteCreateProfile = () => {
     }
 
     try {
-      // Get Firebase ID and token from localStorage (set during signup)
-      const firebaseId = localStorage.getItem('firebaseId');
-      const email = localStorage.getItem('email');
-      const firebaseToken = localStorage.getItem('firebaseToken');
+      // Get current Firebase user and fresh token
+      const firebaseUser = auth.currentUser;
+      
+      if (!firebaseUser) {
+        alert('No user logged in. Please sign in first.');
+        navigate('/athletesignin');
+        return;
+      }
+      
+      // Get fresh token (Firebase SDK automatically refreshes expired tokens)
+      const firebaseToken = await firebaseUser.getIdToken();
+      const firebaseId = firebaseUser.uid;
+      const email = firebaseUser.email;
+      const photoURL = firebaseUser.photoURL || formData.profilePhotoPreview;
       
       console.log('🔐 Firebase ID:', firebaseId);
       console.log('📧 Email:', email);
       console.log('🎫 Firebase Token:', firebaseToken ? 'Present' : 'Missing');
-      
-      if (!firebaseId) {
-        alert('No Firebase ID found. Please sign up first.');
-        return;
-      }
+      console.log('📷 Photo URL:', photoURL);
 
       // Step 1: Create/find athlete with basic info
       const backendUrl = 'https://gofastbackendv2-fall2025.onrender.com';
@@ -118,7 +168,8 @@ const AthleteCreateProfile = () => {
           firebaseId: firebaseId,
           email: email,
           firstName: formData.firstName,
-          lastName: formData.lastName
+          lastName: formData.lastName,
+          photoURL: photoURL
         })
       });
 
@@ -129,13 +180,20 @@ const AthleteCreateProfile = () => {
       const athleteData = await authResponse.json();
       console.log('✅ Step 1 - Athlete created/found:', athleteData);
       
-      // Step 2: Update athlete with full profile
-      console.log('🌐 Step 2: Updating profile:', `${backendUrl}/api/athlete/${athleteData.id}/profile`);
+      // Get athlete ID from response (could be athleteId or data.id)
+      const athleteId = athleteData.athleteId || athleteData.data?.id;
+      if (!athleteId) {
+        throw new Error('No athlete ID returned from server');
+      }
       
-      const profileResponse = await fetch(`${backendUrl}/api/athlete/${athleteData.id}/profile`, {
+      // Step 2: Update athlete with full profile
+      console.log('🌐 Step 2: Updating profile:', `${backendUrl}/api/athlete/${athleteId}/profile`);
+      
+      const profileResponse = await fetch(`${backendUrl}/api/athlete/${athleteId}/profile`, {
         method: 'PUT',
         headers: {
           'Content-Type': 'application/json',
+          'Authorization': `Bearer ${firebaseToken}`
         },
         body: JSON.stringify({
           firstName: formData.firstName,
@@ -148,7 +206,8 @@ const AthleteCreateProfile = () => {
           state: formData.state,
           primarySport: formData.primarySport,
           bio: formData.bio,
-          instagram: formData.instagram
+          instagram: formData.instagram,
+          photoURL: photoURL
         })
       });
 
@@ -160,7 +219,7 @@ const AthleteCreateProfile = () => {
       console.log('✅ Step 2 - Profile updated:', profileData);
       
       // Store athlete data
-      localStorage.setItem('athleteId', athleteData.id);
+      localStorage.setItem('athleteId', athleteId);
       localStorage.setItem('athleteProfile', JSON.stringify(profileData.athlete));
 
       // Navigate to athlete home after profile setup
