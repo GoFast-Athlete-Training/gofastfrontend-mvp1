@@ -64,15 +64,15 @@ const AthleteCreateProfile = () => {
         const defaultData = storedProfile ? existingData : {
           firstName: 'Adam',
           lastName: 'Cole',
-          phoneNumber: '(555) 123-4567',
-          gofastHandle: 'adam_cole',
+          phoneNumber: '',
+          gofastHandle: 'adamgofast',
           birthday: '1990-01-15',
           gender: 'male',
-          city: 'Charlotte',
-          state: 'NC',
+          city: 'Arlington',
+          state: 'VA',
           primarySport: 'running',
-          bio: 'Passionate runner focused on marathon training and community building.',
-          instagram: '@adamcole_runs'
+          bio: 'Passionate runner. Building communities.',
+          instagram: ''
         };
         
         setFormData(prev => ({
