@@ -7,109 +7,33 @@ const AthleteCreateProfile = () => {
   const navigate = useNavigate();
   const fileInputRef = useRef(null);
   const [formData, setFormData] = useState({
-    firstName: '',
-    lastName: '',
+    firstName: 'Adam',
+    lastName: 'Cole',
     phoneNumber: '',
-    birthday: '',
-    gender: '',
-    city: '',
-    state: '',
-    primarySport: '',
-    gofastHandle: '',
-    bio: '',
+    birthday: '1990-01-15',
+    gender: 'male',
+    city: 'Arlington',
+    state: 'VA',
+    primarySport: 'running',
+    gofastHandle: 'adamgofast',
+    bio: 'Passionate runner. Building communities.',
     instagram: '',
     profilePhoto: null,
     profilePhotoPreview: null
   });
 
-  // Load existing profile data and Firebase photo when editing
+  // Load Firebase photo if available
   useEffect(() => {
-    const loadExistingProfile = async () => {
-      try {
-        // Check if we're editing an existing profile
-        const storedProfile = localStorage.getItem('athleteProfile');
-        const firebaseUser = auth.currentUser;
-        
-        let existingData = {};
-        let hasCompleteProfile = false;
-        
-        // Load from stored profile if editing
-        if (storedProfile) {
-          const athlete = JSON.parse(storedProfile);
-          // Only use stored data if profile has gofastHandle (indicates it's been set up)
-          hasCompleteProfile = !!athlete.gofastHandle;
-          
-          if (hasCompleteProfile) {
-            existingData = {
-              firstName: athlete.firstName || '',
-              lastName: athlete.lastName || '',
-              phoneNumber: athlete.phoneNumber || '',
-              birthday: athlete.birthday ? new Date(athlete.birthday).toISOString().split('T')[0] : '',
-              gender: athlete.gender || '',
-              city: athlete.city || '',
-              state: athlete.state || '',
-              primarySport: athlete.primarySport || '',
-              gofastHandle: athlete.gofastHandle || '',
-              bio: athlete.bio || '',
-              instagram: athlete.instagram || ''
-            };
-            
-            // Load photo from Firebase or stored profile
-            if (athlete.photoURL) {
-              existingData.profilePhotoPreview = athlete.photoURL;
-            } else if (firebaseUser?.photoURL) {
-              existingData.profilePhotoPreview = firebaseUser.photoURL;
-            }
-          }
-        }
-        
-        // If no complete profile, load photo from Firebase if available
-        if (!hasCompleteProfile && firebaseUser?.photoURL) {
-          existingData.profilePhotoPreview = firebaseUser.photoURL;
-        }
-        
-        // Pre-fill with existing data (if complete) or test data (if new/incomplete)
-        const defaultData = hasCompleteProfile ? existingData : {
-          firstName: 'Adam',
-          lastName: 'Cole',
-          phoneNumber: '',
-          gofastHandle: 'adamgofast',
-          birthday: '1990-01-15',
-          gender: 'male',
-          city: 'Arlington',
-          state: 'VA',
-          primarySport: 'running',
-          bio: 'Passionate runner. Building communities.',
-          instagram: ''
-        };
-        
-        console.log('📝 PROFILE SETUP: Pre-filling form with:', defaultData);
-        
+    const loadPhoto = () => {
+      const firebaseUser = auth.currentUser;
+      if (firebaseUser?.photoURL) {
         setFormData(prev => ({
           ...prev,
-          ...defaultData
-        }));
-      } catch (error) {
-        console.error('Error loading profile:', error);
-        // Even on error, set test data as fallback
-        setFormData(prev => ({
-          ...prev,
-          firstName: 'Adam',
-          lastName: 'Cole',
-          phoneNumber: '',
-          gofastHandle: 'adamgofast',
-          birthday: '1990-01-15',
-          gender: 'male',
-          city: 'Arlington',
-          state: 'VA',
-          primarySport: 'running',
-          bio: 'Passionate runner. Building communities.',
-          instagram: ''
+          profilePhotoPreview: firebaseUser.photoURL
         }));
       }
     };
-    
-    loadExistingProfile();
+    loadPhoto();
   }, []);
 
   const handleInputChange = (field, value) => {
