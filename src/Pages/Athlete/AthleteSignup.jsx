@@ -56,10 +56,16 @@ const SignupPage = () => {
       localStorage.setItem("athleteId", athlete.athleteId);
       localStorage.setItem("email", athlete.data?.email || result.email);
       
-      // SUCCESS: Navigate to profile setup
-      console.log("✅ SUCCESS: Athlete found/created in database");
-      console.log("✅ SUCCESS: Navigating to profile setup");
-      navigate('/athlete-create-profile');
+      // Route based on profile completion (check gofastHandle - better indicator than firstName)
+      // If gofastHandle exists, athlete has completed profile setup → route to home
+      // If gofastHandle is null, athlete needs profile setup → route to profile setup
+      if (athlete.data?.gofastHandle) {
+        console.log("✅ SUCCESS: Existing athlete with profile → Athlete Home");
+        navigate("/athlete-home");
+      } else {
+        console.log("✅ SUCCESS: New athlete or incomplete profile → Profile setup");
+        navigate('/athlete-create-profile');
+      }
       
     } catch (error) {
       console.error("❌ Signup failed:", error);

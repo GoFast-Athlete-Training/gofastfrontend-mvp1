@@ -183,7 +183,7 @@ const MyActivities = () => {
                       <span className="text-2xl">🏃‍♂️</span>
                       <div>
                         <h3 className="text-lg font-bold text-gray-900">
-                          {activity.activityName || activity.activityType || 'Activity'}
+                          {activity.activityName || (activity.activityType ? activity.activityType.replace(/_/g, ' ').replace(/\b\w/g, l => l.toUpperCase()) : 'Activity')}
                         </h3>
                         <p className="text-sm text-gray-600">
                           {formatDate(activity.startTime)} at {formatTime(activity.startTime)}
