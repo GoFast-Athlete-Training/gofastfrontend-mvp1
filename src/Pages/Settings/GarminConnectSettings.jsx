@@ -323,7 +323,7 @@ const GarminConnectSettings = () => {
               disabled={updating}
               className="w-full py-2 px-4 rounded-lg font-medium text-gray-700 bg-gray-200 hover:bg-gray-300 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
             >
-              {updating ? 'Disconnecting...' : 'Disconnect Garmin'}
+              {updating ? 'Disconnecting...' : 'Disconnect Garmin Connect'}
             </button>
             <p className="text-xs text-gray-500 mt-2 text-center">
               This deregisters your account from Garmin and stops all data syncing

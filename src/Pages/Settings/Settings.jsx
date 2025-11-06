@@ -213,7 +213,7 @@ const Settings = () => {
                     onClick={disconnectGarmin}
                     className="w-full py-3 px-6 rounded-lg font-semibold text-white bg-red-500 hover:bg-red-600 transition-colors"
                   >
-                    Disconnect Garmin
+                    Disconnect Garmin Connect
                   </button>
                 ) : (
                   <button
