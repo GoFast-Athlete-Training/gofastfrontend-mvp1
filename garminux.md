@@ -16,7 +16,7 @@ Garmin Connect integration allows athletes to sync their activities automaticall
 ### Required Elements
 
 1. **Official Garmin Assets**
-   - Use official Garmin Connect badge from `/public/Garmin_connect_badge_digital_RESOURCE_FILE-01.png`
+   - Use official Garmin Connect badge from `/public/Garmin_Connect_app_1024x1024-02.png`
    - Never use generic watch emojis or unofficial logos
    - Maintain proper aspect ratios and sizing
 
@@ -252,8 +252,7 @@ CTA: "Try Again"
 
 ### Brand Assets Used
 
-- `/public/Garmin_connect_badge_digital_RESOURCE_FILE-01.png` - Primary UI badge
-- `/public/Garmin_Connect_app_1024x1024-02.png` - App icon (if needed)
+- `/public/Garmin_Connect_app_1024x1024-02.png` - Primary UI badge and app icon
 - Attribution text on all pages
 
 ---

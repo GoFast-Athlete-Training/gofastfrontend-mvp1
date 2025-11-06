@@ -1,12 +1,68 @@
-import React, { useState } from 'react';
-import { useNavigate } from 'react-router-dom';
+import React, { useState, useEffect } from 'react';
+import { useNavigate, useParams } from 'react-router-dom';
+import { auth } from '../../firebase';
 
+const API_BASE = 'https://gofastbackendv2-fall2025.onrender.com/api';
+
+/**
+ * RunCrewCentralAdmin - Admin View
+ * Crew ID is the primary relationship manager
+ * Hydrates: /api/runcrew/:id (members, runs, etc.)
+ */
 export default function RunCrewCentralAdmin() {
   const navigate = useNavigate();
+  const { id } = useParams();
+  const [crew, setCrew] = useState(null);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState(null);
   const [showEventForm, setShowEventForm] = useState(false);
   const [leaderboardType, setLeaderboardType] = useState('miles');
   const [messageInput, setMessageInput] = useState('');
   const [activeTopic, setActiveTopic] = useState('general');
+
+  // Hydrate crew data on mount
+  useEffect(() => {
+    if (id) {
+      fetchCrewData();
+    }
+  }, [id]);
+
+  const fetchCrewData = async () => {
+    setLoading(true);
+    setError(null);
+    
+    try {
+      const user = auth.currentUser;
+      if (!user) {
+        setError('Please sign in');
+        navigate('/athlete-home');
+        return;
+      }
+      
+      const token = await user.getIdToken();
+      const res = await fetch(`${API_BASE}/runcrew/${id}`, {
+        headers: {
+          'Authorization': `Bearer ${token}`
+        }
+      });
+      
+      if (!res.ok) {
+        throw new Error('Failed to fetch crew data');
+      }
+      
+      const data = await res.json();
+      if (data.success && data.runCrew) {
+        setCrew(data.runCrew);
+      } else {
+        throw new Error('Crew not found');
+      }
+    } catch (err) {
+      console.error('Error fetching crew:', err);
+      setError(err.message || 'Failed to load crew');
+    } finally {
+      setLoading(false);
+    }
+  };
 
   // Event creation form state
   const [eventForm, setEventForm] = useState({
@@ -21,22 +77,23 @@ export default function RunCrewCentralAdmin() {
     stravaRouteId: null // Optional: link to Strava route
   });
 
-  // Mock crew data
-  const crew = {
-    id: 'crew-1',
-    name: 'Morning Warriors',
-    joinCode: 'ABC123',
-    members: 8
-  };
-
-  const crewMembers = [
-    { id: 1, name: 'Emma Rodriguez', avatar: 'https://images.unsplash.com/photo-1438761681033-6461ffad8d80?w=150&h=150&fit=crop&crop=face', status: 'Active', isTopMiler: true, initials: 'ER' },
-    { id: 2, name: 'Sarah Johnson', avatar: 'https://images.unsplash.com/photo-1494790108755-2616b612b786?w=150&h=150&fit=crop&crop=face', status: 'Active', initials: 'SJ' },
-    { id: 3, name: 'Mike Chen', avatar: 'https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?w=150&h=150&fit=crop&crop=face', status: 'Active', initials: 'MC' },
-    { id: 4, name: 'David Lee', avatar: 'https://images.unsplash.com/photo-1500648767791-00dcc994a43e?w=150&h=150&fit=crop&crop=face', status: 'Active', initials: 'DL' },
-    { id: 5, name: 'Maria Garcia', avatar: 'https://images.unsplash.com/photo-1534528741775-53994a69daeb?w=150&h=150&fit=crop&crop=face', status: 'Active', initials: 'MG' },
-    { id: 6, name: 'James Wilson', avatar: 'https://images.unsplash.com/photo-1519244703995-f4e0f30006d5?w=150&h=150&fit=crop&crop=face', status: 'Active', initials: 'JW' }
-  ];
+  // Get crew members from hydrated data
+  const crewMembers = crew?.memberships?.map(membership => {
+    const athlete = membership.athlete;
+    const firstName = athlete?.firstName || '';
+    const lastName = athlete?.lastName || '';
+    const name = `${firstName} ${lastName}`.trim() || athlete?.email || 'Unknown';
+    const initials = `${firstName?.[0] || ''}${lastName?.[0] || ''}`.toUpperCase() || 'U';
+    
+    return {
+      id: athlete?.id,
+      name,
+      avatar: athlete?.photoURL || null,
+      status: 'Active',
+      initials,
+      athlete
+    };
+  }) || [];
 
   // Upcoming events
   const [upcomingEvents, setUpcomingEvents] = useState([
@@ -113,6 +170,35 @@ export default function RunCrewCentralAdmin() {
     alert('Strava route linking - coming soon!');
   };
 
+  // Loading state
+  if (loading) {
+    return (
+      <div className="min-h-screen bg-gray-50 flex items-center justify-center">
+        <div className="text-center">
+          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-orange-500 mx-auto mb-4"></div>
+          <p className="text-gray-600">Loading crew...</p>
+        </div>
+      </div>
+    );
+  }
+
+  // Error state
+  if (error || !crew) {
+    return (
+      <div className="min-h-screen bg-gray-50 flex items-center justify-center">
+        <div className="text-center max-w-md mx-auto px-6">
+          <p className="text-red-600 mb-4">{error || 'Crew not found'}</p>
+          <button
+            onClick={() => navigate('/runcrew-list')}
+            className="bg-orange-500 text-white px-4 py-2 rounded-lg hover:bg-orange-600"
+          >
+            Back to List
+          </button>
+        </div>
+      </div>
+    );
+  }
+
   return (
     <div className="min-h-screen bg-gray-50 flex flex-col">
       {/* Top Navigation Bar */}
@@ -131,13 +217,13 @@ export default function RunCrewCentralAdmin() {
             
             <div className="flex items-center space-x-6">
               <button 
-                onClick={() => navigate('/runcrew-central')}
+                onClick={() => navigate(`/runcrew-central/${id}`)}
                 className="text-gray-600 hover:text-gray-900 font-medium text-sm"
               >
-                Member View
+                See as Member
               </button>
               <button 
-                onClick={() => navigate('/runcrew-settings')}
+                onClick={() => navigate(`/runcrew-settings/${id}`)}
                 className="text-gray-600 hover:text-gray-900 font-medium text-sm"
               >
                 Settings
@@ -176,8 +262,8 @@ export default function RunCrewCentralAdmin() {
               ))}
             </div>
           </div>
-          <h1 className="text-2xl font-bold text-gray-900">{crew.name}</h1>
-          <p className="text-sm text-gray-500">{crew.members} members</p>
+          <h1 className="text-2xl font-bold text-gray-900">{crew?.name || 'Loading...'}</h1>
+          <p className="text-sm text-gray-500">{crew?.memberCount || crewMembers.length} members</p>
         </div>
       </div>
 

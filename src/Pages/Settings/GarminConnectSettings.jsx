@@ -214,7 +214,7 @@ const GarminConnectSettings = () => {
       <div className="bg-white p-6 rounded-lg shadow-md">
         <div className="flex items-center space-x-3 mb-4">
           <img 
-            src="/Garmin_connect_badge_digital_RESOURCE_FILE-01.png" 
+            src="/Garmin_Connect_app_1024x1024-02.png" 
             alt="Garmin Connect" 
             className="h-8 w-auto"
           />
@@ -235,7 +235,7 @@ const GarminConnectSettings = () => {
     <div className="bg-white p-6 rounded-lg shadow-md">
       <div className="flex items-center space-x-3 mb-4">
         <img 
-          src="/Garmin_connect_badge_digital_RESOURCE_FILE-01.png" 
+          src="/Garmin_Connect_app_1024x1024-02.png" 
           alt="Garmin Connect" 
           className="h-8 w-auto"
         />

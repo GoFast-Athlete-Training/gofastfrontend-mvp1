@@ -131,7 +131,7 @@ const GarminConnectSuccess = () => {
           </div>
           <div className="mb-4 flex justify-center">
             <img 
-              src="/Garmin_connect_badge_digital_RESOURCE_FILE-01.png" 
+              src="/Garmin_Connect_app_1024x1024-02.png" 
               alt="Garmin Connect" 
               className="h-12 w-auto"
             />

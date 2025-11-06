@@ -14,13 +14,8 @@ const RunCrewSuccess = () => {
   };
 
   const handleGoToCentral = () => {
-    // Navigate with crew ID if available
-    const crewId = crewData.id;
-    if (crewId) {
-      navigate(`/runcrew-central/${crewId}`);
-    } else {
-      navigate('/runcrew-central');
-    }
+    // Navigate to list view (will show all crews)
+    navigate('/runcrew-list');
   };
 
   const createShareMessage = () => {
