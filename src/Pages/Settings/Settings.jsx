@@ -54,6 +54,10 @@ const Settings = () => {
   };
 
   const disconnectGarmin = async () => {
+    if (!window.confirm('Disconnect Garmin from GoFast?\n\nThis will:\n• Deregister your account from Garmin\n• Stop all activity data syncing\n• Clear your Garmin connection from GoFast\n• Allow you to connect a different Garmin account later')) {
+      return;
+    }
+
     try {
       const athleteId = localStorage.getItem('athleteId');
       if (!athleteId) {
@@ -69,9 +73,10 @@ const Settings = () => {
       });
 
       if (response.ok) {
-        console.log('✅ Garmin disconnected successfully');
+        const data = await response.json();
+        console.log('✅ Garmin disconnected and deregistered');
         await checkConnectionStatus();
-        alert('Garmin disconnected successfully');
+        alert(data.message || 'Garmin disconnected and deregistered successfully.');
       } else {
         const errorData = await response.json();
         throw new Error(errorData.error || 'Failed to disconnect Garmin');

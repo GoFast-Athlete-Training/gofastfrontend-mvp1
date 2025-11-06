@@ -83,7 +83,7 @@ const GarminConnectSettings = () => {
   };
 
   const handleDisconnect = async () => {
-    if (!window.confirm('Are you sure you want to disconnect from Garmin? This will remove all permissions and stop data sharing.')) {
+    if (!window.confirm('Disconnect Garmin from GoFast?\n\nThis will:\n• Clear your Garmin connection from GoFast\n• Allow you to connect a different Garmin account\n• Stop new activity data from syncing\n\n⚠️ Note: To fully disconnect, you must also remove GoFast from your Garmin Connect app settings:\nGarmin Connect → Settings → Connected Apps → Remove GoFast')) {
       return;
     }
 
@@ -99,9 +99,16 @@ const GarminConnectSettings = () => {
       });
       
       if (response.ok) {
+        const data = await response.json();
         setGarminStatus(null);
         console.log('✅ Garmin disconnected successfully');
-        alert('Garmin disconnected successfully!');
+        
+        // Show success message with warning
+        let message = data.message || 'Garmin disconnected from GoFast successfully';
+        if (data.warning) {
+          message += '\n\n⚠️ ' + data.warning;
+        }
+        alert(message);
       } else {
         const errorData = await response.json();
         setError(errorData.error || 'Failed to disconnect');
@@ -316,8 +323,11 @@ const GarminConnectSettings = () => {
               disabled={updating}
               className="w-full py-2 px-4 rounded-lg font-medium text-gray-700 bg-gray-200 hover:bg-gray-300 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
             >
-              {updating ? 'Disconnecting...' : 'Disconnect'}
+              {updating ? 'Disconnecting...' : 'Disconnect Garmin'}
             </button>
+            <p className="text-xs text-gray-500 mt-2 text-center">
+              This deregisters your account from Garmin and stops all data syncing
+            </p>
           </div>
         </div>
 
