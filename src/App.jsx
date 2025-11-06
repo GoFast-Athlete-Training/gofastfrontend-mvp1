@@ -8,6 +8,7 @@ import AthleteWelcome from './Pages/Athlete/AthleteWelcome';
 import Signin from './Pages/Athlete/AthleteSignin';
 import SignupPage from './Pages/Athlete/AthleteSignup';
 import AthleteCreateProfile from './Pages/Athlete/AthleteCreateProfile';
+import EditProfile from './Pages/Athlete/EditProfile';
 import AthleteHome from './Pages/Athlete/AthleteHome';
 import AthleteProfile from './Pages/Athlete/AthleteProfile';
 import Settings from './Pages/Settings/Settings';
@@ -46,6 +47,7 @@ const App = () => {
         
         {/* Profile Setup */}
         <Route path="/athlete-create-profile" element={<AthleteCreateProfile />} />
+        <Route path="/athlete-edit-profile" element={<EditProfile />} />
         
         {/* Main App - Protected Routes */}
         <Route path="/athlete-home" element={<AthleteHome />} />

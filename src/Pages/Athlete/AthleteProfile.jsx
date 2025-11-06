@@ -73,7 +73,7 @@ const AthleteProfile = () => {
           </p>
           
           <button 
-            onClick={() => navigate('/athlete-create-profile')}
+            onClick={() => navigate('/athlete-edit-profile')}
             className="bg-orange-500 text-white px-8 py-3 rounded-lg font-semibold hover:bg-orange-600 transition-colors shadow-md hover:shadow-lg"
           >
             Edit Profile
