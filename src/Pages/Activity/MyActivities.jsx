@@ -178,10 +178,10 @@ const MyActivities = () => {
           <div className="space-y-4">
             {activities
               .filter(activity => {
-                // MVP1: Only show running activities
+                // MVP1: Only show running activities (exclude wheelchair)
                 if (!activity.activityType) return false;
                 const type = activity.activityType.toLowerCase();
-                return type.includes('run') || type === 'running';
+                return (type === 'running' || type === 'run') && !type.includes('wheelchair');
               })
               .map((activity, index) => (
               <div
