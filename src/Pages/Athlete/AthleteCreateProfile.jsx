@@ -31,37 +31,45 @@ const AthleteCreateProfile = () => {
         const firebaseUser = auth.currentUser;
         
         let existingData = {};
+        let hasCompleteProfile = false;
         
         // Load from stored profile if editing
         if (storedProfile) {
           const athlete = JSON.parse(storedProfile);
-          existingData = {
-            firstName: athlete.firstName || '',
-            lastName: athlete.lastName || '',
-            phoneNumber: athlete.phoneNumber || '',
-            birthday: athlete.birthday || '',
-            gender: athlete.gender || '',
-            city: athlete.city || '',
-            state: athlete.state || '',
-            primarySport: athlete.primarySport || '',
-            gofastHandle: athlete.gofastHandle || '',
-            bio: athlete.bio || '',
-            instagram: athlete.instagram || ''
-          };
+          // Only use stored data if profile has gofastHandle (indicates it's been set up)
+          hasCompleteProfile = !!athlete.gofastHandle;
           
-          // Load photo from Firebase or stored profile
-          if (athlete.photoURL) {
-            existingData.profilePhotoPreview = athlete.photoURL;
-          } else if (firebaseUser?.photoURL) {
-            existingData.profilePhotoPreview = firebaseUser.photoURL;
+          if (hasCompleteProfile) {
+            existingData = {
+              firstName: athlete.firstName || '',
+              lastName: athlete.lastName || '',
+              phoneNumber: athlete.phoneNumber || '',
+              birthday: athlete.birthday ? new Date(athlete.birthday).toISOString().split('T')[0] : '',
+              gender: athlete.gender || '',
+              city: athlete.city || '',
+              state: athlete.state || '',
+              primarySport: athlete.primarySport || '',
+              gofastHandle: athlete.gofastHandle || '',
+              bio: athlete.bio || '',
+              instagram: athlete.instagram || ''
+            };
+            
+            // Load photo from Firebase or stored profile
+            if (athlete.photoURL) {
+              existingData.profilePhotoPreview = athlete.photoURL;
+            } else if (firebaseUser?.photoURL) {
+              existingData.profilePhotoPreview = firebaseUser.photoURL;
+            }
           }
-        } else if (firebaseUser?.photoURL) {
-          // New profile but has Firebase photo
+        }
+        
+        // If no complete profile, load photo from Firebase if available
+        if (!hasCompleteProfile && firebaseUser?.photoURL) {
           existingData.profilePhotoPreview = firebaseUser.photoURL;
         }
         
-        // Pre-fill with existing data or test data
-        const defaultData = storedProfile ? existingData : {
+        // Pre-fill with existing data (if complete) or test data (if new/incomplete)
+        const defaultData = hasCompleteProfile ? existingData : {
           firstName: 'Adam',
           lastName: 'Cole',
           phoneNumber: '',
@@ -75,12 +83,29 @@ const AthleteCreateProfile = () => {
           instagram: ''
         };
         
+        console.log('📝 PROFILE SETUP: Pre-filling form with:', defaultData);
+        
         setFormData(prev => ({
           ...prev,
           ...defaultData
         }));
       } catch (error) {
         console.error('Error loading profile:', error);
+        // Even on error, set test data as fallback
+        setFormData(prev => ({
+          ...prev,
+          firstName: 'Adam',
+          lastName: 'Cole',
+          phoneNumber: '',
+          gofastHandle: 'adamgofast',
+          birthday: '1990-01-15',
+          gender: 'male',
+          city: 'Arlington',
+          state: 'VA',
+          primarySport: 'running',
+          bio: 'Passionate runner. Building communities.',
+          instagram: ''
+        }));
       }
     };
     
