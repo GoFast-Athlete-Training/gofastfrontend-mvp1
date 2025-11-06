@@ -1,6 +1,7 @@
 import React, { useState, useRef, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { auth } from '../../firebase';
+import api from '../../api/axiosConfig';
 
 const AthleteCreateProfile = () => {
   const navigate = useNavigate();
@@ -133,7 +134,7 @@ const AthleteCreateProfile = () => {
     }
 
     try {
-      // Get current Firebase user and fresh token
+      // Verify user is logged in (axios will auto-add token)
       const firebaseUser = auth.currentUser;
       
       if (!firebaseUser) {
@@ -142,42 +143,12 @@ const AthleteCreateProfile = () => {
         return;
       }
       
-      // Get fresh token (Firebase SDK automatically refreshes expired tokens)
-      const firebaseToken = await firebaseUser.getIdToken();
-      const firebaseId = firebaseUser.uid;
-      const email = firebaseUser.email;
-      const photoURL = firebaseUser.photoURL || formData.profilePhotoPreview;
+      // Step 1: Find or create athlete - axios automatically sends Firebase token
+      console.log('🌐 Step 1: Finding/creating athlete via /api/athlete/create');
+      console.log('🔐 Axios automatically adds Firebase token (no body needed)');
       
-      console.log('🔐 Firebase ID:', firebaseId);
-      console.log('📧 Email:', email);
-      console.log('🎫 Firebase Token:', firebaseToken ? 'Present' : 'Missing');
-      console.log('📷 Photo URL:', photoURL);
-
-      // Step 1: Create/find athlete with basic info
-      const backendUrl = 'https://gofastbackendv2-fall2025.onrender.com';
-      
-      console.log('🌐 Step 1: Creating athlete:', `${backendUrl}/api/athlete/create`);
-      
-      const authResponse = await fetch(`${backendUrl}/api/athlete/create`, {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          'Authorization': `Bearer ${firebaseToken}`
-        },
-        body: JSON.stringify({
-          firebaseId: firebaseId,
-          email: email,
-          firstName: formData.firstName,
-          lastName: formData.lastName,
-          photoURL: photoURL
-        })
-      });
-
-      if (!authResponse.ok) {
-        throw new Error(`Auth error: ${authResponse.status} ${authResponse.statusText}`);
-      }
-
-      const athleteData = await authResponse.json();
+      const res = await api.post('/athlete/create');
+      const athleteData = res.data;
       console.log('✅ Step 1 - Athlete created/found:', athleteData);
       
       // Get athlete ID from response (could be athleteId or data.id)
@@ -186,36 +157,27 @@ const AthleteCreateProfile = () => {
         throw new Error('No athlete ID returned from server');
       }
       
-      // Step 2: Update athlete with full profile
-      console.log('🌐 Step 2: Updating profile:', `${backendUrl}/api/athlete/${athleteId}/profile`);
+      // Step 2: Update athlete with full profile - axios automatically sends Firebase token
+      console.log('🌐 Step 2: Updating profile via /api/athlete/:id/profile');
       
-      const profileResponse = await fetch(`${backendUrl}/api/athlete/${athleteId}/profile`, {
-        method: 'PUT',
-        headers: {
-          'Content-Type': 'application/json',
-          'Authorization': `Bearer ${firebaseToken}`
-        },
-        body: JSON.stringify({
-          firstName: formData.firstName,
-          lastName: formData.lastName,
-          phoneNumber: formData.phoneNumber,
-          gofastHandle: formData.gofastHandle,
-          birthday: formData.birthday,
-          gender: formData.gender,
-          city: formData.city,
-          state: formData.state,
-          primarySport: formData.primarySport,
-          bio: formData.bio,
-          instagram: formData.instagram,
-          photoURL: photoURL
-        })
+      const photoURL = firebaseUser.photoURL || formData.profilePhotoPreview;
+      
+      const profileRes = await api.put(`/athlete/${athleteId}/profile`, {
+        firstName: formData.firstName,
+        lastName: formData.lastName,
+        phoneNumber: formData.phoneNumber,
+        gofastHandle: formData.gofastHandle,
+        birthday: formData.birthday,
+        gender: formData.gender,
+        city: formData.city,
+        state: formData.state,
+        primarySport: formData.primarySport,
+        bio: formData.bio,
+        instagram: formData.instagram,
+        photoURL: photoURL
       });
-
-      if (!profileResponse.ok) {
-        throw new Error(`Profile error: ${profileResponse.status} ${profileResponse.statusText}`);
-      }
-
-      const profileData = await profileResponse.json();
+      
+      const profileData = profileRes.data;
       console.log('✅ Step 2 - Profile updated:', profileData);
       
       // Store athlete data
@@ -228,7 +190,22 @@ const AthleteCreateProfile = () => {
       
     } catch (error) {
       console.error('❌ Profile creation failed:', error);
-      alert(`Profile creation failed: ${error.message}`);
+      
+      // Handle specific error cases
+      if (error.response?.data?.error) {
+        const errorData = error.response.data;
+        if (errorData.field === 'gofastHandle') {
+          alert(`❌ Handle taken!\n\n"@${formData.gofastHandle}" is already taken. Please choose a different handle.`);
+        } else {
+          alert(`❌ Profile update failed:\n\n${errorData.message || errorData.error}`);
+        }
+      } else if (error.response?.status === 403) {
+        alert('❌ Forbidden!\n\nYou can only update your own profile. Please sign in with the correct account.');
+      } else if (error.response?.status === 404) {
+        alert('❌ Profile not found!\n\nYour athlete record was not found. Please try signing in again.');
+      } else {
+        alert(`❌ Profile creation failed:\n\n${error.message || 'Unknown error occurred'}`);
+      }
     }
   };
 

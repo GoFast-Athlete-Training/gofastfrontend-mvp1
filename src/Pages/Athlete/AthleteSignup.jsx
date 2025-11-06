@@ -24,23 +24,9 @@ const SignupPage = () => {
       // Store Firebase token for API calls
       localStorage.setItem("firebaseToken", firebaseToken);
       
-      // Call backend create athlete with Firebase token verification
+      // Call backend create athlete - no body needed, route extracts from Firebase token
       console.log("🌐 Calling backend API: /athlete/create");
-      console.log("📤 Request data:", {
-        firebaseId: result.uid,
-        email: result.email,
-        firstName: result.name?.split(' ')[0] || '',
-        lastName: result.name?.split(' ').slice(1).join(' ') || '',
-        photoURL: result.photoURL
-      });
-      
-      const res = await api.post("/athlete/create", {
-        firebaseId: result.uid,
-        email: result.email,
-        firstName: result.name?.split(' ')[0] || '',
-        lastName: result.name?.split(' ').slice(1).join(' ') || '',
-        photoURL: result.photoURL
-      });
+      const res = await api.post("/athlete/create");
       
       console.log("✅ Backend API response:", res.data);
       

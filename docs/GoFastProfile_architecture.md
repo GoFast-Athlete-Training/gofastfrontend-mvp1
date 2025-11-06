@@ -742,19 +742,32 @@ User Picks a Feature
 
 ## Data Flow
 
-### Signup Flow
+### Signup & Signin Flow (Unified)
 
+**Note**: Both signup and signin use the **same flow** - they both call `POST /api/athlete/create` and route based on `gofastHandle`.
+
+**Components**:
+- Signup: `AthleteSignup.jsx`
+- Signin: `AthleteSignin.jsx`
+
+**Flow**:
 ```
-1. User clicks "Sign up" → Firebase Auth (Google OAuth)
-2. Frontend calls POST /api/athlete/create (with Firebase token)
-3. Backend service finds or creates athlete by firebaseId
-   - If exists: Updates Firebase data (email, firstName, lastName, photoURL)
-   - If not exists: Creates new athlete with Firebase data
-4. Backend returns athlete data (includes gofastHandle)
-5. Frontend routes based on gofastHandle:
-   - If gofastHandle exists → Navigate to /athlete-home (existing user)
-   - If gofastHandle is null → Navigate to /athlete-create-profile (new user)
+1. User clicks "Sign up" or "Sign in" → Firebase Auth (Google OAuth)
+2. Frontend gets Firebase token → Stores in localStorage
+3. Frontend calls POST /api/athlete/create (NO body - route extracts from Firebase token)
+4. Backend service finds or creates athlete by firebaseId:
+   - If exists: Updates Firebase data (email, firstName, lastName, photoURL) and returns existing athlete
+   - If not exists: Creates new athlete with Firebase data and returns new athlete
+5. Backend returns athlete data (includes gofastHandle)
+6. Frontend routes based on gofastHandle (data-driven routing, no flags):
+   - If gofastHandle exists → Navigate to /athlete-home (profile complete)
+   - If gofastHandle is null → Navigate to /athlete-create-profile (needs profile setup)
 ```
+
+**Key Principles**:
+- **No request body**: Route extracts all data from Firebase token via `verifyFirebaseToken` middleware
+- **Data-driven routing**: Uses `gofastHandle` to determine next step, not flags
+- **Unified flow**: Signup and signin are identical - both can create or find existing athletes
 
 ### Profile Setup Flow
 

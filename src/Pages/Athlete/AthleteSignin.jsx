@@ -54,21 +54,18 @@ export default function Signin() {
       // Store Firebase token for API calls
       localStorage.setItem("firebaseToken", firebaseToken);
       
-      // Call backend create athlete with Firebase token verification
-      const res = await api.post("/athlete/create", {
-        firebaseId: result.uid,
-        email: result.email,
-        firstName: result.name?.split(' ')[0] || '',
-        lastName: result.name?.split(' ').slice(1).join(' ') || '',
-        photoURL: result.photoURL
-      });
+      // Call backend create athlete - no body needed, route extracts from Firebase token
+      console.log("🌐 Calling backend API: /athlete/create");
+      const res = await api.post("/athlete/create");
+      
+      console.log("✅ Backend API response:", res.data);
       
       const athlete = res.data;
-      console.log("✅ Athlete found/created:", athlete.athleteId);
-      console.log("🔍 DEBUG: Firebase result:", result);
-      console.log("🔍 DEBUG: Backend athlete:", athlete);
-      console.log("🔍 DEBUG: Firebase email:", result.email);
-      console.log("🔍 DEBUG: Backend email:", athlete.data?.email);
+      
+      // CRITICAL: Validate backend response
+      if (!athlete || !athlete.success) {
+        throw new Error(`Backend API failed: ${athlete?.message || 'Invalid response'}`);
+      }
       
       // Store auth data
       localStorage.setItem("firebaseId", result.uid);
@@ -81,13 +78,15 @@ export default function Signin() {
         photoURL: result.photoURL
       }));
       
-      // Check if athlete has profile setup (firstName, lastName, etc.)
-      if (athlete.data?.firstName && athlete.data?.lastName) {
-        console.log("✅ Existing athlete with profile → Athlete Home");
+      // Route based on profile completion (check gofastHandle - better indicator than firstName)
+      // If gofastHandle exists, athlete has completed profile setup → route to home
+      // If gofastHandle is null, athlete needs profile setup → route to profile setup
+      if (athlete.data?.gofastHandle) {
+        console.log("✅ SUCCESS: Existing athlete with profile → Athlete Home");
         navigate("/athlete-home");
       } else {
-        console.log("✅ New athlete without profile → Profile setup");
-        navigate("/profile-setup");
+        console.log("✅ SUCCESS: New athlete or incomplete profile → Profile setup");
+        navigate("/athlete-create-profile");
       }
       
     } catch (error) {
