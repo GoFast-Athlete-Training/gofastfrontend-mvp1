@@ -160,9 +160,19 @@ const AthleteHome = () => {
               {/* Profile Avatar - Clickable */}
               <button
                 onClick={() => navigate('/athlete-profile')}
-                className="w-10 h-10 bg-orange-500 rounded-full flex items-center justify-center text-white font-bold hover:bg-orange-600 transition"
+                className="w-10 h-10 rounded-full flex items-center justify-center overflow-hidden hover:ring-2 hover:ring-orange-500 transition"
               >
-                {athleteProfile?.firstName ? athleteProfile.firstName[0].toUpperCase() : 'A'}
+                {athleteProfile?.photoURL ? (
+                  <img 
+                    src={athleteProfile.photoURL} 
+                    alt="Profile" 
+                    className="w-full h-full object-cover"
+                  />
+                ) : (
+                  <span className="w-full h-full bg-orange-500 flex items-center justify-center text-white font-bold">
+                    {athleteProfile?.firstName ? athleteProfile.firstName[0].toUpperCase() : 'A'}
+                  </span>
+                )}
               </button>
               <button
                 onClick={handleSignOut}
