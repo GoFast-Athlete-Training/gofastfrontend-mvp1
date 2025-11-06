@@ -253,7 +253,9 @@ router.post('/create', verifyFirebaseToken, async (req, res) => {
 
 **Endpoint**: `PUT /api/athlete/:id/profile`
 
-**Authentication**: Not currently required (should add Firebase token verification)
+**Authentication**: **Required** (Firebase token via `verifyFirebaseToken` middleware)
+
+**Security**: Verifies athlete belongs to authenticated Firebase user (ownership check)
 
 **Request Body**:
 ```json
@@ -296,12 +298,20 @@ router.post('/create', verifyFirebaseToken, async (req, res) => {
 }
 ```
 
+**Error Responses**:
+- `403 Forbidden`: User tried to update another user's profile
+- `404 Not Found`: Athlete record doesn't exist
+- `400 Bad Request`: Duplicate `gofastHandle` (P2002 Prisma error) or validation error
+
 **Implementation Notes**:
-- Updates all profile fields in a single request
+- ✅ **Firebase token verification** - Uses `verifyFirebaseToken` middleware
+- ✅ **Security check** - Verifies `firebaseId` matches authenticated user (prevents unauthorized updates)
+- ✅ **Overwrite capability** - Fully replaces existing profile data with new data
+- ✅ **PhotoURL handling** - Accepts and updates `photoURL` field
+- ✅ **Error handling** - Handles duplicate handles, not found, and validation errors with clear messages
 - Uses Prisma `update` to modify athlete record
 - Returns updated athlete object
-- **TODO**: Add Firebase token verification middleware
-- **TODO**: Add validation for required fields
+- **TODO**: Add validation for required fields (currently handled client-side)
 - **TODO**: Add profile completion calculation
 
 ### Hydration Routes
@@ -409,11 +419,15 @@ router.post('/create', verifyFirebaseToken, async (req, res) => {
 
 ## Frontend Implementation
 
-### Profile Setup Component
+### Profile Setup Component (New Users)
 
 **Location**: `gofastfrontend-mvp1/src/Pages/Athlete/AthleteCreateProfile.jsx`
 
-**Purpose**: Universal profile setup form for all athletes
+**Route**: `/athlete-create-profile`
+
+**Purpose**: Initial profile setup for new athletes (first-time profile creation)
+
+**UX**: Welcome/onboarding experience with "Join the GoFast Community" button
 
 **Fields**:
 - First Name (required)
@@ -430,41 +444,78 @@ router.post('/create', verifyFirebaseToken, async (req, res) => {
 - Profile Photo (optional)
 
 **Flow**:
-1. User fills out form
+1. User fills out form (pre-filled with test data for testing)
 2. On submit:
-   - Step 1: Update profile via `PUT /api/athlete/:id/profile` (with Firebase token)
-   - Step 2: Store athlete data in localStorage
-   - Step 3: Navigate to `/athlete-home`
-
-**Note**: Athlete creation happens earlier in signup flow via `POST /api/athlete/create`
+   - Step 1: Call `POST /api/athlete/create` (finds or creates athlete)
+   - Step 2: Call `PUT /api/athlete/:id/profile` (updates with profile data)
+   - Step 3: Store athlete data in localStorage
+   - Step 4: Navigate to `/athlete-home`
 
 **Implementation Notes**:
-- Loads existing profile data from localStorage if editing
-- Pre-fills with Firebase photo if available
-- Validates required fields before submission
-- Uses Firebase token for authentication
-- **TODO**: Add profile picture upload integration
+- ✅ Uses axios instance (auto-adds Firebase token)
+- ✅ Pre-fills with test data for development/testing
+- ✅ Pre-fills with Firebase photo if available
+- ✅ Validates required fields before submission
+- ✅ Uses Firebase token for authentication (via axios interceptor)
+- ✅ Improved error handling (handle conflicts, forbidden, etc.)
+- **TODO**: Add profile picture upload integration (file upload)
 - **TODO**: Add draft saving (auto-save on blur)
 - **TODO**: Add profile completion calculation
+
+### Profile Edit Component (Existing Users)
+
+**Location**: `gofastfrontend-mvp1/src/Pages/Athlete/EditProfile.jsx`
+
+**Route**: `/athlete-edit-profile`
+
+**Purpose**: Edit existing profile for athletes who already have a profile
+
+**UX**: Edit-focused experience with "Save Changes" and "Cancel" buttons
+
+**Fields**: Same as Profile Setup Component
+
+**Flow**:
+1. Loads existing profile data from localStorage
+2. Pre-fills form with existing data
+3. User updates fields
+4. On submit:
+   - Calls `PUT /api/athlete/:id/profile` (overwrites existing data)
+   - Updates localStorage with new data
+   - Navigates back to `/athlete-profile`
+
+**Key Differences from Create**:
+- ✅ **Separate component** - Different UX, no "Join Community" messaging
+- ✅ **Pre-fills existing data** - Loads from localStorage
+- ✅ **Overwrite capability** - Fully replaces existing profile data
+- ✅ **Cancel button** - Allows user to cancel edits
+- ✅ **Direct update** - No create step needed (athlete already exists)
+- ✅ **Navigates to profile page** - Not home page (user already onboarded)
 
 ### Profile Display Component
 
 **Location**: `gofastfrontend-mvp1/src/Pages/Athlete/AthleteProfile.jsx`
 
-**Purpose**: Read-only profile display (hub for navigation)
+**Route**: `/athlete-profile`
+
+**Purpose**: Beautiful read-only profile display (hub for navigation)
 
 **Features**:
-- Displays all profile fields (same as setup form)
-- "Edit Profile" button → Navigates to `/athlete-create-profile`
-- "Settings" button → Navigates to `/settings`
-- "Back to Home" button → Navigates to `/athlete-home`
+- ✅ **Modern card-based design** - Grid layout with gradient cards
+- ✅ **Icon-based fields** - Each field has an icon (📝 Bio, 📍 Location, 🏃 Sport, etc.)
+- ✅ **Large profile picture** - 32x32 with ring border and shadow
+- ✅ **Hover effects** - Cards have hover shadow effects
+- ✅ **Clickable Instagram** - Links to Instagram profile
+- ✅ **Edit Profile button** → Navigates to `/athlete-edit-profile`
+- ✅ **Settings button** → Navigates to `/settings`
+- ✅ **Back to Home button** → Navigates to `/athlete-home`
 
 **Implementation Notes**:
-- Reads profile data from localStorage (hydrated from `/api/athlete/hydrate`)
-- Lightweight hub - no heavy data hydration
-- **TODO**: Add hub icons for future preferences (Running Preferences, Goals, etc.)
-- **TODO**: Add profile completion indicator
-- **TODO**: Add profile picture click recovery (opens setup if incomplete)
+- ✅ Reads profile data from localStorage (hydrated from `/api/athlete/hydrate`)
+- ✅ Displays profile picture from `photoURL` if available
+- ✅ Beautiful responsive grid layout (1 column mobile, 2 columns desktop)
+- ✅ Only shows fields that have data (conditional rendering)
+- ✅ **TODO**: Add hub icons for future preferences (Running Preferences, Goals, etc.)
+- ✅ **TODO**: Add profile completion indicator
 
 ### Settings Component
 
@@ -791,17 +842,25 @@ User Picks a Feature
 6. Downstream components read from localStorage (no API calls)
 ```
 
-### Profile Update Flow
+### Profile Edit Flow
 
 ```
-1. User clicks "Edit Profile" → Navigate to /athlete-create-profile
-2. Frontend loads existing profile from localStorage
-3. User updates fields
-4. Frontend calls PUT /api/athlete/:id/profile
-5. Backend updates athlete record
-6. Frontend updates localStorage
-7. Frontend navigates back to profile page
+1. User clicks "Edit Profile" on profile page → Navigate to /athlete-edit-profile
+2. EditProfile component loads existing profile from localStorage
+3. Form pre-fills with existing data
+4. User updates fields
+5. Frontend calls PUT /api/athlete/:id/profile (with Firebase token)
+6. Backend verifies ownership and updates athlete record (overwrites existing data)
+7. Frontend updates localStorage with new data
+8. Frontend navigates back to /athlete-profile
 ```
+
+**Key Points**:
+- Uses separate `/athlete-edit-profile` route (different from create)
+- Pre-fills form with existing profile data
+- Overwrites existing data (no merge, full replacement)
+- Requires Firebase token authentication
+- Backend verifies user owns the profile before updating
 
 ---
 
@@ -813,9 +872,12 @@ User Picks a Feature
 - [x] Athlete find-or-create service (`AthleteFindOrCreateService.js`)
 - [x] Athlete find-or-create route (`POST /api/athlete/create`) - uses service, upserts Firebase data
 - [x] Profile update route (`PUT /api/athlete/:id/profile`)
+- [x] **Firebase token verification on profile routes** ✅
+- [x] **Security ownership check** (user can only update own profile) ✅
+- [x] **PhotoURL handling in profile update** ✅
+- [x] **Error handling** (duplicate handles, not found, validation) ✅
 - [x] Universal hydration route (`GET /api/athlete/hydrate`)
 - [x] Profile picture upload endpoint (`POST /api/upload`)
-- [ ] Firebase token verification on profile routes
 - [ ] Profile completion calculation
 - [ ] Draft saving mechanism
 - [ ] Image processing (resize, compress)
@@ -824,12 +886,17 @@ User Picks a Feature
 
 ### Frontend
 
-- [x] Profile setup component (`AthleteCreateProfile.jsx`)
-- [x] Profile display component (`AthleteProfile.jsx`)
+- [x] Profile setup component (`AthleteCreateProfile.jsx`) - New users, onboarding UX
+- [x] **Profile edit component (`EditProfile.jsx`)** - Existing users, edit UX ✅
+- [x] **Profile display component (`AthleteProfile.jsx`)** - Beautiful card-based design ✅
+- [x] **Profile picture display on home page** ✅
 - [x] Settings component (`Settings.jsx`)
 - [x] Profile hydration on app load
 - [x] LocalStorage storage pattern
-- [ ] Profile picture upload integration
+- [x] **Unified signup/signin flow** (both use same create route) ✅
+- [x] **Data-driven routing** (uses `gofastHandle`, no flags) ✅
+- [x] **Axios integration** (auto-adds Firebase token) ✅
+- [ ] Profile picture upload integration (file upload)
 - [ ] Draft saving (auto-save on blur)
 - [ ] Profile completion indicator
 - [ ] Reminder banner on home page
@@ -857,6 +924,15 @@ User Picks a Feature
 ---
 
 **Last Updated**: January 2025  
-**Status**: In Progress - Core profile system implemented, completion tracking and reminders pending  
-**Next Steps**: Add profile completion calculation, reminder system, and image processing
+**Status**: ✅ **Core Profile System Complete** - Profile creation, editing, display, and security fully implemented  
+**Recent Updates**:
+- ✅ Separate EditProfile component with overwrite capability
+- ✅ Beautiful profile display with card-based design and icons
+- ✅ Firebase token verification and security checks on profile routes
+- ✅ Profile picture display on home page
+- ✅ Unified signup/signin flow with data-driven routing
+- ✅ Service layer pattern for athlete find-or-create
+- ✅ Improved error handling and user feedback
+
+**Next Steps**: Profile completion calculation, reminder system, image upload processing, and feature-specific profiles
 
