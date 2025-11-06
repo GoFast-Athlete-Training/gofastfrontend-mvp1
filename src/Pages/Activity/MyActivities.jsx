@@ -218,7 +218,7 @@ const MyActivities = () => {
                           </span>
                           <span className="text-xs text-gray-400">•</span>
                           <span className="text-xs font-semibold text-gray-700">
-                            {activity.deviceName || 'No Device'}
+                            {activity.deviceName ? `GARMIN ${activity.deviceName}` : 'GARMIN [NO DEVICE]'}
                           </span>
                         </div>
                         <p className="text-sm text-gray-600 mt-1">

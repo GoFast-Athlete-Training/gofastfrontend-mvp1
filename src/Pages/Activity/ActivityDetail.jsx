@@ -182,7 +182,7 @@ const ActivityDetail = () => {
                 </span>
                 <span className="text-sm text-gray-400">•</span>
                 <span className="text-sm font-semibold text-gray-700">
-                  {activity.deviceName || 'No Device'}
+                  {activity.deviceName ? `GARMIN ${activity.deviceName}` : 'GARMIN [NO DEVICE]'}
                 </span>
               </div>
               <p className="text-gray-600">
