@@ -23,6 +23,8 @@ import RunCrewSettings from './Pages/RunCrew/RunCrewSettings';
 import RunCrewRunDetail from './Pages/RunCrew/RunCrewRunDetail';
 import CrewExplainer from './Pages/RunCrew/CrewExplainer';
 import RunCrewSuccess from './Pages/RunCrew/RunCrewSuccess';
+import MyActivities from './Pages/Activity/MyActivities';
+import ActivityDetail from './Pages/Activity/ActivityDetail';
 
 // Debug Components
 import FindMyUserId from './Pages/Debug/FindMyUserId';
@@ -49,6 +51,10 @@ const App = () => {
         <Route path="/athlete-home" element={<AthleteHome />} />
         <Route path="/athlete-profile" element={<AthleteProfile />} />
         <Route path="/settings" element={<Settings />} />
+        
+        {/* Activity Routes */}
+        <Route path="/my-activities" element={<MyActivities />} />
+        <Route path="/activity/:id" element={<ActivityDetail />} />
         
         {/* Garmin OAuth 2.0 PKCE Flow */}
         <Route path="/garmin/callback" element={<GarminOAuthCallback />} />

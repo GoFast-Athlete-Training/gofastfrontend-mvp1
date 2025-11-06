@@ -12,6 +12,8 @@ const AthleteHome = () => {
   const [displayCards, setDisplayCards] = useState([]);
   const [hasCrews, setHasCrews] = useState(false);
   const [myCrews, setMyCrews] = useState([]);
+  const [weeklyActivities, setWeeklyActivities] = useState([]);
+  const [weeklyTotals, setWeeklyTotals] = useState(null);
 
   useEffect(() => {
     // Load athlete data from localStorage (hydrated by Welcome page)
@@ -26,6 +28,24 @@ const AthleteHome = () => {
         if (storedProfile) {
           const athlete = JSON.parse(storedProfile);
           setAthleteProfile(athlete);
+          
+          // Load weekly activities if available (from hydrate)
+          if (athlete.weeklyActivities) {
+            setWeeklyActivities(athlete.weeklyActivities);
+            setWeeklyTotals(athlete.weeklyTotals);
+            localStorage.setItem('weeklyActivities', JSON.stringify(athlete.weeklyActivities));
+            localStorage.setItem('weeklyTotals', JSON.stringify(athlete.weeklyTotals));
+          } else {
+            // Try loading from separate localStorage key
+            const storedActivities = localStorage.getItem('weeklyActivities');
+            const storedTotals = localStorage.getItem('weeklyTotals');
+            if (storedActivities) {
+              setWeeklyActivities(JSON.parse(storedActivities));
+            }
+            if (storedTotals) {
+              setWeeklyTotals(JSON.parse(storedTotals));
+            }
+          }
           
           // Load onboarding state
           if (storedOnboarding) {
@@ -184,8 +204,54 @@ const AthleteHome = () => {
           </div>
         </div>
 
+        {/* Weekly Activities Summary Card (if activities exist) */}
+        {weeklyActivities && weeklyActivities.length > 0 && (
+          <div className="bg-white rounded-xl shadow-lg p-6 mb-6 max-w-2xl mx-auto">
+            <div className="flex justify-between items-center mb-4">
+              <h2 className="text-2xl font-bold text-gray-900">This Week</h2>
+              <button
+                onClick={() => navigate('/my-activities')}
+                className="text-orange-600 hover:text-orange-700 font-semibold"
+              >
+                See My Activities →
+              </button>
+            </div>
+            <div className="grid grid-cols-3 gap-4">
+              <div className="text-center">
+                <p className="text-2xl font-bold text-orange-600">{weeklyTotals?.totalDistanceMiles || '0'}</p>
+                <p className="text-sm text-gray-600">Miles</p>
+              </div>
+              <div className="text-center">
+                <p className="text-2xl font-bold text-orange-600">{weeklyActivities.length}</p>
+                <p className="text-sm text-gray-600">Activities</p>
+              </div>
+              <div className="text-center">
+                <p className="text-2xl font-bold text-orange-600">{weeklyTotals?.totalCalories || '0'}</p>
+                <p className="text-sm text-gray-600">Calories</p>
+              </div>
+            </div>
+          </div>
+        )}
+
         {/* Smart Action Cards */}
         <div className="flex flex-wrap justify-center gap-6">
+          {/* Add "See My Activities" card if activities exist */}
+          {weeklyActivities && weeklyActivities.length > 0 && (
+            <div 
+              onClick={() => navigate('/my-activities')}
+              className="bg-white rounded-xl shadow-lg p-6 hover:shadow-xl transition-all cursor-pointer transform hover:scale-105 text-center w-full max-w-sm"
+            >
+              <div className="mb-4 flex justify-center">
+                <div className="text-5xl">🏃‍♂️</div>
+              </div>
+              <h3 className="text-xl font-bold text-gray-900 mb-3">See My Activities</h3>
+              <p className="text-gray-600 mb-4">View your {weeklyActivities.length} activities from this week</p>
+              <div className="bg-orange-500 text-white px-4 py-2 rounded-lg font-bold">
+                View Activities
+              </div>
+            </div>
+          )}
+          
           {displayCards.map((card, index) => {
             // Skip cards that have showIf conditions and don't meet them
             if (card.showIf === false) return null;
