@@ -216,12 +216,10 @@ const MyActivities = () => {
                                 .replace(/\b\w/g, l => l.toUpperCase())
                               : 'Run'}
                           </span>
-                          {activity.deviceName && (
-                            <>
-                              <span className="text-xs text-gray-400">•</span>
-                              <span className="text-xs text-gray-500">{activity.deviceName}</span>
-                            </>
-                          )}
+                          <span className="text-xs text-gray-400">•</span>
+                          <span className="text-xs font-semibold text-gray-700">
+                            {activity.deviceName || 'No Device'}
+                          </span>
                         </div>
                         <p className="text-sm text-gray-600 mt-1">
                           {formatDate(activity.startTime)} at {formatTime(activity.startTime)}
