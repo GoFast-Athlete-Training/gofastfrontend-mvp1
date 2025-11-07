@@ -133,34 +133,47 @@ const AthleteHome = () => {
     // Check if this is a RunCrew card and route based on admin status
     if (card.crewId) {
       const currentAthleteId = athleteProfile?.id;
+      let isAdmin = false;
       
-      // Check admin status from multiple sources (per architecture)
-      let isAdmin = card.isAdmin; // From crew data
-      
-      // Also check from localStorage for accuracy
+      // Check admin status by comparing runcrewAdminId with current athlete ID (most reliable)
       try {
-        const athleteData = localStorage.getItem('athleteData');
-        if (athleteData) {
-          const data = JSON.parse(athleteData);
-          if (data.runCrew && data.runCrew.id === card.crewId) {
-            isAdmin = data.runCrew.runcrewAdminId === currentAthleteId;
+        // Primary check: myCrews array (from /api/runcrew/mine or athlete hydrate)
+        const myCrews = localStorage.getItem('myCrews');
+        if (myCrews) {
+          const crews = JSON.parse(myCrews);
+          const crew = crews.find(c => c.id === card.crewId);
+          if (crew) {
+            // Check isAdmin flag OR runcrewAdminId matches current athlete
+            isAdmin = crew.isAdmin === true || crew.runcrewAdminId === currentAthleteId;
+            console.log('🔍 Admin check from myCrews:', { crewId: card.crewId, isAdmin, runcrewAdminId: crew.runcrewAdminId, currentAthleteId });
           }
         }
         
-        // Fallback: check from myCrews
+        // Fallback: check athleteData.runCrews (from athlete hydrate)
         if (!isAdmin) {
-          const myCrews = localStorage.getItem('myCrews');
-          if (myCrews) {
-            const crews = JSON.parse(myCrews);
-            const crew = crews.find(c => c.id === card.crewId);
+          const athleteData = localStorage.getItem('athleteData');
+          if (athleteData) {
+            const data = JSON.parse(athleteData);
+            // Check runCrews array (plural) or runCrew (singular)
+            const runCrews = data.runCrews || (data.runCrew ? [data.runCrew] : []);
+            const crew = runCrews.find(c => c.id === card.crewId);
             if (crew) {
-              isAdmin = crew.isAdmin || crew.runcrewAdminId === currentAthleteId;
+              isAdmin = crew.runcrewAdminId === currentAthleteId;
+              console.log('🔍 Admin check from athleteData:', { crewId: card.crewId, isAdmin, runcrewAdminId: crew.runcrewAdminId, currentAthleteId });
             }
           }
+        }
+        
+        // Final fallback: use card.isAdmin if we have it
+        if (!isAdmin && card.isAdmin === true) {
+          isAdmin = true;
+          console.log('🔍 Admin check from card.isAdmin:', { crewId: card.crewId, isAdmin });
         }
       } catch (error) {
         console.error('Error checking admin status:', error);
       }
+      
+      console.log('✅ Routing decision:', { crewId: card.crewId, isAdmin, route: isAdmin ? `/runcrew/admin/${card.crewId}` : `/runcrew/${card.crewId}` });
       
       // Route to admin view if admin, otherwise member view (per RunCrewArchitecture.md)
       if (isAdmin) {
