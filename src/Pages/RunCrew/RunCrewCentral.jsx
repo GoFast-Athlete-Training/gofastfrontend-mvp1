@@ -3,7 +3,8 @@ import { useNavigate, useParams } from 'react-router-dom';
 
 /**
  * RunCrewCentral - Member View
- * Simplified version - no hydration for now
+ * Per RunCrewArchitecture.md: Member view for RunCrew
+ * Routing handled by click handlers in AthleteHome and RunCrewList
  */
 export default function RunCrewCentral() {
   const navigate = useNavigate();

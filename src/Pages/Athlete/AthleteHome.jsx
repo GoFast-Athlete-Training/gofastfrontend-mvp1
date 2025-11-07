@@ -96,6 +96,10 @@ const AthleteHome = () => {
       return prevCards.map(card => {
         // Replace "Join RunCrew" or "RunCrew Dashboard" cards with "Go to RunCrew Central"
         if (card.path === '/runcrew/join' || card.path === '/runcrew/dashboard' || card.path === '/runcrew/start') {
+          // MVP1: Single crew - get first crew
+          const crew = crews[0];
+          const crewId = crew?.id;
+          
           return {
             ...card,
             title: 'My RunCrew',
@@ -103,9 +107,11 @@ const AthleteHome = () => {
               ? `View ${crews[0].name}` 
               : `View ${crews.length} RunCrews`,
             icon: '👥',
-            path: '/runcrew-central',
+            path: crewId ? `/runcrew/${crewId}` : '/runcrew-list', // Will check admin status on navigation (per architecture)
             color: 'bg-blue-500',
-            showIf: true
+            showIf: true,
+            crewId: crewId, // Store crew ID for navigation handler
+            isAdmin: crew?.isAdmin || false // Store admin status
           };
         }
         return card;
@@ -120,6 +126,51 @@ const AthleteHome = () => {
       navigate('/');
     } catch (error) {
       console.error('Error signing out:', error);
+    }
+  };
+
+  const handleCardClick = (card) => {
+    // Check if this is a RunCrew card and route based on admin status
+    if (card.crewId) {
+      const currentAthleteId = athleteProfile?.id;
+      
+      // Check admin status from multiple sources (per architecture)
+      let isAdmin = card.isAdmin; // From crew data
+      
+      // Also check from localStorage for accuracy
+      try {
+        const athleteData = localStorage.getItem('athleteData');
+        if (athleteData) {
+          const data = JSON.parse(athleteData);
+          if (data.runCrew && data.runCrew.id === card.crewId) {
+            isAdmin = data.runCrew.runcrewAdminId === currentAthleteId;
+          }
+        }
+        
+        // Fallback: check from myCrews
+        if (!isAdmin) {
+          const myCrews = localStorage.getItem('myCrews');
+          if (myCrews) {
+            const crews = JSON.parse(myCrews);
+            const crew = crews.find(c => c.id === card.crewId);
+            if (crew) {
+              isAdmin = crew.isAdmin || crew.runcrewAdminId === currentAthleteId;
+            }
+          }
+        }
+      } catch (error) {
+        console.error('Error checking admin status:', error);
+      }
+      
+      // Route to admin view if admin, otherwise member view (per RunCrewArchitecture.md)
+      if (isAdmin) {
+        navigate(`/runcrew/admin/${card.crewId}`);
+      } else {
+        navigate(`/runcrew/${card.crewId}`);
+      }
+    } else {
+      // Normal navigation for non-crew cards
+      navigate(card.path);
     }
   };
 
@@ -269,7 +320,7 @@ const AthleteHome = () => {
             return (
               <div 
                 key={index}
-                onClick={() => navigate(card.path)}
+                onClick={() => handleCardClick(card)}
                 className="bg-white rounded-xl shadow-lg p-6 hover:shadow-xl transition-all cursor-pointer transform hover:scale-105 text-center w-full max-w-sm"
               >
                 <div className="mb-4 flex justify-center">

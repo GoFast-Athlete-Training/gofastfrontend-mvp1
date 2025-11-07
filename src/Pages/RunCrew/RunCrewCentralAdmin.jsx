@@ -1,68 +1,18 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
-import { auth } from '../../firebase';
-
-const API_BASE = 'https://gofastbackendv2-fall2025.onrender.com/api';
 
 /**
  * RunCrewCentralAdmin - Admin View
- * Crew ID is the primary relationship manager
- * Hydrates: /api/runcrew/:id (members, runs, etc.)
+ * Simplified version - no hydration for now
+ * Per RunCrewArchitecture.md: Admin view for RunCrew management
  */
 export default function RunCrewCentralAdmin() {
   const navigate = useNavigate();
   const { id } = useParams();
-  const [crew, setCrew] = useState(null);
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState(null);
   const [showEventForm, setShowEventForm] = useState(false);
   const [leaderboardType, setLeaderboardType] = useState('miles');
   const [messageInput, setMessageInput] = useState('');
   const [activeTopic, setActiveTopic] = useState('general');
-
-  // Hydrate crew data on mount
-  useEffect(() => {
-    if (id) {
-      fetchCrewData();
-    }
-  }, [id]);
-
-  const fetchCrewData = async () => {
-    setLoading(true);
-    setError(null);
-    
-    try {
-      const user = auth.currentUser;
-      if (!user) {
-        setError('Please sign in');
-        navigate('/athlete-home');
-        return;
-      }
-      
-      const token = await user.getIdToken();
-      const res = await fetch(`${API_BASE}/runcrew/${id}`, {
-        headers: {
-          'Authorization': `Bearer ${token}`
-        }
-      });
-      
-      if (!res.ok) {
-        throw new Error('Failed to fetch crew data');
-      }
-      
-      const data = await res.json();
-      if (data.success && data.runCrew) {
-        setCrew(data.runCrew);
-      } else {
-        throw new Error('Crew not found');
-      }
-    } catch (err) {
-      console.error('Error fetching crew:', err);
-      setError(err.message || 'Failed to load crew');
-    } finally {
-      setLoading(false);
-    }
-  };
 
   // Event creation form state
   const [eventForm, setEventForm] = useState({
@@ -77,23 +27,9 @@ export default function RunCrewCentralAdmin() {
     stravaRouteId: null // Optional: link to Strava route
   });
 
-  // Get crew members from hydrated data
-  const crewMembers = crew?.memberships?.map(membership => {
-    const athlete = membership.athlete;
-    const firstName = athlete?.firstName || '';
-    const lastName = athlete?.lastName || '';
-    const name = `${firstName} ${lastName}`.trim() || athlete?.email || 'Unknown';
-    const initials = `${firstName?.[0] || ''}${lastName?.[0] || ''}`.toUpperCase() || 'U';
-    
-    return {
-      id: athlete?.id,
-      name,
-      avatar: athlete?.photoURL || null,
-      status: 'Active',
-      initials,
-      athlete
-    };
-  }) || [];
+  // Mock crew data for now (no API calls)
+  const crew = { name: 'RunCrew', memberCount: 0 };
+  const crewMembers = [];
 
   // Upcoming events
   const [upcomingEvents, setUpcomingEvents] = useState([
@@ -170,34 +106,6 @@ export default function RunCrewCentralAdmin() {
     alert('Strava route linking - coming soon!');
   };
 
-  // Loading state
-  if (loading) {
-    return (
-      <div className="min-h-screen bg-gray-50 flex items-center justify-center">
-        <div className="text-center">
-          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-orange-500 mx-auto mb-4"></div>
-          <p className="text-gray-600">Loading crew...</p>
-        </div>
-      </div>
-    );
-  }
-
-  // Error state
-  if (error || !crew) {
-    return (
-      <div className="min-h-screen bg-gray-50 flex items-center justify-center">
-        <div className="text-center max-w-md mx-auto px-6">
-          <p className="text-red-600 mb-4">{error || 'Crew not found'}</p>
-          <button
-            onClick={() => navigate('/runcrew-list')}
-            className="bg-orange-500 text-white px-4 py-2 rounded-lg hover:bg-orange-600"
-          >
-            Back to List
-          </button>
-        </div>
-      </div>
-    );
-  }
 
   return (
     <div className="min-h-screen bg-gray-50 flex flex-col">
@@ -217,7 +125,7 @@ export default function RunCrewCentralAdmin() {
             
             <div className="flex items-center space-x-6">
               <button 
-                onClick={() => navigate(`/runcrew-central/${id}`)}
+                onClick={() => navigate(`/runcrew/${id}`)}
                 className="text-gray-600 hover:text-gray-900 font-medium text-sm"
               >
                 See as Member
@@ -248,22 +156,30 @@ export default function RunCrewCentralAdmin() {
       {/* Crew Header */}
       <div className="bg-white border-b">
         <div className="max-w-7xl mx-auto px-6 py-4">
-          <div className="flex items-center space-x-3 mb-3">
-            <div className="flex -space-x-2">
-              {crewMembers.slice(0, 6).map((member) => (
-                <div key={member.id} className="relative">
-                  <img
-                    src={member.avatar}
-                    alt={member.name}
-                    className="w-10 h-10 rounded-full border-2 border-white object-cover"
-                  />
-                  <div className="absolute bottom-0 right-0 w-3 h-3 bg-green-500 rounded-full border-2 border-white"></div>
+            {crewMembers.length > 0 && (
+              <div className="flex items-center space-x-3 mb-3">
+                <div className="flex -space-x-2">
+                  {crewMembers.slice(0, 6).map((member) => (
+                    <div key={member.id} className="relative">
+                      {member.avatar ? (
+                        <img
+                          src={member.avatar}
+                          alt={member.name}
+                          className="w-10 h-10 rounded-full border-2 border-white object-cover"
+                        />
+                      ) : (
+                        <div className="w-10 h-10 rounded-full border-2 border-white bg-gray-200 flex items-center justify-center text-xs font-semibold text-gray-600">
+                          {member.initials}
+                        </div>
+                      )}
+                      <div className="absolute bottom-0 right-0 w-3 h-3 bg-green-500 rounded-full border-2 border-white"></div>
+                    </div>
+                  ))}
                 </div>
-              ))}
-            </div>
-          </div>
-          <h1 className="text-2xl font-bold text-gray-900">{crew?.name || 'Loading...'}</h1>
-          <p className="text-sm text-gray-500">{crew?.memberCount || crewMembers.length} members</p>
+              </div>
+            )}
+          <h1 className="text-2xl font-bold text-gray-900">{crew?.name || 'RunCrew'}</h1>
+          <p className="text-sm text-gray-500">{crewMembers.length} members</p>
         </div>
       </div>
 

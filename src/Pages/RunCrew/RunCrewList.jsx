@@ -57,11 +57,11 @@ export default function RunCrewList() {
   };
 
   const handleCrewClick = (crew) => {
-    // Route based on admin status - crew is the primary relationship manager
+    // Route based on admin status - crew is the primary relationship manager (per RunCrewArchitecture.md)
     if (crew.isAdmin) {
-      navigate(`/runcrew-central-admin/${crew.id}`);
+      navigate(`/runcrew/admin/${crew.id}`);
     } else {
-      navigate(`/runcrew-central/${crew.id}`);
+      navigate(`/runcrew/${crew.id}`);
     }
   };
 
