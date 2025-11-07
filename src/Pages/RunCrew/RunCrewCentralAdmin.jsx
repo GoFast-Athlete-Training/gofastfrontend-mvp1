@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useMemo } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
 import { auth } from '../../firebase';
 
@@ -15,11 +15,37 @@ export default function RunCrewCentralAdmin() {
   const [showEventForm, setShowEventForm] = useState(false);
   const [creatingEvent, setCreatingEvent] = useState(false);
   const [eventError, setEventError] = useState(null);
-  
+
+  const [showRunForm, setShowRunForm] = useState(false);
+  const [creatingRun, setCreatingRun] = useState(false);
+  const [runError, setRunError] = useState(null);
+  const [runSuccess, setRunSuccess] = useState(null);
+
   // Hydrated crew data from localStorage
   const [crew, setCrew] = useState(null);
   const [crewMembers, setCrewMembers] = useState([]);
+  const [runs, setRuns] = useState([]);
   const [upcomingEvents, setUpcomingEvents] = useState([]);
+
+  const [runForm, setRunForm] = useState({
+    title: '',
+    runType: 'single',
+    date: '',
+    startTime: '',
+    timezone: Intl.DateTimeFormat().resolvedOptions().timeZone || '',
+    meetUpPoint: '',
+    meetUpAddress: '',
+    totalMiles: '',
+    pace: '',
+    stravaMapUrl: '',
+    description: '',
+    recurrenceRule: '',
+    recurrenceEndsOn: '',
+    recurrenceNote: '',
+    meetUpPlaceId: '',
+    meetUpLat: '',
+    meetUpLng: ''
+  });
 
   // Event creation form state
   const [eventForm, setEventForm] = useState({
@@ -39,24 +65,15 @@ export default function RunCrewCentralAdmin() {
 
   const hydrateCrewData = () => {
     try {
-      // Try to get from myCrews
-      const myCrewsStr = localStorage.getItem('myCrews');
-      if (myCrewsStr) {
-        const myCrews = JSON.parse(myCrewsStr);
-        const foundCrew = myCrews.find(c => c.id === id);
-        if (foundCrew) {
-          setCrew({
-            id: foundCrew.id,
-            name: foundCrew.name || 'RunCrew',
-            joinCode: foundCrew.joinCode
-          });
-        }
-      }
+      let hydratedRuns = [];
+      let hydratedEvents = [];
+      let storedCrewPayload = null;
 
       // Try to get hydrated crew data (from /api/runcrew/:id)
       const hydratedCrewStr = localStorage.getItem(`runCrew_${id}`);
       if (hydratedCrewStr) {
         const hydratedCrew = JSON.parse(hydratedCrewStr);
+        storedCrewPayload = hydratedCrew;
         if (hydratedCrew.name) {
           setCrew({
             id: hydratedCrew.id,
@@ -73,26 +90,30 @@ export default function RunCrewCentralAdmin() {
             initials: `${(m.athlete?.firstName || m.firstName || '')?.[0] || ''}${(m.athlete?.lastName || m.lastName || '')?.[0] || ''}`.toUpperCase()
           })));
         }
+        if (hydratedCrew.runs && Array.isArray(hydratedCrew.runs)) {
+          hydratedRuns = hydratedCrew.runs;
+          setRuns(sortRuns(hydratedRuns));
+        }
         if (hydratedCrew.events && Array.isArray(hydratedCrew.events)) {
-          setUpcomingEvents(hydratedCrew.events.filter(e => {
-            const eventDate = new Date(e.date);
-            return eventDate >= new Date();
-          }).sort((a, b) => new Date(a.date) - new Date(b.date)));
+          hydratedEvents = hydratedCrew.events;
+          setUpcomingEvents(hydratedEvents.filter(e => new Date(e.date) >= new Date()).sort((a, b) => new Date(a.date) - new Date(b.date)));
         }
       }
 
-      // Fallback: use crew name from myCrews if available
-      if (!crew) {
-        const myCrewsStr = localStorage.getItem('myCrews');
-        if (myCrewsStr) {
-          const myCrews = JSON.parse(myCrewsStr);
-          const foundCrew = myCrews.find(c => c.id === id);
-          if (foundCrew) {
-            setCrew({
-              id: foundCrew.id,
-              name: foundCrew.name || 'RunCrew',
-              joinCode: foundCrew.joinCode
-            });
+      // Fallback to myCrews for basic info
+      const myCrewsStr = localStorage.getItem('myCrews');
+      if (myCrewsStr) {
+        const myCrews = JSON.parse(myCrewsStr);
+        const foundCrew = myCrews.find(c => c.id === id);
+        if (foundCrew) {
+          setCrew(prev => ({
+            id: foundCrew.id,
+            name: prev?.name || foundCrew.name || 'RunCrew',
+            joinCode: foundCrew.joinCode
+          }));
+          // if runs missing but myCrews has them (future hydration)
+          if (!hydratedRuns.length && foundCrew.runs) {
+            setRuns(sortRuns(foundCrew.runs));
           }
         }
       }
@@ -101,13 +122,127 @@ export default function RunCrewCentralAdmin() {
     }
   };
 
+  const sortRuns = (runsList = []) => {
+    return [...runsList].sort((a, b) => new Date(a.date) - new Date(b.date));
+  };
+
+  const upcomingRuns = useMemo(() => (
+    runs.filter(run => new Date(run.date) >= new Date())
+  ), [runs]);
+
   // Get current date for welcome message
-  const currentDate = new Date().toLocaleDateString('en-US', { 
-    weekday: 'long', 
-    year: 'numeric', 
-    month: 'long', 
-    day: 'numeric' 
+  const currentDate = new Date().toLocaleDateString('en-US', {
+    weekday: 'long',
+    year: 'numeric',
+    month: 'long',
+    day: 'numeric'
   });
+
+  const handleRunFormChange = (field, value) => {
+    setRunForm(prev => ({ ...prev, [field]: value }));
+    setRunError(null);
+    setRunSuccess(null);
+  };
+
+  const appendRunToLocalStorage = (newRun) => {
+    try {
+      const key = `runCrew_${id}`;
+      const existingStr = localStorage.getItem(key);
+      if (!existingStr) return;
+      const existing = JSON.parse(existingStr);
+      const updated = {
+        ...existing,
+        runs: existing.runs ? [newRun, ...existing.runs] : [newRun]
+      };
+      localStorage.setItem(key, JSON.stringify(updated));
+    } catch (error) {
+      console.warn('Failed to append run to localStorage', error);
+    }
+  };
+
+  const handleCreateRun = async () => {
+    if (!runForm.title.trim() || !runForm.date || !runForm.startTime.trim() || !runForm.meetUpPoint.trim()) {
+      setRunError('Please fill in Title, Date, Start Time, and Meet-Up Point.');
+      return;
+    }
+
+    setCreatingRun(true);
+    setRunError(null);
+    setRunSuccess(null);
+
+    try {
+      const user = auth.currentUser;
+      if (!user) {
+        setRunError('Please sign in');
+        setCreatingRun(false);
+        return;
+      }
+
+      const token = await user.getIdToken();
+      const response = await fetch(`${API_BASE}/runcrew/${id}/runs`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${token}`
+        },
+        body: JSON.stringify({
+          title: runForm.title.trim(),
+          runType: runForm.runType,
+          date: runForm.date,
+          startTime: runForm.startTime.trim(),
+          timezone: runForm.timezone?.trim() || Intl.DateTimeFormat().resolvedOptions().timeZone,
+          meetUpPoint: runForm.meetUpPoint.trim(),
+          meetUpAddress: runForm.meetUpAddress?.trim(),
+          meetUpPlaceId: runForm.meetUpPlaceId?.trim(),
+          meetUpLat: runForm.meetUpLat !== '' ? runForm.meetUpLat : null,
+          meetUpLng: runForm.meetUpLng !== '' ? runForm.meetUpLng : null,
+          totalMiles: runForm.totalMiles !== '' ? runForm.totalMiles : null,
+          pace: runForm.pace?.trim(),
+          stravaMapUrl: runForm.stravaMapUrl?.trim(),
+          description: runForm.description?.trim(),
+          recurrenceRule: runForm.runType === 'recurring' ? runForm.recurrenceRule?.trim() : null,
+          recurrenceEndsOn: runForm.runType === 'recurring' ? runForm.recurrenceEndsOn || null : null,
+          recurrenceNote: runForm.runType === 'recurring' ? runForm.recurrenceNote?.trim() : null
+        })
+      });
+
+      const data = await response.json();
+
+      if (!response.ok || !data.success) {
+        throw new Error(data.error || data.message || 'Failed to create run');
+      }
+
+      const newRun = data.data;
+      setRuns(prev => sortRuns([newRun, ...prev]));
+      appendRunToLocalStorage(newRun);
+      setRunSuccess('Run created successfully');
+      setShowRunForm(false);
+      setRunForm({
+        title: '',
+        runType: 'single',
+        date: '',
+        startTime: '',
+        timezone: Intl.DateTimeFormat().resolvedOptions().timeZone || '',
+        meetUpPoint: '',
+        meetUpAddress: '',
+        totalMiles: '',
+        pace: '',
+        stravaMapUrl: '',
+        description: '',
+        recurrenceRule: '',
+        recurrenceEndsOn: '',
+        recurrenceNote: '',
+        meetUpPlaceId: '',
+        meetUpLat: '',
+        meetUpLng: ''
+      });
+    } catch (error) {
+      console.error('Error creating run:', error);
+      setRunError(error.message || 'Failed to create run.');
+    } finally {
+      setCreatingRun(false);
+    }
+  };
 
   const handleAssignManager = async (athleteId, action) => {
     if (action === 'remove') {
@@ -246,6 +381,11 @@ export default function RunCrewCentralAdmin() {
     }
   };
 
+  const runTypeOptions = [
+    { value: 'single', label: 'Single Day' },
+    { value: 'recurring', label: 'Recurring' }
+  ];
+
   return (
     <div className="min-h-screen bg-gray-50 flex flex-col">
       {/* Top Navigation Bar */}
@@ -261,15 +401,15 @@ export default function RunCrewCentralAdmin() {
               <img src="/logo.jpg" alt="GoFast" className="w-8 h-8 rounded-full" />
               <span className="text-xl font-bold text-gray-900">GoFast</span>
             </div>
-            
+
             <div className="flex items-center space-x-6">
-              <button 
+              <button
                 onClick={() => navigate(`/runcrew/${id}`)}
                 className="text-gray-600 hover:text-gray-900 font-medium text-sm"
               >
                 See as Member
               </button>
-              <button 
+              <button
                 onClick={() => navigate(`/runcrew-settings/${id}`)}
                 className="text-gray-600 hover:text-gray-900 font-medium text-sm"
               >
@@ -312,9 +452,271 @@ export default function RunCrewCentralAdmin() {
       {/* Main Content */}
       <div className="flex-1 max-w-7xl mx-auto w-full px-6 py-6">
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-          {/* Left - Admin Actions & Event Form */}
+          {/* Left Column - Members */}
+          <div className="space-y-6">
+            <div className="bg-white rounded-lg shadow-sm p-6">
+              <h3 className="font-bold text-gray-900 mb-4 flex items-center justify-between">
+                <span>Members</span>
+                <button
+                  onClick={() => navigate(`/runcrew/${id}`)}
+                  className="text-sm text-orange-500 hover:text-orange-600"
+                >
+                  See as Member
+                </button>
+              </h3>
+              {crewMembers.length > 0 ? (
+                <div className="space-y-3 max-h-[400px] overflow-y-auto">
+                  {crewMembers.map(member => (
+                    <div key={member.id} className="flex items-center justify-between">
+                      <div className="flex items-center space-x-3">
+                        {member.photoURL ? (
+                          <img src={member.photoURL} alt={member.firstName} className="w-10 h-10 rounded-full object-cover" />
+                        ) : (
+                          <div className="w-10 h-10 rounded-full bg-orange-100 text-orange-600 flex items-center justify-center font-semibold">
+                            {member.initials || 'RC'}
+                          </div>
+                        )}
+                        <div>
+                          <p className="font-medium text-gray-900">{member.firstName} {member.lastName}</p>
+                        </div>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              ) : (
+                <p className="text-sm text-gray-500">No members yet</p>
+              )}
+            </div>
+
+            <div className="bg-white rounded-lg shadow-sm p-6">
+              <h3 className="font-bold text-gray-900 mb-2">Invite More Members</h3>
+              <p className="text-sm text-gray-600 mb-3">Share your join code: <strong>{crew?.joinCode || 'N/A'}</strong></p>
+              <button
+                onClick={() => navigator.clipboard.writeText(crew?.joinCode || '')}
+                className="bg-orange-500 text-white px-4 py-2 rounded-lg hover:bg-orange-600 text-sm font-semibold"
+              >
+                Copy Join Code
+              </button>
+            </div>
+          </div>
+
+          {/* Right Column - Actions (Runs + Events) */}
           <div className="lg:col-span-2 space-y-6">
-            {/* Add Event Section */}
+            {/* Run Section */}
+            <div className="bg-white rounded-lg shadow-sm p-6">
+              <div className="flex items-center justify-between mb-4">
+                <h2 className="text-xl font-bold text-gray-900">Create Run</h2>
+                {!showRunForm && (
+                  <button
+                    onClick={() => {
+                      setShowRunForm(true);
+                      setRunError(null);
+                      setRunSuccess(null);
+                    }}
+                    className="bg-orange-500 text-white px-4 py-2 rounded-lg hover:bg-orange-600 text-sm font-medium flex items-center space-x-2"
+                  >
+                    <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4" />
+                    </svg>
+                    <span>Add Run</span>
+                  </button>
+                )}
+              </div>
+
+              {showRunForm && (
+                <div className="border border-sky-200 rounded-lg p-4 space-y-4 bg-sky-50">
+                  <h3 className="font-semibold text-gray-900">New Run</h3>
+
+                  {runError && (
+                    <div className="bg-red-50 border border-red-200 text-red-700 px-4 py-2 rounded text-sm">
+                      {runError}
+                    </div>
+                  )}
+                  {runSuccess && (
+                    <div className="bg-green-50 border border-green-200 text-green-700 px-4 py-2 rounded text-sm">
+                      {runSuccess}
+                    </div>
+                  )}
+
+                  <div className="space-y-3">
+                    <input
+                      type="text"
+                      placeholder="Run Title *"
+                      value={runForm.title}
+                      onChange={(e) => handleRunFormChange('title', e.target.value)}
+                      className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm"
+                    />
+
+                    <div className="flex space-x-3">
+                      {runTypeOptions.map(option => (
+                        <button
+                          key={option.value}
+                          onClick={() => handleRunFormChange('runType', option.value)}
+                          type="button"
+                          className={`flex-1 px-3 py-2 rounded-lg text-sm font-medium border ${runForm.runType === option.value ? 'bg-orange-500 text-white border-orange-500' : 'border-gray-300 text-gray-600 hover:border-orange-400'}`}
+                        >
+                          {option.label}
+                        </button>
+                      ))}
+                    </div>
+
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+                      <input
+                        type="date"
+                        value={runForm.date}
+                        onChange={(e) => handleRunFormChange('date', e.target.value)}
+                        className="px-3 py-2 border border-gray-300 rounded-lg text-sm"
+                      />
+                      <input
+                        type="text"
+                        placeholder="Start Time (e.g., 06:30 AM) *"
+                        value={runForm.startTime}
+                        onChange={(e) => handleRunFormChange('startTime', e.target.value)}
+                        className="px-3 py-2 border border-gray-300 rounded-lg text-sm"
+                      />
+                      <input
+                        type="text"
+                        placeholder="Timezone (e.g., America/Chicago)"
+                        value={runForm.timezone}
+                        onChange={(e) => handleRunFormChange('timezone', e.target.value)}
+                        className="px-3 py-2 border border-gray-300 rounded-lg text-sm"
+                      />
+                      <input
+                        type="text"
+                        placeholder="Meet-Up Point *"
+                        value={runForm.meetUpPoint}
+                        onChange={(e) => handleRunFormChange('meetUpPoint', e.target.value)}
+                        className="px-3 py-2 border border-gray-300 rounded-lg text-sm"
+                      />
+                      <input
+                        type="text"
+                        placeholder="Address Notes (optional)"
+                        value={runForm.meetUpAddress}
+                        onChange={(e) => handleRunFormChange('meetUpAddress', e.target.value)}
+                        className="px-3 py-2 border border-gray-300 rounded-lg text-sm"
+                      />
+                    </div>
+
+                    <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
+                      <input
+                        type="number"
+                        min="0"
+                        step="0.1"
+                        placeholder="Miles"
+                        value={runForm.totalMiles}
+                        onChange={(e) => handleRunFormChange('totalMiles', e.target.value)}
+                        className="px-3 py-2 border border-gray-300 rounded-lg text-sm"
+                      />
+                      <input
+                        type="text"
+                        placeholder="Pace (e.g., 8:00-9:00)"
+                        value={runForm.pace}
+                        onChange={(e) => handleRunFormChange('pace', e.target.value)}
+                        className="px-3 py-2 border border-gray-300 rounded-lg text-sm"
+                      />
+                      <input
+                        type="url"
+                        placeholder="Strava Map URL"
+                        value={runForm.stravaMapUrl}
+                        onChange={(e) => handleRunFormChange('stravaMapUrl', e.target.value)}
+                        className="px-3 py-2 border border-gray-300 rounded-lg text-sm"
+                      />
+                    </div>
+
+                    {runForm.runType === 'recurring' && (
+                      <div className="space-y-3 border border-orange-200 rounded-lg p-3 bg-white/80">
+                        <p className="text-sm font-semibold text-orange-600">Recurring Run Details</p>
+                        <textarea
+                          placeholder="Recurrence Note (e.g., Every Tue/Thu)"
+                          value={runForm.recurrenceNote}
+                          onChange={(e) => handleRunFormChange('recurrenceNote', e.target.value)}
+                          className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm"
+                          rows={2}
+                        />
+                        <input
+                          type="text"
+                          placeholder="Recurrence Rule (optional, RFC5545)"
+                          value={runForm.recurrenceRule}
+                          onChange={(e) => handleRunFormChange('recurrenceRule', e.target.value)}
+                          className="px-3 py-2 border border-gray-300 rounded-lg text-sm"
+                        />
+                        <input
+                          type="date"
+                          placeholder="Ends On"
+                          value={runForm.recurrenceEndsOn}
+                          onChange={(e) => handleRunFormChange('recurrenceEndsOn', e.target.value)}
+                          className="px-3 py-2 border border-gray-300 rounded-lg text-sm"
+                        />
+                      </div>
+                    )}
+
+                    <textarea
+                      placeholder="Run Description"
+                      value={runForm.description}
+                      onChange={(e) => handleRunFormChange('description', e.target.value)}
+                      className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm"
+                      rows={3}
+                    />
+
+                    <div className="flex items-center space-x-3">
+                      <button
+                        onClick={handleCreateRun}
+                        disabled={creatingRun}
+                        className="bg-sky-600 text-white px-4 py-2 rounded-lg hover:bg-sky-700 text-sm font-semibold disabled:opacity-50"
+                      >
+                        {creatingRun ? 'Saving...' : 'Save Run'}
+                      </button>
+                      <button
+                        onClick={() => {
+                          setShowRunForm(false);
+                          setRunError(null);
+                          setRunSuccess(null);
+                        }}
+                        className="px-4 py-2 border border-gray-300 rounded-lg hover:bg-gray-50 text-sm"
+                      >
+                        Cancel
+                      </button>
+                    </div>
+                  </div>
+                </div>
+              )}
+
+              {!showRunForm && upcomingRuns.length > 0 && (
+                <div className="mt-4 space-y-3">
+                  <h3 className="text-sm font-semibold text-gray-700 mb-2 flex items-center justify-between">
+                    <span>Upcoming Runs</span>
+                    <span className="text-xs text-gray-400">{upcomingRuns.length}</span>
+                  </h3>
+                  {upcomingRuns.map(run => (
+                    <div key={run.id} className="bg-gray-50 rounded-lg p-3 border border-gray-200">
+                      <div className="flex items-center justify-between">
+                        <div>
+                          <p className="text-sm font-semibold text-gray-900">{run.title}</p>
+                          <p className="text-xs text-gray-500">
+                            {new Date(run.date).toLocaleDateString()} · {run.startTime} {run.timezone ? `(${run.timezone})` : ''}
+                          </p>
+                          <p className="text-xs text-gray-500">Meet at {run.meetUpPoint}{run.meetUpAddress ? ` · ${run.meetUpAddress}` : ''}</p>
+                        </div>
+                        {run.totalMiles && (
+                          <div className="text-xs font-semibold text-orange-600">
+                            {run.totalMiles} mi
+                          </div>
+                        )}
+                      </div>
+                      {run.pace && (
+                        <p className="text-xs text-gray-500 mt-1">Target pace: {run.pace}</p>
+                      )}
+                    </div>
+                  ))}
+                </div>
+              )}
+
+              {!showRunForm && upcomingRuns.length === 0 && (
+                <p className="text-sm text-gray-500 mt-4">No runs scheduled yet. Create your first run to get started.</p>
+              )}
+            </div>
+
+            {/* Event Section */}
             <div className="bg-white rounded-lg shadow-sm p-6">
               <div className="flex items-center justify-between mb-4">
                 <h2 className="text-xl font-bold text-gray-900">Create Event</h2>
@@ -335,7 +737,7 @@ export default function RunCrewCentralAdmin() {
               {showEventForm && (
                 <div className="border border-orange-200 rounded-lg p-4 space-y-4 bg-orange-50">
                   <h3 className="font-semibold text-gray-900">New Event</h3>
-                  
+
                   {eventError && (
                     <div className="bg-red-50 border border-red-200 text-red-700 px-4 py-2 rounded text-sm">
                       {eventError}
@@ -430,76 +832,6 @@ export default function RunCrewCentralAdmin() {
                   ))}
                 </div>
               )}
-            </div>
-          </div>
-
-          {/* Right Sidebar - Members */}
-          <div className="space-y-6">
-            {/* Members Section */}
-            <div className="bg-white rounded-lg shadow-sm p-6">
-              <h3 className="font-bold text-gray-900 mb-4">Members</h3>
-              {crewMembers.length > 0 ? (
-                <div className="space-y-3">
-                  {crewMembers.map((member) => (
-                    <div key={member.id} className="flex items-center justify-between p-2 hover:bg-gray-50 rounded">
-                      <div className="flex items-center space-x-3">
-                        {member.photoURL ? (
-                          <img
-                            src={member.photoURL}
-                            alt={`${member.firstName} ${member.lastName}`}
-                            className="w-10 h-10 rounded-full object-cover"
-                          />
-                        ) : (
-                          <div className="w-10 h-10 rounded-full bg-gray-200 flex items-center justify-center text-xs font-semibold text-gray-600">
-                            {member.initials}
-                          </div>
-                        )}
-                        <div>
-                          <p className="text-sm font-medium text-gray-900">
-                            {member.firstName} {member.lastName}
-                          </p>
-                        </div>
-                      </div>
-                      {/* Manager Role Selector */}
-                      <select
-                        className="text-xs border border-gray-300 rounded px-2 py-1"
-                        defaultValue=""
-                        onChange={(e) => {
-                          if (e.target.value) {
-                            handleAssignManager(member.id, e.target.value);
-                            e.target.value = ''; // Reset
-                          }
-                        }}
-                      >
-                        <option value="">Assign Role</option>
-                        <option value="admin">Admin (Owner)</option>
-                        <option value="manager">Manager</option>
-                        <option value="remove">Remove Role</option>
-                      </select>
-                    </div>
-                  ))}
-                </div>
-              ) : (
-                <div className="text-center py-4">
-                  <p className="text-sm text-gray-500 mb-2">No members yet</p>
-                </div>
-              )}
-
-              {/* Invite Prompt - Always at bottom */}
-              <div className="mt-6 pt-4 border-t border-gray-200">
-                <div className="bg-orange-50 border border-orange-200 rounded-lg p-4 text-center">
-                  <p className="text-sm font-medium text-orange-900 mb-2">Invite More Members</p>
-                  <p className="text-xs text-orange-700 mb-3">
-                    Share your join code: <strong className="font-mono">{crew?.joinCode || 'N/A'}</strong>
-                  </p>
-                  <button
-                    onClick={() => navigate('/join-crew')}
-                    className="bg-orange-500 text-white px-4 py-2 rounded-lg hover:bg-orange-600 text-sm font-medium"
-                  >
-                    Invite Members
-                  </button>
-                </div>
-              </div>
             </div>
           </div>
         </div>
