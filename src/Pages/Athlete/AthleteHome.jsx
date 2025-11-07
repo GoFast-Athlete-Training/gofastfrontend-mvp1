@@ -369,23 +369,46 @@ const AthleteHome = () => {
         {hasCrews && myCrews.length > 0 && (() => {
           const crewCard = displayCards.find(c => c.crewId);
           if (!crewCard) return null;
-          
+
+          const crew = myCrews.find(c => c.id === crewCard.crewId) || myCrews[0];
+          const crewLogo = crew?.logo || crew?.icon || null;
+          const crewInitials = crew?.name
+            ? crew.name
+                .split(' ')
+                .map(word => word[0])
+                .join('')
+                .slice(0, 2)
+                .toUpperCase()
+            : 'RC';
+
           return (
             <div className="mb-8">
-              <div 
+              <div
                 onClick={() => handleCardClick(crewCard)}
-                className="bg-gradient-to-r from-purple-600 to-purple-700 rounded-2xl shadow-2xl p-8 hover:shadow-3xl transition-all cursor-pointer transform hover:scale-[1.02] text-center max-w-3xl mx-auto"
+                className="bg-gradient-to-r from-sky-500 to-sky-600 rounded-3xl shadow-2xl p-8 hover:shadow-3xl transition-all cursor-pointer transform hover:scale-[1.02] text-center max-w-3xl mx-auto"
               >
                 <div className="mb-6 flex justify-center">
-                  <div className="text-7xl">👥</div>
+                  {crewLogo ? (
+                    <div className="h-20 w-20 rounded-full overflow-hidden border-4 border-white/80 shadow-lg flex items-center justify-center bg-white">
+                      <img
+                        src={crewLogo}
+                        alt={`${crew?.name || 'RunCrew'} logo`}
+                        className="h-full w-full object-cover"
+                      />
+                    </div>
+                  ) : (
+                    <div className="h-20 w-20 rounded-full bg-white text-orange-500 flex items-center justify-center text-3xl font-bold shadow-lg">
+                      {crewInitials}
+                    </div>
+                  )}
                 </div>
                 <h2 className="text-3xl md:text-4xl font-bold text-white mb-4">
-                  {crewCard.title || 'My RunCrew'}
+                  {crew?.name || crewCard.title || 'My RunCrew'}
                 </h2>
-                <p className="text-xl text-purple-100 mb-6">
-                  {crewCard.description || `View ${myCrews[0]?.name || 'your crew'}`}
+                <p className="text-lg text-sky-50/90 mb-6 max-w-2xl mx-auto">
+                  {crew?.description || crewCard.description || 'Manage your crew, create events, and coordinate the team.'}
                 </p>
-                <div className="bg-white text-purple-600 px-8 py-4 rounded-xl font-bold text-lg inline-block hover:bg-purple-50 transition-colors">
+                <div className="bg-orange-500 text-white px-8 py-4 rounded-xl font-bold text-lg inline-block hover:bg-orange-600 transition-colors">
                   Go to RunCrew →
                 </div>
               </div>
