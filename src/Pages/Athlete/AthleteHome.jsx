@@ -119,14 +119,24 @@ const AthleteHome = () => {
           const crew = crews[0];
           const crewId = crew?.id;
           
-          // Determine admin status - MVP1: Default to admin if runcrewAdminId matches
-          const isAdmin = crew?.runcrewAdminId === currentAthleteId || crew?.isAdmin === true;
+          // QUERYABLE MODEL: Check managers array for admin status
+          const managers = crew?.managers || [];
+          const isAdminFromManager = managers.some(m => m.athleteId === currentAthleteId && m.role === 'admin');
           
-          console.log('🎯 ATHLETE HOME: Setting up RunCrew card:', {
+          // Fallback: Check isAdmin flag or runcrewAdminId (backward compatibility)
+          const isAdminFromFlag = crew?.isAdmin === true;
+          const isAdminFromField = crew?.runcrewAdminId === currentAthleteId;
+          
+          const isAdmin = isAdminFromManager || isAdminFromFlag || isAdminFromField;
+          
+          console.log('🎯 ATHLETE HOME: Setting up RunCrew card (QUERYABLE MODEL):', {
             crewId,
             crewName: crew?.name,
-            runcrewAdminId: crew?.runcrewAdminId,
             currentAthleteId,
+            managers: managers.map(m => ({ athleteId: m.athleteId, role: m.role })),
+            isAdminFromManager,
+            isAdminFromFlag,
+            isAdminFromField,
             isAdmin,
             willRouteTo: isAdmin ? `/runcrew/admin/${crewId}` : `/runcrew/${crewId}`
           });
@@ -173,7 +183,7 @@ const AthleteHome = () => {
       // This is the most reliable since it's set when cards are created
       let isAdmin = card.isAdmin === true;
       
-      // Double-check with localStorage for debugging
+      // Double-check with localStorage for debugging (QUERYABLE MODEL)
       try {
         // Primary check: myCrews array (from /api/runcrew/mine or athlete hydrate)
         const myCrewsStr = localStorage.getItem('myCrews');
@@ -181,11 +191,23 @@ const AthleteHome = () => {
           const myCrews = JSON.parse(myCrewsStr);
           const crew = myCrews.find(c => c.id === card.crewId);
           if (crew) {
-            const isAdminFromStorage = crew.isAdmin === true || crew.runcrewAdminId === currentAthleteId;
-            console.log('🔍 ATHLETE HOME: Admin check from myCrews localStorage:', {
+            // QUERYABLE MODEL: Check managers array first
+            const managers = crew.managers || [];
+            const isAdminFromManager = managers.some(m => m.athleteId === currentAthleteId && m.role === 'admin');
+            
+            // Fallback: Check isAdmin flag or runcrewAdminId
+            const isAdminFromFlag = crew.isAdmin === true;
+            const isAdminFromField = crew.runcrewAdminId === currentAthleteId;
+            
+            const isAdminFromStorage = isAdminFromManager || isAdminFromFlag || isAdminFromField;
+            
+            console.log('🔍 ATHLETE HOME: Admin check from myCrews localStorage (QUERYABLE MODEL):', {
               crewId: card.crewId,
-              runcrewAdminId: crew.runcrewAdminId,
               currentAthleteId,
+              managers: managers.map(m => ({ athleteId: m.athleteId, role: m.role })),
+              isAdminFromManager,
+              isAdminFromFlag,
+              isAdminFromField,
               isAdmin: isAdminFromStorage,
               crewObject: crew
             });
@@ -207,11 +229,20 @@ const AthleteHome = () => {
           const runCrews = athleteData.runCrews || (athleteData.runCrew ? [athleteData.runCrew] : []);
           const crew = runCrews.find(c => c.id === card.crewId);
           if (crew) {
-            const isAdminFromAthleteData = crew.runcrewAdminId === currentAthleteId;
-            console.log('🔍 ATHLETE HOME: Admin check from athleteData:', {
+            // QUERYABLE MODEL: Check managers array first
+            const managers = crew.managers || [];
+            const isAdminFromManager = managers.some(m => m.athleteId === currentAthleteId && m.role === 'admin');
+            const isAdminFromField = crew.runcrewAdminId === currentAthleteId;
+            const isAdminFromFlag = crew.isAdmin === true;
+            const isAdminFromAthleteData = isAdminFromManager || isAdminFromFlag || isAdminFromField;
+            
+            console.log('🔍 ATHLETE HOME: Admin check from athleteData (QUERYABLE MODEL):', {
               crewId: card.crewId,
-              runcrewAdminId: crew.runcrewAdminId,
               currentAthleteId,
+              managers: managers.map(m => ({ athleteId: m.athleteId, role: m.role })),
+              isAdminFromManager,
+              isAdminFromFlag,
+              isAdminFromField,
               isAdmin: isAdminFromAthleteData,
               crewObject: crew
             });
