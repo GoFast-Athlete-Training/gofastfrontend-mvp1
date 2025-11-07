@@ -109,6 +109,73 @@ export default function RunCrewCentralAdmin() {
     day: 'numeric' 
   });
 
+  const handleAssignManager = async (athleteId, action) => {
+    if (action === 'remove') {
+      // Delete manager role
+      try {
+        const user = auth.currentUser;
+        if (!user) {
+          alert('Please sign in');
+          return;
+        }
+
+        const token = await user.getIdToken();
+        const response = await fetch(`${API_BASE}/runcrew/${id}/managers/${athleteId}`, {
+          method: 'DELETE',
+          headers: {
+            'Authorization': `Bearer ${token}`
+          }
+        });
+
+        const data = await response.json();
+        if (response.ok && data.success) {
+          alert('Manager role removed successfully');
+          // Refresh crew data
+          hydrateCrewData();
+        } else {
+          alert(data.error || 'Failed to remove manager role');
+        }
+      } catch (error) {
+        console.error('Error removing manager:', error);
+        alert('Failed to remove manager role');
+      }
+    } else {
+      // Upsert manager role
+      try {
+        const user = auth.currentUser;
+        if (!user) {
+          alert('Please sign in');
+          return;
+        }
+
+        const token = await user.getIdToken();
+        const response = await fetch(`${API_BASE}/runcrew/${id}/managers`, {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            'Authorization': `Bearer ${token}`
+          },
+          body: JSON.stringify({
+            athleteId,
+            role: action // 'admin' or 'manager'
+          })
+        });
+
+        const data = await response.json();
+        if (response.ok && data.success) {
+          alert(`Role assigned successfully: ${action}`);
+          // Refresh crew data
+          hydrateCrewData();
+        } else {
+          alert(data.error || 'Failed to assign role');
+        }
+      } catch (error) {
+        console.error('Error assigning manager:', error);
+        alert('Failed to assign role');
+      }
+    }
+  };
+
   const handleCreateEvent = async () => {
     if (!eventForm.title || !eventForm.date || !eventForm.time || !eventForm.location) {
       setEventError('Please fill in all required fields');
@@ -374,23 +441,41 @@ export default function RunCrewCentralAdmin() {
               {crewMembers.length > 0 ? (
                 <div className="space-y-3">
                   {crewMembers.map((member) => (
-                    <div key={member.id} className="flex items-center space-x-3">
-                      {member.photoURL ? (
-                        <img
-                          src={member.photoURL}
-                          alt={`${member.firstName} ${member.lastName}`}
-                          className="w-10 h-10 rounded-full object-cover"
-                        />
-                      ) : (
-                        <div className="w-10 h-10 rounded-full bg-gray-200 flex items-center justify-center text-xs font-semibold text-gray-600">
-                          {member.initials}
+                    <div key={member.id} className="flex items-center justify-between p-2 hover:bg-gray-50 rounded">
+                      <div className="flex items-center space-x-3">
+                        {member.photoURL ? (
+                          <img
+                            src={member.photoURL}
+                            alt={`${member.firstName} ${member.lastName}`}
+                            className="w-10 h-10 rounded-full object-cover"
+                          />
+                        ) : (
+                          <div className="w-10 h-10 rounded-full bg-gray-200 flex items-center justify-center text-xs font-semibold text-gray-600">
+                            {member.initials}
+                          </div>
+                        )}
+                        <div>
+                          <p className="text-sm font-medium text-gray-900">
+                            {member.firstName} {member.lastName}
+                          </p>
                         </div>
-                      )}
-                      <div>
-                        <p className="text-sm font-medium text-gray-900">
-                          {member.firstName} {member.lastName}
-                        </p>
                       </div>
+                      {/* Manager Role Selector */}
+                      <select
+                        className="text-xs border border-gray-300 rounded px-2 py-1"
+                        defaultValue=""
+                        onChange={(e) => {
+                          if (e.target.value) {
+                            handleAssignManager(member.id, e.target.value);
+                            e.target.value = ''; // Reset
+                          }
+                        }}
+                      >
+                        <option value="">Assign Role</option>
+                        <option value="admin">Admin (Owner)</option>
+                        <option value="manager">Manager</option>
+                        <option value="remove">Remove Role</option>
+                      </select>
                     </div>
                   ))}
                 </div>
