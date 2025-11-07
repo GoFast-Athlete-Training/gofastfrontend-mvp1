@@ -365,16 +365,44 @@ const AthleteHome = () => {
           </div>
         </div>
 
+        {/* RunCrew Hero Section - Most Prominent */}
+        {hasCrews && myCrews.length > 0 && (() => {
+          const crewCard = displayCards.find(c => c.crewId);
+          if (!crewCard) return null;
+          
+          return (
+            <div className="mb-8">
+              <div 
+                onClick={() => handleCardClick(crewCard)}
+                className="bg-gradient-to-r from-purple-600 to-purple-700 rounded-2xl shadow-2xl p-8 hover:shadow-3xl transition-all cursor-pointer transform hover:scale-[1.02] text-center max-w-3xl mx-auto"
+              >
+                <div className="mb-6 flex justify-center">
+                  <div className="text-7xl">👥</div>
+                </div>
+                <h2 className="text-3xl md:text-4xl font-bold text-white mb-4">
+                  {crewCard.title || 'My RunCrew'}
+                </h2>
+                <p className="text-xl text-purple-100 mb-6">
+                  {crewCard.description || `View ${myCrews[0]?.name || 'your crew'}`}
+                </p>
+                <div className="bg-white text-purple-600 px-8 py-4 rounded-xl font-bold text-lg inline-block hover:bg-purple-50 transition-colors">
+                  Go to RunCrew →
+                </div>
+              </div>
+            </div>
+          );
+        })()}
+
         {/* Weekly Activities Summary Card (if activities exist) */}
         {weeklyActivities && weeklyActivities.length > 0 && (
-          <div className="bg-white rounded-xl shadow-lg p-6 mb-6 max-w-2xl mx-auto">
+          <div className="bg-white rounded-xl shadow-lg p-6 mb-8 max-w-2xl mx-auto">
             <div className="flex justify-between items-center mb-4">
-              <h2 className="text-2xl font-bold text-gray-900">This Week</h2>
+              <h2 className="text-2xl font-bold text-gray-900">This Week's Activities</h2>
               <button
                 onClick={() => navigate('/my-activities')}
-                className="text-orange-600 hover:text-orange-700 font-semibold"
+                className="text-orange-600 hover:text-orange-700 font-semibold hover:underline"
               >
-                See My Activities →
+                View All →
               </button>
             </div>
             <div className="grid grid-cols-3 gap-4">
@@ -391,58 +419,48 @@ const AthleteHome = () => {
                 <p className="text-sm text-gray-600">Calories</p>
               </div>
             </div>
+            <div className="mt-4 pt-4 border-t border-gray-200">
+              <p className="text-sm text-gray-500 text-center">
+                💡 Activities sync automatically from Garmin Connect. Click "View All" to see detailed activity history.
+              </p>
+            </div>
           </div>
         )}
 
-        {/* Smart Action Cards */}
-        <div className="flex flex-wrap justify-center gap-6">
-          {/* Add "See My Activities" card if activities exist */}
-          {weeklyActivities && weeklyActivities.length > 0 && (
-            <div 
-              onClick={() => navigate('/my-activities')}
-              className="bg-white rounded-xl shadow-lg p-6 hover:shadow-xl transition-all cursor-pointer transform hover:scale-105 text-center w-full max-w-sm"
-            >
-              <div className="mb-4 flex justify-center">
-                <div className="text-5xl">🏃‍♂️</div>
-              </div>
-              <h3 className="text-xl font-bold text-gray-900 mb-3">See My Activities</h3>
-              <p className="text-gray-600 mb-4">View your {weeklyActivities.length} activities from this week</p>
-              <div className="bg-orange-500 text-white px-4 py-2 rounded-lg font-bold">
-                View Activities
-              </div>
+        {/* Other Action Cards */}
+        {displayCards.filter(c => !c.crewId).length > 0 && (
+          <div className="mb-8">
+            <h2 className="text-2xl font-bold text-gray-900 text-center mb-6">Quick Actions</h2>
+            <div className="flex flex-wrap justify-center gap-6">
+              {displayCards
+                .filter(card => !card.crewId && card.showIf !== false)
+                .map((card, index) => (
+                  <div 
+                    key={index}
+                    onClick={() => handleCardClick(card)}
+                    className="bg-white rounded-xl shadow-lg p-6 hover:shadow-xl transition-all cursor-pointer transform hover:scale-105 text-center w-full max-w-sm"
+                  >
+                    <div className="mb-4 flex justify-center">
+                      {card.icon === 'garmin' ? (
+                        <img 
+                          src="/Garmin_Connect_app_1024x1024-02.png" 
+                          alt="Garmin Connect" 
+                          className="h-16 w-auto"
+                        />
+                      ) : (
+                        <div className="text-5xl">{card.icon}</div>
+                      )}
+                    </div>
+                    <h3 className="text-xl font-bold text-gray-900 mb-3">{card.title}</h3>
+                    <p className="text-gray-600 mb-4">{card.description}</p>
+                    <div className={`${card.color} text-white px-4 py-2 rounded-lg font-bold`}>
+                      Get Started
+                    </div>
+                  </div>
+                ))}
             </div>
-          )}
-          
-          {displayCards.map((card, index) => {
-            // Skip cards that have showIf conditions and don't meet them
-            if (card.showIf === false) return null;
-            
-            return (
-              <div 
-                key={index}
-                onClick={() => handleCardClick(card)}
-                className="bg-white rounded-xl shadow-lg p-6 hover:shadow-xl transition-all cursor-pointer transform hover:scale-105 text-center w-full max-w-sm"
-              >
-                <div className="mb-4 flex justify-center">
-                  {card.icon === 'garmin' ? (
-                    <img 
-                      src="/Garmin_Connect_app_1024x1024-02.png" 
-                      alt="Garmin Connect" 
-                      className="h-16 w-auto"
-                    />
-                  ) : (
-                    <div className="text-5xl">{card.icon}</div>
-                  )}
-                </div>
-                <h3 className="text-xl font-bold text-gray-900 mb-3">{card.title}</h3>
-                <p className="text-gray-600 mb-4">{card.description}</p>
-                <div className={`${card.color} text-white px-4 py-2 rounded-lg font-bold`}>
-                  Get Started
-                </div>
-              </div>
-            );
-          })}
-        </div>
+          </div>
+        )}
 
       </div>
     </div>
