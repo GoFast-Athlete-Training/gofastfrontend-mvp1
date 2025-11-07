@@ -1,8 +1,36 @@
-import React, { useState, useEffect, useMemo } from 'react';
+import React, { useState, useEffect, useMemo, useRef } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
 import { auth } from '../../firebase';
 
 const API_BASE = 'https://gofastbackendv2-fall2025.onrender.com/api';
+
+const GOOGLE_MAPS_LIBRARIES = ['places'];
+
+const loadGoogleMapsScript = (apiKey) => {
+  if (typeof window === 'undefined') return Promise.reject('window undefined');
+  if (window.google && window.google.maps) {
+    return Promise.resolve(window.google.maps);
+  }
+
+  return new Promise((resolve, reject) => {
+    const existing = document.querySelector('script[data-google-maps-loader="true"]');
+    if (existing) {
+      existing.addEventListener('load', () => resolve(window.google.maps));
+      existing.addEventListener('error', reject);
+      return;
+    }
+
+    const script = document.createElement('script');
+    script.type = 'text/javascript';
+    script.async = true;
+    script.defer = true;
+    script.dataset.googleMapsLoader = 'true';
+    script.src = `https://maps.googleapis.com/maps/api/js?key=${apiKey}&libraries=${GOOGLE_MAPS_LIBRARIES.join(',')}`;
+    script.onload = () => resolve(window.google.maps);
+    script.onerror = () => reject(new Error('Failed to load Google Maps script'));
+    document.body.appendChild(script);
+  });
+};
 
 /**
  * RunCrewCentralAdmin - Admin View
@@ -31,13 +59,14 @@ export default function RunCrewCentralAdmin() {
     title: '',
     runType: 'single',
     date: '',
-    startTime: '',
-    timezone: Intl.DateTimeFormat().resolvedOptions().timeZone || '',
+    startHour: '06',
+    startMinute: '30',
+    startPeriod: 'AM',
+    timezone: Intl.DateTimeFormat().resolvedOptions().timeZone || 'America/New_York',
     meetUpPoint: '',
     meetUpAddress: '',
     totalMiles: '',
     pace: '',
-    stravaMapUrl: '',
     description: '',
     recurrenceRule: '',
     recurrenceEndsOn: '',
@@ -58,10 +87,84 @@ export default function RunCrewCentralAdmin() {
     eventType: ''
   });
 
+  const timezoneOptions = [
+    'America/New_York',
+    'America/Chicago',
+    'America/Denver',
+    'America/Los_Angeles',
+    'America/Phoenix',
+    'America/Anchorage',
+    'America/Honolulu',
+    'Europe/London',
+    'Europe/Paris',
+    'Asia/Tokyo',
+    'Australia/Sydney'
+  ];
+
+  const mapContainerRef = useRef(null);
+  const mapInstanceRef = useRef(null);
+  const markerRef = useRef(null);
+  const mapsLoadedRef = useRef(false);
+
+  const apiKey = import.meta.env.VITE_GOOGLE_MAPS_API_KEY;
+
   // Hydrate crew data from localStorage on mount
   useEffect(() => {
     hydrateCrewData();
   }, [id]);
+
+  useEffect(() => {
+    if (!showRunForm || !apiKey) return;
+
+    let isMounted = true;
+
+    loadGoogleMapsScript(apiKey)
+      .then((maps) => {
+        if (!isMounted || !mapContainerRef.current) return;
+
+        mapsLoadedRef.current = true;
+        if (!mapInstanceRef.current) {
+          mapInstanceRef.current = new maps.Map(mapContainerRef.current, {
+            center: { lat: 38.8816, lng: -77.0910 }, // Arlington, VA
+            zoom: 13,
+            mapTypeControl: false,
+            streetViewControl: false,
+            fullscreenControl: false
+          });
+
+          mapInstanceRef.current.addListener('click', (event) => {
+            const { latLng } = event;
+            if (!latLng) return;
+
+            const lat = latLng.lat();
+            const lng = latLng.lng();
+
+            if (!markerRef.current) {
+              markerRef.current = new maps.Marker({
+                position: latLng,
+                map: mapInstanceRef.current,
+                animation: maps.Animation.DROP
+              });
+            } else {
+              markerRef.current.setPosition(latLng);
+            }
+
+            setRunForm((prev) => ({
+              ...prev,
+              meetUpLat: lat.toFixed(6),
+              meetUpLng: lng.toFixed(6)
+            }));
+          });
+        }
+      })
+      .catch((error) => {
+        console.error('Failed to load Google Maps:', error);
+      });
+
+    return () => {
+      isMounted = false;
+    };
+  }, [showRunForm, apiKey]);
 
   const hydrateCrewData = () => {
     try {
@@ -138,7 +241,32 @@ export default function RunCrewCentralAdmin() {
     day: 'numeric'
   });
 
+  const convertToTimeString = () => {
+    const hour = parseInt(runForm.startHour || '0', 10);
+    const minute = parseInt(runForm.startMinute || '0', 10);
+    if (Number.isNaN(hour) || Number.isNaN(minute) || hour < 1 || hour > 12 || minute < 0 || minute > 59) {
+      return '';
+    }
+    const hh = hour.toString().padStart(2, '0');
+    const mm = minute.toString().padStart(2, '0');
+    return `${hh}:${mm} ${runForm.startPeriod}`;
+  };
+
   const handleRunFormChange = (field, value) => {
+    if (field === 'startHour') {
+      const digitsOnly = value.replace(/[^0-9]/g, '').slice(0, 2);
+      setRunForm(prev => ({ ...prev, startHour: digitsOnly }));
+      setRunError(null);
+      setRunSuccess(null);
+      return;
+    }
+    if (field === 'startMinute') {
+      const digitsOnly = value.replace(/[^0-9]/g, '').slice(0, 2);
+      setRunForm(prev => ({ ...prev, startMinute: digitsOnly }));
+      setRunError(null);
+      setRunSuccess(null);
+      return;
+    }
     setRunForm(prev => ({ ...prev, [field]: value }));
     setRunError(null);
     setRunSuccess(null);
@@ -161,7 +289,8 @@ export default function RunCrewCentralAdmin() {
   };
 
   const handleCreateRun = async () => {
-    if (!runForm.title.trim() || !runForm.date || !runForm.startTime.trim() || !runForm.meetUpPoint.trim()) {
+    const startTimeString = convertToTimeString();
+    if (!runForm.title.trim() || !runForm.date || !startTimeString || !runForm.meetUpPoint.trim()) {
       setRunError('Please fill in Title, Date, Start Time, and Meet-Up Point.');
       return;
     }
@@ -189,7 +318,7 @@ export default function RunCrewCentralAdmin() {
           title: runForm.title.trim(),
           runType: runForm.runType,
           date: runForm.date,
-          startTime: runForm.startTime.trim(),
+          startTime: startTimeString,
           timezone: runForm.timezone?.trim() || Intl.DateTimeFormat().resolvedOptions().timeZone,
           meetUpPoint: runForm.meetUpPoint.trim(),
           meetUpAddress: runForm.meetUpAddress?.trim(),
@@ -198,7 +327,6 @@ export default function RunCrewCentralAdmin() {
           meetUpLng: runForm.meetUpLng !== '' ? runForm.meetUpLng : null,
           totalMiles: runForm.totalMiles !== '' ? runForm.totalMiles : null,
           pace: runForm.pace?.trim(),
-          stravaMapUrl: runForm.stravaMapUrl?.trim(),
           description: runForm.description?.trim(),
           recurrenceRule: runForm.runType === 'recurring' ? runForm.recurrenceRule?.trim() : null,
           recurrenceEndsOn: runForm.runType === 'recurring' ? runForm.recurrenceEndsOn || null : null,
@@ -221,13 +349,14 @@ export default function RunCrewCentralAdmin() {
         title: '',
         runType: 'single',
         date: '',
-        startTime: '',
-        timezone: Intl.DateTimeFormat().resolvedOptions().timeZone || '',
+        startHour: '06',
+        startMinute: '30',
+        startPeriod: 'AM',
+        timezone: Intl.DateTimeFormat().resolvedOptions().timeZone || 'America/New_York',
         meetUpPoint: '',
         meetUpAddress: '',
         totalMiles: '',
         pace: '',
-        stravaMapUrl: '',
         description: '',
         recurrenceRule: '',
         recurrenceEndsOn: '',
@@ -236,6 +365,10 @@ export default function RunCrewCentralAdmin() {
         meetUpLat: '',
         meetUpLng: ''
       });
+      if (markerRef.current) {
+        markerRef.current.setMap(null);
+        markerRef.current = null;
+      }
     } catch (error) {
       console.error('Error creating run:', error);
       setRunError(error.message || 'Failed to create run.');
@@ -352,7 +485,7 @@ export default function RunCrewCentralAdmin() {
       }
 
       // Add to local state
-      const newEvent = {
+    const newEvent = {
         id: data.data.id,
         title: data.data.title,
         date: data.data.date,
@@ -363,13 +496,13 @@ export default function RunCrewCentralAdmin() {
       setUpcomingEvents([...upcomingEvents, newEvent].sort((a, b) => new Date(a.date) - new Date(b.date)));
 
       // Reset form
-      setEventForm({
-        title: '',
-        date: '',
-        time: '',
-        location: '',
-        address: '',
-        description: '',
+    setEventForm({
+      title: '',
+      date: '',
+      time: '',
+      location: '',
+      address: '',
+      description: '',
         eventType: ''
       });
       setShowEventForm(false);
@@ -440,7 +573,7 @@ export default function RunCrewCentralAdmin() {
               {crew?.name || 'RunCrew'}
             </h1>
             <p className="text-gray-600">{currentDate}</p>
-          </div>
+                </div>
           <div className="bg-orange-50 border border-orange-200 rounded-lg p-4">
             <p className="text-sm text-orange-900">
               <strong>Welcome to the admin dashboard!</strong> Here you can manage your crew, create events, and coordinate activities.
@@ -521,11 +654,210 @@ export default function RunCrewCentralAdmin() {
                     <span>Add Run</span>
                   </button>
                 )}
-              </div>
+                </div>
 
               {showRunForm && (
-                <div className="border border-sky-200 rounded-lg p-4 space-y-4 bg-sky-50">
-                  <h3 className="font-semibold text-gray-900">New Run</h3>
+                <div className="border border-sky-200 rounded-lg p-4 space-y-5 bg-sky-50">
+                  <div>
+                    <label className="block text-sm font-semibold text-gray-700 mb-1">Run Title *</label>
+                    <input
+                      type="text"
+                      value={runForm.title}
+                      onChange={(e) => handleRunFormChange('title', e.target.value)}
+                      className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm"
+                      placeholder="Morning Tempo Run"
+                    />
+                  </div>
+
+                  <div>
+                    <label className="block text-sm font-semibold text-gray-700 mb-1">Run Type</label>
+                    <select
+                      value={runForm.runType}
+                      onChange={(e) => handleRunFormChange('runType', e.target.value)}
+                      className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm"
+                    >
+                      {runTypeOptions.map(option => (
+                        <option key={option.value} value={option.value}>{option.label}</option>
+                      ))}
+                    </select>
+                  </div>
+
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                    <div>
+                      <label className="block text-sm font-semibold text-gray-700 mb-1">Run Date *</label>
+                      <input
+                        type="date"
+                        value={runForm.date}
+                        onChange={(e) => handleRunFormChange('date', e.target.value)}
+                        className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm"
+                      />
+                    </div>
+                    <div>
+                      <label className="block text-sm font-semibold text-gray-700 mb-1">Start Time *</label>
+                      <div className="flex items-center space-x-2">
+                        <input
+                          type="text"
+                          value={runForm.startHour}
+                          onChange={(e) => handleRunFormChange('startHour', e.target.value)}
+                          onBlur={() => {
+                            const hour = parseInt(runForm.startHour || '0', 10);
+                            if (Number.isNaN(hour) || hour < 1 || hour > 12) {
+                              setRunForm(prev => ({ ...prev, startHour: '06' }));
+                            }
+                          }}
+                          className="w-16 px-3 py-2 border border-gray-300 rounded-lg text-sm text-center"
+                          placeholder="HH"
+                        />
+                        <span className="text-gray-500 font-semibold">:</span>
+                        <input
+                          type="text"
+                          value={runForm.startMinute}
+                          onChange={(e) => handleRunFormChange('startMinute', e.target.value)}
+                          onBlur={() => {
+                            const minute = parseInt(runForm.startMinute || '0', 10);
+                            if (Number.isNaN(minute) || minute < 0 || minute > 59) {
+                              setRunForm(prev => ({ ...prev, startMinute: '30' }));
+                            }
+                          }}
+                          className="w-16 px-3 py-2 border border-gray-300 rounded-lg text-sm text-center"
+                          placeholder="MM"
+                        />
+                        <div className="flex rounded-lg border border-gray-300 overflow-hidden">
+                          {['AM', 'PM'].map(period => (
+                            <button
+                              key={period}
+                              type="button"
+                              onClick={() => handleRunFormChange('startPeriod', period)}
+                              className={`px-3 py-2 text-sm font-semibold ${runForm.startPeriod === period ? 'bg-orange-500 text-white' : 'bg-white text-gray-600 hover:bg-gray-100'}`}
+                            >
+                              {period}
+                            </button>
+                          ))}
+                        </div>
+                      </div>
+                      <p className="text-xs text-gray-500 mt-1">Enter the local start time for this run</p>
+                    </div>
+                  </div>
+
+                  <div>
+                    <label className="block text-sm font-semibold text-gray-700 mb-1">Timezone *</label>
+                    <select
+                      value={runForm.timezone}
+                      onChange={(e) => handleRunFormChange('timezone', e.target.value)}
+                      className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm"
+                    >
+                      {[...new Set([runForm.timezone, ...timezoneOptions])].map(tz => (
+                        <option key={tz} value={tz}>{tz}</option>
+                      ))}
+                    </select>
+                  </div>
+
+                  <div>
+                    <label className="block text-sm font-semibold text-gray-700 mb-1">Meet-Up Point *</label>
+                    <input
+                      type="text"
+                      value={runForm.meetUpPoint}
+                      onChange={(e) => handleRunFormChange('meetUpPoint', e.target.value)}
+                      className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm"
+                      placeholder="Example: Blue Bottle Coffee, Mission District"
+                    />
+                    <p className="text-xs text-gray-500 mt-1">This is the name your crew will recognize. Google Places integration coming soon.</p>
+                  </div>
+
+                  <div>
+                    <label className="block text-sm font-semibold text-gray-700 mb-1">Address Notes (optional)</label>
+                    <input
+                      type="text"
+                      value={runForm.meetUpAddress}
+                      onChange={(e) => handleRunFormChange('meetUpAddress', e.target.value)}
+                      className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm"
+                      placeholder="Parking deck entrance, suite number, etc."
+                    />
+                  </div>
+
+                  {!!apiKey && (
+                    <div>
+                      <label className="block text-sm font-semibold text-gray-700 mb-1">Pin Meet-Up Location (optional)</label>
+                      <div
+                        ref={mapContainerRef}
+                        className="w-full h-64 border border-gray-300 rounded-lg overflow-hidden bg-white"
+                      />
+                      <div className="flex items-center justify-between text-xs text-gray-500 mt-2">
+                        <span>Click the map to drop a marker.</span>
+                        {(runForm.meetUpLat && runForm.meetUpLng) && (
+                          <span className="font-medium text-gray-700">Selected: {runForm.meetUpLat}, {runForm.meetUpLng}</span>
+                        )}
+                      </div>
+                    </div>
+                  )}
+
+                  {(!apiKey || apiKey === '') && (
+                    <div className="bg-yellow-50 border border-yellow-200 text-yellow-700 px-4 py-2 rounded text-xs">
+                      Google Maps API key is not set. Add <strong>VITE_GOOGLE_MAPS_API_KEY</strong> in your environment file to enable map selection.
+                    </div>
+                  )}
+
+                  <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                    <div>
+                      <label className="block text-sm font-semibold text-gray-700 mb-1">Miles (optional)</label>
+                      <input
+                        type="number"
+                        min="0"
+                        step="0.1"
+                        value={runForm.totalMiles}
+                        onChange={(e) => handleRunFormChange('totalMiles', e.target.value)}
+                        className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm"
+                        placeholder="6"
+                      />
+                    </div>
+                    <div>
+                      <label className="block text-sm font-semibold text-gray-700 mb-1">Pace (optional)</label>
+                      <input
+                        type="text"
+                        value={runForm.pace}
+                        onChange={(e) => handleRunFormChange('pace', e.target.value)}
+                        className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm"
+                        placeholder="8:00-9:00"
+                      />
+                    </div>
+                  </div>
+
+                  {runForm.runType === 'recurring' && (
+                    <div className="space-y-3 border border-orange-200 rounded-lg p-3 bg-white">
+                      <p className="text-sm font-semibold text-orange-600">Recurring Run Details</p>
+                      <textarea
+                        value={runForm.recurrenceNote}
+                        onChange={(e) => handleRunFormChange('recurrenceNote', e.target.value)}
+                        className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm"
+                        rows={2}
+                        placeholder="Every Tue/Thu until march"
+                      />
+                      <input
+                        type="text"
+                        value={runForm.recurrenceRule}
+                        onChange={(e) => handleRunFormChange('recurrenceRule', e.target.value)}
+                        className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm"
+                        placeholder="FREQ=WEEKLY;BYDAY=TU,TH (optional)"
+                      />
+                      <input
+                        type="date"
+                        value={runForm.recurrenceEndsOn}
+                        onChange={(e) => handleRunFormChange('recurrenceEndsOn', e.target.value)}
+                        className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm"
+                      />
+                    </div>
+                  )}
+
+                  <div>
+                    <label className="block text-sm font-semibold text-gray-700 mb-1">Run Description (optional)</label>
+                    <textarea
+                      value={runForm.description}
+                      onChange={(e) => handleRunFormChange('description', e.target.value)}
+                      className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm"
+                      rows={3}
+                      placeholder="Segment warm-up, hill repeats, bring hydration, etc."
+                    />
+                  </div>
 
                   {runError && (
                     <div className="bg-red-50 border border-red-200 text-red-700 px-4 py-2 rounded text-sm">
@@ -538,145 +870,24 @@ export default function RunCrewCentralAdmin() {
                     </div>
                   )}
 
-                  <div className="space-y-3">
-                    <input
-                      type="text"
-                      placeholder="Run Title *"
-                      value={runForm.title}
-                      onChange={(e) => handleRunFormChange('title', e.target.value)}
-                      className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm"
-                    />
-
-                    <div className="flex space-x-3">
-                      {runTypeOptions.map(option => (
-                        <button
-                          key={option.value}
-                          onClick={() => handleRunFormChange('runType', option.value)}
-                          type="button"
-                          className={`flex-1 px-3 py-2 rounded-lg text-sm font-medium border ${runForm.runType === option.value ? 'bg-orange-500 text-white border-orange-500' : 'border-gray-300 text-gray-600 hover:border-orange-400'}`}
-                        >
-                          {option.label}
-                        </button>
-                      ))}
-                    </div>
-
-                    <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
-                      <input
-                        type="date"
-                        value={runForm.date}
-                        onChange={(e) => handleRunFormChange('date', e.target.value)}
-                        className="px-3 py-2 border border-gray-300 rounded-lg text-sm"
-                      />
-                      <input
-                        type="text"
-                        placeholder="Start Time (e.g., 06:30 AM) *"
-                        value={runForm.startTime}
-                        onChange={(e) => handleRunFormChange('startTime', e.target.value)}
-                        className="px-3 py-2 border border-gray-300 rounded-lg text-sm"
-                      />
-                      <input
-                        type="text"
-                        placeholder="Timezone (e.g., America/Chicago)"
-                        value={runForm.timezone}
-                        onChange={(e) => handleRunFormChange('timezone', e.target.value)}
-                        className="px-3 py-2 border border-gray-300 rounded-lg text-sm"
-                      />
-                      <input
-                        type="text"
-                        placeholder="Meet-Up Point *"
-                        value={runForm.meetUpPoint}
-                        onChange={(e) => handleRunFormChange('meetUpPoint', e.target.value)}
-                        className="px-3 py-2 border border-gray-300 rounded-lg text-sm"
-                      />
-                      <input
-                        type="text"
-                        placeholder="Address Notes (optional)"
-                        value={runForm.meetUpAddress}
-                        onChange={(e) => handleRunFormChange('meetUpAddress', e.target.value)}
-                        className="px-3 py-2 border border-gray-300 rounded-lg text-sm"
-                      />
-                    </div>
-
-                    <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
-                      <input
-                        type="number"
-                        min="0"
-                        step="0.1"
-                        placeholder="Miles"
-                        value={runForm.totalMiles}
-                        onChange={(e) => handleRunFormChange('totalMiles', e.target.value)}
-                        className="px-3 py-2 border border-gray-300 rounded-lg text-sm"
-                      />
-                      <input
-                        type="text"
-                        placeholder="Pace (e.g., 8:00-9:00)"
-                        value={runForm.pace}
-                        onChange={(e) => handleRunFormChange('pace', e.target.value)}
-                        className="px-3 py-2 border border-gray-300 rounded-lg text-sm"
-                      />
-                      <input
-                        type="url"
-                        placeholder="Strava Map URL"
-                        value={runForm.stravaMapUrl}
-                        onChange={(e) => handleRunFormChange('stravaMapUrl', e.target.value)}
-                        className="px-3 py-2 border border-gray-300 rounded-lg text-sm"
-                      />
-                    </div>
-
-                    {runForm.runType === 'recurring' && (
-                      <div className="space-y-3 border border-orange-200 rounded-lg p-3 bg-white/80">
-                        <p className="text-sm font-semibold text-orange-600">Recurring Run Details</p>
-                        <textarea
-                          placeholder="Recurrence Note (e.g., Every Tue/Thu)"
-                          value={runForm.recurrenceNote}
-                          onChange={(e) => handleRunFormChange('recurrenceNote', e.target.value)}
-                          className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm"
-                          rows={2}
-                        />
-                        <input
-                          type="text"
-                          placeholder="Recurrence Rule (optional, RFC5545)"
-                          value={runForm.recurrenceRule}
-                          onChange={(e) => handleRunFormChange('recurrenceRule', e.target.value)}
-                          className="px-3 py-2 border border-gray-300 rounded-lg text-sm"
-                        />
-                        <input
-                          type="date"
-                          placeholder="Ends On"
-                          value={runForm.recurrenceEndsOn}
-                          onChange={(e) => handleRunFormChange('recurrenceEndsOn', e.target.value)}
-                          className="px-3 py-2 border border-gray-300 rounded-lg text-sm"
-                        />
-                      </div>
-                    )}
-
-                    <textarea
-                      placeholder="Run Description"
-                      value={runForm.description}
-                      onChange={(e) => handleRunFormChange('description', e.target.value)}
-                      className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm"
-                      rows={3}
-                    />
-
-                    <div className="flex items-center space-x-3">
-                      <button
-                        onClick={handleCreateRun}
-                        disabled={creatingRun}
-                        className="bg-sky-600 text-white px-4 py-2 rounded-lg hover:bg-sky-700 text-sm font-semibold disabled:opacity-50"
-                      >
-                        {creatingRun ? 'Saving...' : 'Save Run'}
-                      </button>
-                      <button
-                        onClick={() => {
-                          setShowRunForm(false);
-                          setRunError(null);
-                          setRunSuccess(null);
-                        }}
-                        className="px-4 py-2 border border-gray-300 rounded-lg hover:bg-gray-50 text-sm"
-                      >
-                        Cancel
-                      </button>
-                    </div>
+                  <div className="flex items-center space-x-3">
+                    <button
+                      onClick={handleCreateRun}
+                      disabled={creatingRun}
+                      className="bg-sky-600 text-white px-4 py-2 rounded-lg hover:bg-sky-700 text-sm font-semibold disabled:opacity-50"
+                    >
+                      {creatingRun ? 'Creating…' : 'Create Run'}
+                    </button>
+                    <button
+                      onClick={() => {
+                        setShowRunForm(false);
+                        setRunError(null);
+                        setRunSuccess(null);
+                      }}
+                      className="px-4 py-2 border border-gray-300 rounded-lg hover:bg-gray-50 text-sm"
+                    >
+                      Cancel
+                    </button>
                   </div>
                 </div>
               )}
@@ -700,21 +911,21 @@ export default function RunCrewCentralAdmin() {
                         {run.totalMiles && (
                           <div className="text-xs font-semibold text-orange-600">
                             {run.totalMiles} mi
-                          </div>
+                </div>
                         )}
                       </div>
                       {run.pace && (
                         <p className="text-xs text-gray-500 mt-1">Target pace: {run.pace}</p>
                       )}
-                    </div>
-                  ))}
+                  </div>
+                ))}
                 </div>
               )}
 
               {!showRunForm && upcomingRuns.length === 0 && (
                 <p className="text-sm text-gray-500 mt-4">No runs scheduled yet. Create your first run to get started.</p>
               )}
-            </div>
+              </div>
 
             {/* Event Section */}
             <div className="bg-white rounded-lg shadow-sm p-6">
@@ -828,9 +1039,9 @@ export default function RunCrewCentralAdmin() {
                           {new Date(event.date).toLocaleDateString()} at {event.time} · {event.location}
                         </p>
                       </div>
-                    </div>
-                  ))}
-                </div>
+                  </div>
+                ))}
+              </div>
               )}
             </div>
           </div>
