@@ -361,7 +361,6 @@ export default function RunCrewCentralAdmin() {
 
     setCreatingRun(true);
     setRunError(null);
-    setRunSuccess(null);
 
     try {
       const user = auth.currentUser;
@@ -409,6 +408,7 @@ export default function RunCrewCentralAdmin() {
       const newRun = data.data;
       setRuns(prev => sortRuns([newRun, ...prev]));
       appendRunToLocalStorage(newRun);
+      hydrateCrewData();
       setRunSuccess('Run created successfully');
       setShowRunForm(false);
       setRunForm(getDefaultRunForm());
@@ -416,6 +416,7 @@ export default function RunCrewCentralAdmin() {
         markerRef.current.setMap(null);
         markerRef.current = null;
       }
+      setTimeout(() => setRunSuccess(null), 4000);
       setStravaStatus('idle');
       setStravaError(null);
     } catch (error) {
@@ -765,6 +766,12 @@ export default function RunCrewCentralAdmin() {
                   </button>
                 )}
                 </div>
+
+              {runSuccess && !showRunForm && (
+                <div className="mb-3 bg-green-50 border border-green-200 text-green-700 px-4 py-2 rounded text-sm">
+                  {runSuccess}
+                </div>
+              )}
 
               {showRunForm && (
                 <div className="border border-sky-200 rounded-lg p-4 space-y-5 bg-sky-50">
