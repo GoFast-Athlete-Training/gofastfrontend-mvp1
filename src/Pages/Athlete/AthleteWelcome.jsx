@@ -56,16 +56,10 @@ export default function AthleteWelcome() {
 
         // Cache Athlete data to localStorage
         console.log('💾 ATHLETE WELCOME: Caching athlete data to localStorage...');
-        localStorage.setItem('athleteId', hydratedAthlete.athleteId);
         localStorage.setItem('athleteProfile', JSON.stringify(hydratedAthlete));
-        localStorage.setItem('profileHydrated', 'true');
-        console.log('✅ ATHLETE WELCOME: athleteId cached:', hydratedAthlete.athleteId);
-        
-        // Store RunCrews if available
-        if (hydratedAthlete.runCrews && hydratedAthlete.runCrews.length > 0) {
-          localStorage.setItem('myCrews', JSON.stringify(hydratedAthlete.runCrews));
-          console.log('✅ ATHLETE WELCOME: RunCrews cached:', hydratedAthlete.runCrews.length);
-        }
+        localStorage.setItem('runCrewId', hydratedAthlete.runCrewId || '');
+        console.log('✅ ATHLETE WELCOME: athleteProfile cached for athlete:', hydratedAthlete.athleteId);
+        console.log('✅ ATHLETE WELCOME: runCrewId cached:', hydratedAthlete.runCrewId || '');
         
         // Hydration complete - show button for user to click
         console.log('🎯 ATHLETE WELCOME: Hydration complete, ready for user action');

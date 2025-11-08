@@ -10,13 +10,22 @@ export default function RunCrewCentralAdmin() {
   const navigate = useNavigate();
   const {
     athlete: hydratedAthlete,
-    athleteData,
     crews,
     athleteId,
     runCrewId
   } = useHydratedAthlete();
 
-  const hydratedCrew = useMemo(() => athleteData?.runCrew || null, [athleteData?.runCrew]);
+  const hydratedCrew = useMemo(() => {
+    if (!runCrewId || !Array.isArray(crews)) {
+      return null;
+    }
+
+    const normalizedId = String(runCrewId);
+    return crews.find(crew => {
+      const crewId = crew?.id ?? crew?.runCrewId;
+      return crewId && String(crewId) === normalizedId;
+    }) || null;
+  }, [crews, runCrewId]);
 
   const [crew, setCrew] = useState(hydratedCrew);
   const [crewLoading, setCrewLoading] = useState(!hydratedCrew && !!runCrewId);

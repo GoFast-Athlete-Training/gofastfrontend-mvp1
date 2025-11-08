@@ -34,14 +34,10 @@ export default function Welcome() {
         console.log('✅ WELCOME: Athlete hydrated:', athlete);
 
         // Cache Athlete data to localStorage
-        localStorage.setItem('athleteId', athlete.athleteId);
         localStorage.setItem('athleteProfile', JSON.stringify(athlete));
-        localStorage.setItem('profileHydrated', 'true');
+        localStorage.setItem('runCrewId', athlete.runCrewId || '');
         
-        // Store RunCrews if available
-        if (athlete.runCrews && athlete.runCrews.length > 0) {
-          localStorage.setItem('myCrews', JSON.stringify(athlete.runCrews));
-        }
+        // No-op for run crew arrays in MVP1 (single crew per athlete)
 
         // Routing Logic based on what's missing
         // Profile check: Does athlete have gofastHandle? (basic profile requirement)

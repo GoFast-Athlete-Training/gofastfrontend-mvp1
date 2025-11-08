@@ -12,9 +12,7 @@ const safeParse = (value) => {
 
 const STORAGE_KEYS = {
   athlete: 'athleteProfile',
-  athleteData: 'athleteData',
-  crews: 'myCrews',
-  onboarding: 'onboardingState'
+  runCrewId: 'runCrewId'
 };
 
 export default function useHydratedAthlete() {
@@ -23,22 +21,16 @@ export default function useHydratedAthlete() {
   return useMemo(() => {
     if (!cacheRef.current) {
       const athlete = safeParse(window.localStorage.getItem(STORAGE_KEYS.athlete));
-      const athleteData = safeParse(window.localStorage.getItem(STORAGE_KEYS.athleteData));
-      const crews = safeParse(window.localStorage.getItem(STORAGE_KEYS.crews)) || [];
-      const onboardingState = safeParse(window.localStorage.getItem(STORAGE_KEYS.onboarding));
 
-      const athleteId = athlete?.id
-        || athleteData?.athlete?.id
-        || athleteData?.athleteId
-        || null;
+      const athleteId = athlete?.athleteId || athlete?.id || null;
 
-      const runCrewId = athleteData?.runCrew?.id || null;
+      const storedRunCrewId = window.localStorage.getItem(STORAGE_KEYS.runCrewId);
+      const runCrewId = storedRunCrewId !== null
+        ? (storedRunCrewId || null)
+        : (athlete?.runCrewId || null);
 
       cacheRef.current = {
         athlete,
-        athleteData,
-        crews,
-        onboardingState,
         athleteId,
         runCrewId
       };
