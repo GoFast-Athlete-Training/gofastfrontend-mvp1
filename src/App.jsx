@@ -1,5 +1,5 @@
 import React from 'react';
-import { BrowserRouter as Router, Routes, Route } from 'react-router-dom';
+import { BrowserRouter as Router, Routes, Route, Navigate } from 'react-router-dom';
 import ScrollToTop from './Components/ScrollToTop';
 
 // Pages
@@ -75,10 +75,12 @@ const App = () => {
         <Route path="/runcrew-list" element={<RunCrewList />} />
         {/* RunCrew Routes - Per RunCrewArchitecture.md */}
         <Route path="/runcrew/:id" element={<RunCrewCentral />} />
-        <Route path="/runcrew/admin/:id" element={<RunCrewCentralAdmin />} />
+        <Route path="/crew/crewadmin" element={<RunCrewCentralAdmin />} />
+        {/* Legacy routes - redirect to new routes */}
+        <Route path="/runcrew/admin/:id" element={<Navigate to="/crew/crewadmin" replace />} />
         {/* Legacy routes - redirect to new routes */}
         <Route path="/runcrew-central/:id" element={<RunCrewCentral />} />
-        <Route path="/runcrew-central-admin/:id" element={<RunCrewCentralAdmin />} />
+        <Route path="/runcrew-central-admin/:id" element={<Navigate to="/crew/crewadmin" replace />} />
         <Route path="/runcrew-settings" element={<RunCrewSettings />} />
         <Route path="/runcrew-run-detail/:runId?" element={<RunCrewRunDetail />} />
         {/* Legacy route - redirect to central */}

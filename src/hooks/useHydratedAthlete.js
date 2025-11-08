@@ -27,11 +27,20 @@ export default function useHydratedAthlete() {
       const crews = safeParse(window.localStorage.getItem(STORAGE_KEYS.crews)) || [];
       const onboardingState = safeParse(window.localStorage.getItem(STORAGE_KEYS.onboarding));
 
+      const athleteId = athlete?.id
+        || athleteData?.athlete?.id
+        || athleteData?.athleteId
+        || null;
+
+      const runCrewId = athleteData?.runCrew?.id || null;
+
       cacheRef.current = {
         athlete,
         athleteData,
         crews,
-        onboardingState
+        onboardingState,
+        athleteId,
+        runCrewId
       };
     }
 

@@ -1,5 +1,5 @@
 import React, { useEffect, useState, useCallback, useMemo } from 'react';
-import { useNavigate, useParams } from 'react-router-dom';
+import { useNavigate } from 'react-router-dom';
 import axios from 'axios';
 import { auth } from '../../firebase';
 import useHydratedAthlete from '../../hooks/useHydratedAthlete';
@@ -8,21 +8,18 @@ const API_BASE = 'https://gofastbackendv2-fall2025.onrender.com/api';
 
 export default function RunCrewCentralAdmin() {
   const navigate = useNavigate();
-  const { id: runCrewId } = useParams();
-  const { athlete, athleteData, crews } = useHydratedAthlete();
+  const {
+    athlete: hydratedAthlete,
+    athleteData,
+    crews,
+    athleteId,
+    runCrewId
+  } = useHydratedAthlete();
 
-  const hydratedCrew = useMemo(() => {
-    if (athleteData?.runCrew && (!runCrewId || athleteData.runCrew.id === runCrewId)) {
-      return athleteData.runCrew;
-    }
-    if (Array.isArray(crews) && crews.length > 0) {
-      return crews.find(crew => crew.id === runCrewId) || crews[0];
-    }
-    return null;
-  }, [athleteData?.runCrew, crews, runCrewId]);
+  const hydratedCrew = useMemo(() => athleteData?.runCrew || null, [athleteData?.runCrew]);
 
   const [crew, setCrew] = useState(hydratedCrew);
-  const [crewLoading, setCrewLoading] = useState(!hydratedCrew);
+  const [crewLoading, setCrewLoading] = useState(!hydratedCrew && !!runCrewId);
   const [crewError, setCrewError] = useState(null);
 
   const [runs, setRuns] = useState([]);
@@ -33,16 +30,27 @@ export default function RunCrewCentralAdmin() {
 
   useEffect(() => {
     setCrew(hydratedCrew);
-    setCrewLoading(!hydratedCrew);
+    if (hydratedCrew) {
+      setCrewLoading(false);
+    }
   }, [hydratedCrew]);
 
-  const athleteId = athlete?.id || athleteData?.athlete?.id || athleteData?.athleteId;
+  const missingContext = useMemo(() => !athleteId || !runCrewId, [athleteId, runCrewId]);
+
+  useEffect(() => {
+    if (missingContext) {
+      navigate('/athlete-welcome');
+    }
+  }, [missingContext, navigate]);
 
   const hydrateCrew = useCallback(async () => {
+    if (missingContext) {
+      return;
+    }
+
     const user = auth.currentUser;
     if (!user) {
-      setCrewLoading(false);
-      setCrewError('Please return to athlete home to refresh your session.');
+      console.warn('[WARN] RUNCREW ADMIN: Firebase user missing during hydrateCrew');
       return;
     }
 
@@ -51,14 +59,14 @@ export default function RunCrewCentralAdmin() {
       setCrewError(null);
 
       const token = await user.getIdToken();
-      const { data } = await axios.get(`${API_BASE}/runcrew/${runCrewId}`, {
+      const { data } = await axios.get(`${API_BASE}/runcrew/${runCrewId}/context/${athleteId}`, {
         headers: {
           Authorization: `Bearer ${token}`
         }
       });
 
       if (!data?.success || !data.runCrew) {
-        throw new Error(data?.error || data?.message || 'Failed to load crew.');
+        throw new Error(data?.error || data?.message || 'Failed to load crew context.');
       }
 
       setCrew(data.runCrew);
@@ -67,9 +75,14 @@ export default function RunCrewCentralAdmin() {
     } finally {
       setCrewLoading(false);
     }
-  }, [runCrewId]);
+  }, [athleteId, missingContext, runCrewId]);
 
   const refreshRuns = useCallback(async () => {
+    if (missingContext) {
+      setRunsMessage('Runs will appear once your crew context is ready.');
+      return;
+    }
+
     const user = auth.currentUser;
     if (!user) {
       setRunsMessage('Runs will appear once you refresh after signing in.');
@@ -101,13 +114,13 @@ export default function RunCrewCentralAdmin() {
     } finally {
       setRunsLoading(false);
     }
-  }, [runCrewId]);
+  }, [missingContext, runCrewId]);
 
   useEffect(() => {
-    if (!hydratedCrew) {
+    if (!missingContext) {
       hydrateCrew();
     }
-  }, [hydrateCrew, hydratedCrew]);
+  }, [hydrateCrew, missingContext]);
 
   const currentDate = new Date().toLocaleDateString('en-US', {
     weekday: 'long',
@@ -115,6 +128,13 @@ export default function RunCrewCentralAdmin() {
     month: 'long',
     day: 'numeric'
   });
+
+  const actingAthleteName = useMemo(() => {
+    if (hydratedAthlete?.firstName) {
+      return `${hydratedAthlete.firstName}${hydratedAthlete.lastName ? ` ${hydratedAthlete.lastName}` : ''}`;
+    }
+    return null;
+  }, [hydratedAthlete?.firstName, hydratedAthlete?.lastName]);
 
   return (
     <div className="min-h-screen bg-gray-50 flex flex-col">
@@ -130,21 +150,26 @@ export default function RunCrewCentralAdmin() {
               </svg>
             </button>
             <div>
-              <h1 className="text-xl font-bold text-gray-900">RunCrew Admin</h1>
+              <h1 className="text-3xl font-bold text-gray-900">
+                {crewLoading ? 'RunCrew' : crew?.name || 'RunCrew'}
+              </h1>
+              <p className="text-sm text-gray-500">{currentDate}</p>
               {athleteId && (
-                <p className="text-xs text-gray-500">Acting as athlete #{athleteId}</p>
+                <p className="mt-2 text-base text-gray-700">
+                  Welcome, athlete #{athleteId}{actingAthleteName ? ` (${actingAthleteName})` : ''}. How do you want to manage your crew today?
+                </p>
               )}
             </div>
           </div>
           <div className="flex items-center space-x-3">
             <button
-              onClick={() => navigate(`/runcrew/${runCrewId}`)}
+              onClick={() => navigate('/runcrew-list')}
               className="text-sm text-gray-600 hover:text-gray-900"
             >
               See as Member
             </button>
             <button
-              onClick={() => navigate(`/runcrew-settings/${runCrewId}`)}
+              onClick={() => navigate('/runcrew-settings')}
               className="text-sm text-gray-600 hover:text-gray-900"
             >
               Settings
@@ -216,7 +241,7 @@ export default function RunCrewCentralAdmin() {
                   <p className="font-semibold text-gray-900">{run.title || 'Untitled Run'}</p>
                   <p className="text-xs text-gray-500">
                     {run.date ? new Date(run.date).toLocaleString() : 'Date TBD'}
-                    {run.startTime ? ` • ${run.startTime}` : ''}
+                    {run.startTime ? ` · ${run.startTime}` : ''}
                   </p>
                   {run.meetUpPoint && (
                     <p className="text-xs text-gray-500">Meet at {run.meetUpPoint}</p>
