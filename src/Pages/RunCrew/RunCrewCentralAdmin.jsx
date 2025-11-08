@@ -1,6 +1,7 @@
 import React, { useState, useEffect, useMemo, useRef } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
 import { auth } from '../../firebase';
+import StravaRoutePreview from '../../Components/RunCrew/StravaRoutePreview.jsx';
 
 const API_BASE = 'https://gofastbackendv2-fall2025.onrender.com/api';
 
@@ -32,6 +33,8 @@ const loadGoogleMapsScript = (apiKey) => {
   });
 };
 
+const STRAVA_REGEX = /strava\.com\/(activities|routes)\/(\d+)/i;
+
 /**
  * RunCrewCentralAdmin - Admin View
  * Per RunCrewArchitecture.md: Admin view for RunCrew management
@@ -55,26 +58,35 @@ export default function RunCrewCentralAdmin() {
   const [runs, setRuns] = useState([]);
   const [upcomingEvents, setUpcomingEvents] = useState([]);
 
-  const [runForm, setRunForm] = useState({
-    title: '',
-    runType: 'single',
-    date: '',
-    startHour: '06',
-    startMinute: '30',
-    startPeriod: 'AM',
-    timezone: Intl.DateTimeFormat().resolvedOptions().timeZone || 'America/New_York',
-    meetUpPoint: '',
-    meetUpAddress: '',
-    totalMiles: '',
-    pace: '',
-    description: '',
-    recurrenceRule: '',
-    recurrenceEndsOn: '',
-    recurrenceNote: '',
-    meetUpPlaceId: '',
-    meetUpLat: '',
-    meetUpLng: ''
-  });
+  const getDefaultRunForm = () => {
+    const todayISO = new Date().toISOString().split('T')[0];
+    return {
+      title: 'Morning Warriors Tempo Run',
+      runType: 'single',
+      date: todayISO,
+      startHour: '06',
+      startMinute: '30',
+      startPeriod: 'AM',
+      timezone: 'America/New_York',
+      meetUpPoint: 'Blue Bottle Coffee, Clarendon',
+      meetUpAddress: '2607 Wilson Blvd, Arlington, VA 22201',
+      totalMiles: '6.0',
+      pace: '8:00-9:00',
+      stravaUrl: 'https://www.strava.com/activities/123456789',
+      stravaPolyline: '',
+      description: 'Segment warm-up, hill repeats, bring hydration.',
+      recurrenceRule: '',
+      recurrenceEndsOn: '',
+      recurrenceNote: '',
+      meetUpPlaceId: '',
+      meetUpLat: '',
+      meetUpLng: ''
+    };
+  };
+
+  const [runForm, setRunForm] = useState(getDefaultRunForm);
+  const [stravaStatus, setStravaStatus] = useState('idle'); // idle | loading | success | error
+  const [stravaError, setStravaError] = useState(null);
 
   // Event creation form state
   const [eventForm, setEventForm] = useState({
@@ -165,6 +177,49 @@ export default function RunCrewCentralAdmin() {
       isMounted = false;
     };
   }, [showRunForm, apiKey]);
+
+  // Geocode address or meet-up point when changed
+  useEffect(() => {
+    if (!mapsLoadedRef.current || !mapInstanceRef.current) return;
+
+    const addressCandidate = (runForm.meetUpAddress?.trim() || runForm.meetUpPoint?.trim());
+    if (!addressCandidate) return;
+
+    const maps = window.google.maps;
+    const geocoder = new maps.Geocoder();
+
+    let cancelled = false;
+
+    geocoder.geocode({ address: addressCandidate }, (results, status) => {
+      if (cancelled) return;
+      if (status === 'OK' && results?.[0]) {
+        const { location } = results[0].geometry;
+        const lat = location.lat();
+        const lng = location.lng();
+
+        mapInstanceRef.current.setCenter({ lat, lng });
+        mapInstanceRef.current.setZoom(15);
+
+        if (!markerRef.current) {
+          markerRef.current = new maps.Marker({
+            map: mapInstanceRef.current,
+            animation: maps.Animation.DROP
+          });
+        }
+        markerRef.current.setPosition({ lat, lng });
+
+        setRunForm(prev => ({
+          ...prev,
+          meetUpLat: lat.toFixed(6),
+          meetUpLng: lng.toFixed(6)
+        }));
+      }
+    });
+
+    return () => {
+      cancelled = true;
+    };
+  }, [runForm.meetUpAddress, runForm.meetUpPoint]);
 
   const hydrateCrewData = () => {
     try {
@@ -267,6 +322,15 @@ export default function RunCrewCentralAdmin() {
       setRunSuccess(null);
       return;
     }
+    if (field === 'stravaUrl') {
+      setRunForm(prev => ({ ...prev, stravaUrl: value, stravaPolyline: '' }));
+      setStravaStatus('idle');
+      setStravaError(null);
+      if (!value) {
+        setRunForm(prev => ({ ...prev, totalMiles: prev.totalMiles }));
+      }
+      return;
+    }
     setRunForm(prev => ({ ...prev, [field]: value }));
     setRunError(null);
     setRunSuccess(null);
@@ -327,6 +391,8 @@ export default function RunCrewCentralAdmin() {
           meetUpLng: runForm.meetUpLng !== '' ? runForm.meetUpLng : null,
           totalMiles: runForm.totalMiles !== '' ? runForm.totalMiles : null,
           pace: runForm.pace?.trim(),
+          stravaMapUrl: runForm.stravaUrl?.trim() || null,
+          stravaPolyline: runForm.stravaPolyline || null,
           description: runForm.description?.trim(),
           recurrenceRule: runForm.runType === 'recurring' ? runForm.recurrenceRule?.trim() : null,
           recurrenceEndsOn: runForm.runType === 'recurring' ? runForm.recurrenceEndsOn || null : null,
@@ -345,30 +411,13 @@ export default function RunCrewCentralAdmin() {
       appendRunToLocalStorage(newRun);
       setRunSuccess('Run created successfully');
       setShowRunForm(false);
-      setRunForm({
-        title: '',
-        runType: 'single',
-        date: '',
-        startHour: '06',
-        startMinute: '30',
-        startPeriod: 'AM',
-        timezone: Intl.DateTimeFormat().resolvedOptions().timeZone || 'America/New_York',
-        meetUpPoint: '',
-        meetUpAddress: '',
-        totalMiles: '',
-        pace: '',
-        description: '',
-        recurrenceRule: '',
-        recurrenceEndsOn: '',
-        recurrenceNote: '',
-        meetUpPlaceId: '',
-        meetUpLat: '',
-        meetUpLng: ''
-      });
+      setRunForm(getDefaultRunForm());
       if (markerRef.current) {
         markerRef.current.setMap(null);
         markerRef.current = null;
       }
+      setStravaStatus('idle');
+      setStravaError(null);
     } catch (error) {
       console.error('Error creating run:', error);
       setRunError(error.message || 'Failed to create run.');
@@ -518,6 +567,67 @@ export default function RunCrewCentralAdmin() {
     { value: 'single', label: 'Single Day' },
     { value: 'recurring', label: 'Recurring' }
   ];
+
+  const fetchMockStrava = async (type, id) => {
+    // In production swap with real Strava API call.
+    await new Promise((resolve) => setTimeout(resolve, 800));
+    // Simple diamond route near Arlington.
+    const mockPolyline = 'gkmiF`h}qMrAfAz@v@~@Z\\F\\@|@kAbBeC~Dm@p@W`@MZKZ?\\?f@?b@GZQ\\_@t@c@f@e@r@u@l@oAnA';
+    const mockDistanceMiles = 5.2;
+    return { polyline: mockPolyline, distanceMiles: mockDistanceMiles };
+  };
+
+  useEffect(() => {
+    const url = runForm.stravaUrl?.trim();
+    if (!url) {
+      setStravaStatus('idle');
+      setStravaError(null);
+      setRunForm(prev => ({ ...prev, stravaPolyline: '' }));
+      return;
+    }
+
+    const match = url.match(STRAVA_REGEX);
+    if (!match) {
+      setStravaStatus('idle');
+      setStravaError(null);
+      setRunForm(prev => ({ ...prev, stravaPolyline: '' }));
+      return;
+    }
+
+    const [, type, idValue] = match;
+    setStravaStatus('loading');
+    setStravaError(null);
+
+    let cancelled = false;
+
+    fetchMockStrava(type, idValue)
+      .then(({ polyline: polylineString, distanceMiles }) => {
+        if (cancelled) return;
+        if (!polylineString) {
+          setStravaStatus('error');
+          setStravaError('No polyline available for this Strava link.');
+          setRunForm(prev => ({ ...prev, stravaPolyline: '' }));
+          return;
+        }
+        setRunForm(prev => ({
+          ...prev,
+          stravaPolyline: polylineString,
+          totalMiles: prev.totalMiles ? prev.totalMiles : (distanceMiles ? distanceMiles.toFixed(1) : '')
+        }));
+        setStravaStatus('success');
+      })
+      .catch((err) => {
+        if (cancelled) return;
+        console.error('Strava fetch error', err);
+        setStravaStatus('error');
+        setStravaError('Failed to load Strava route preview.');
+        setRunForm(prev => ({ ...prev, stravaPolyline: '' }));
+      });
+
+    return () => {
+      cancelled = true;
+    };
+  }, [runForm.stravaUrl]);
 
   return (
     <div className="min-h-screen bg-gray-50 flex flex-col">
@@ -820,6 +930,32 @@ export default function RunCrewCentralAdmin() {
                         placeholder="8:00-9:00"
                       />
                     </div>
+                  </div>
+
+                  <div>
+                    <label className="block text-sm font-semibold text-gray-700 mb-1">Strava Map URL (optional)</label>
+                    <input
+                      type="url"
+                      value={runForm.stravaUrl}
+                      onChange={(e) => handleRunFormChange('stravaUrl', e.target.value)}
+                      className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm"
+                      placeholder="https://www.strava.com/activities/123456789"
+                    />
+                    {stravaStatus === 'loading' && (
+                      <p className="text-xs text-gray-500 mt-1">Loading Strava route…</p>
+                    )}
+                    {stravaStatus === 'error' && stravaError && (
+                      <p className="text-xs text-red-500 mt-1">{stravaError}</p>
+                    )}
+                    {stravaStatus === 'success' && (
+                      <p className="text-xs text-green-600 mt-1">Strava route loaded.</p>
+                    )}
+                    {runForm.stravaPolyline && (
+                      <StravaRoutePreview
+                        polylineString={runForm.stravaPolyline}
+                        stravaUrl={runForm.stravaUrl}
+                      />
+                    )}
                   </div>
 
                   {runForm.runType === 'recurring' && (
