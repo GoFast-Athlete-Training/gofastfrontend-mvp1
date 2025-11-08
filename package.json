@@ -28,6 +28,7 @@
     "firebase": "^10.7.1",
     "lucide-react": "^0.548.0",
     "react-icons": "^5.5.0",
-    "react-router-dom": "^7.6.0"
+    "react-router-dom": "^7.6.0",
+    "@mapbox/polyline": "^1.1.1"
   }
 }
