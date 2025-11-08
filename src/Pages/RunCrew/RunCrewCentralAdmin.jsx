@@ -1,15 +1,28 @@
-import React, { useEffect, useState, useCallback } from 'react';
+import React, { useEffect, useState, useCallback, useMemo } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
+import axios from 'axios';
 import { auth } from '../../firebase';
+import useHydratedAthlete from '../../hooks/useHydratedAthlete';
 
 const API_BASE = 'https://gofastbackendv2-fall2025.onrender.com/api';
 
 export default function RunCrewCentralAdmin() {
   const navigate = useNavigate();
   const { id: runCrewId } = useParams();
+  const { athlete, athleteData, crews } = useHydratedAthlete();
 
-  const [crew, setCrew] = useState(null);
-  const [crewLoading, setCrewLoading] = useState(true);
+  const hydratedCrew = useMemo(() => {
+    if (athleteData?.runCrew && (!runCrewId || athleteData.runCrew.id === runCrewId)) {
+      return athleteData.runCrew;
+    }
+    if (Array.isArray(crews) && crews.length > 0) {
+      return crews.find(crew => crew.id === runCrewId) || crews[0];
+    }
+    return null;
+  }, [athleteData?.runCrew, crews, runCrewId]);
+
+  const [crew, setCrew] = useState(hydratedCrew);
+  const [crewLoading, setCrewLoading] = useState(!hydratedCrew);
   const [crewError, setCrewError] = useState(null);
 
   const [runs, setRuns] = useState([]);
@@ -18,28 +31,33 @@ export default function RunCrewCentralAdmin() {
   const [runsError, setRunsError] = useState(null);
   const [showRuns, setShowRuns] = useState(false);
 
-  const getToken = useCallback(async () => {
-    const user = auth.currentUser;
-    if (!user) {
-      throw new Error('Please sign in to manage this crew.');
-    }
-    return user.getIdToken();
-  }, []);
+  useEffect(() => {
+    setCrew(hydratedCrew);
+    setCrewLoading(!hydratedCrew);
+  }, [hydratedCrew]);
+
+  const athleteId = athlete?.id || athleteData?.athlete?.id || athleteData?.athleteId;
 
   const hydrateCrew = useCallback(async () => {
+    const user = auth.currentUser;
+    if (!user) {
+      setCrewLoading(false);
+      setCrewError('Please return to athlete home to refresh your session.');
+      return;
+    }
+
     try {
       setCrewLoading(true);
       setCrewError(null);
 
-      const token = await getToken();
-      const response = await fetch(`${API_BASE}/runcrew/${runCrewId}`, {
+      const token = await user.getIdToken();
+      const { data } = await axios.get(`${API_BASE}/runcrew/${runCrewId}`, {
         headers: {
           Authorization: `Bearer ${token}`
         }
       });
 
-      const data = await response.json();
-      if (!response.ok || !data?.success || !data.runCrew) {
+      if (!data?.success || !data.runCrew) {
         throw new Error(data?.error || data?.message || 'Failed to load crew.');
       }
 
@@ -49,23 +67,28 @@ export default function RunCrewCentralAdmin() {
     } finally {
       setCrewLoading(false);
     }
-  }, [getToken, runCrewId]);
+  }, [runCrewId]);
 
   const refreshRuns = useCallback(async () => {
+    const user = auth.currentUser;
+    if (!user) {
+      setRunsMessage('Runs will appear once you refresh after signing in.');
+      return;
+    }
+
     try {
       setRunsLoading(true);
       setRunsError(null);
       setRunsMessage(null);
 
-      const token = await getToken();
-      const response = await fetch(`${API_BASE}/runcrew/${runCrewId}/runs`, {
+      const token = await user.getIdToken();
+      const { data } = await axios.get(`${API_BASE}/runcrew/${runCrewId}/runs`, {
         headers: {
           Authorization: `Bearer ${token}`
         }
       });
 
-      const data = await response.json();
-      if (!response.ok || !data?.success) {
+      if (!data?.success) {
         throw new Error(data?.error || data?.message || 'Failed to fetch runs.');
       }
 
@@ -78,11 +101,13 @@ export default function RunCrewCentralAdmin() {
     } finally {
       setRunsLoading(false);
     }
-  }, [getToken, runCrewId]);
+  }, [runCrewId]);
 
   useEffect(() => {
-    hydrateCrew();
-  }, [hydrateCrew]);
+    if (!hydratedCrew) {
+      hydrateCrew();
+    }
+  }, [hydrateCrew, hydratedCrew]);
 
   const currentDate = new Date().toLocaleDateString('en-US', {
     weekday: 'long',
@@ -104,7 +129,12 @@ export default function RunCrewCentralAdmin() {
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 19l-7-7 7-7" />
               </svg>
             </button>
-            <h1 className="text-xl font-bold text-gray-900">RunCrew Admin</h1>
+            <div>
+              <h1 className="text-xl font-bold text-gray-900">RunCrew Admin</h1>
+              {athleteId && (
+                <p className="text-xs text-gray-500">Acting as athlete #{athleteId}</p>
+              )}
+            </div>
           </div>
           <div className="flex items-center space-x-3">
             <button
