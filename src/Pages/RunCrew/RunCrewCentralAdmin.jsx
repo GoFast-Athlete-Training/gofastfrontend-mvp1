@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useMemo, useRef } from 'react';
+import React, { useState, useEffect, useMemo, useRef, useCallback } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
 import { auth } from '../../firebase';
 import StravaRoutePreview from '../../Components/RunCrew/StravaRoutePreview.jsx';
@@ -38,7 +38,7 @@ const STRAVA_REGEX = /strava\.com\/(activities|routes)\/(\d+)/i;
 /**
  * RunCrewCentralAdmin - Admin View
  * Per RunCrewArchitecture.md: Admin view for RunCrew management
- * Hydrates from localStorage (local-first architecture)
+ * Hydrates via backend fetches scoped by runCrewId
  */
 export default function RunCrewCentralAdmin() {
   const navigate = useNavigate();
@@ -52,11 +52,13 @@ export default function RunCrewCentralAdmin() {
   const [runError, setRunError] = useState(null);
   const [runSuccess, setRunSuccess] = useState(null);
 
-  // Hydrated crew data from localStorage
+  // Crew data fetched from backend
   const [crew, setCrew] = useState(null);
   const [crewMembers, setCrewMembers] = useState([]);
   const [runs, setRuns] = useState([]);
   const [upcomingEvents, setUpcomingEvents] = useState([]);
+  const [loading, setLoading] = useState(true);
+  const [loadError, setLoadError] = useState(null);
 
   const getDefaultRunForm = () => {
     const todayISO = new Date().toISOString().split('T')[0];
@@ -117,13 +119,152 @@ export default function RunCrewCentralAdmin() {
   const mapInstanceRef = useRef(null);
   const markerRef = useRef(null);
   const mapsLoadedRef = useRef(false);
+  const isMountedRef = useRef(false);
 
+  const getAuthToken = async () => {
+    const user = auth.currentUser;
+    if (!user) {
+      throw new Error('Please sign in');
+    }
+    return user.getIdToken();
+  };
+
+  function sortRuns(runsList = []) {
+    return [...runsList].sort((a, b) => new Date(a.date) - new Date(b.date));
+  }
+
+  const fetchCrewDetails = useCallback(async (tokenOverride) => {
+    const token = tokenOverride || await getAuthToken();
+    const response = await fetch(`${API_BASE}/runcrew/${id}`, {
+      headers: {
+        Authorization: `Bearer ${token}`
+      }
+    });
+    const data = await response.json();
+
+    if (!response.ok || !data.success || !data.runCrew) {
+      throw new Error(data.error || data.message || 'Failed to hydrate crew');
+    }
+
+    if (!isMountedRef.current) {
+      return data.runCrew;
+    }
+
+    const crewPayload = data.runCrew;
+    setCrew({
+      id: crewPayload.id,
+      name: crewPayload.name,
+      joinCode: crewPayload.joinCode,
+      description: crewPayload.description || '',
+      isAdmin: crewPayload.isAdmin || false
+    });
+
+    const memberList = (crewPayload.memberships || []).map((membership) => {
+      const athlete = membership.athlete || membership;
+      const firstName = athlete?.firstName || '';
+      const lastName = athlete?.lastName || '';
+      const initials = `${firstName?.[0] || ''}${lastName?.[0] || ''}`.toUpperCase();
+
+      return {
+        id: athlete?.id || membership.athleteId || membership.id,
+        firstName,
+        lastName,
+        photoURL: athlete?.photoURL || '',
+        initials: initials || 'RC'
+      };
+    });
+
+    setCrewMembers(memberList);
+    return crewPayload;
+  }, [id]);
+
+  const fetchRuns = useCallback(async (tokenOverride) => {
+    const token = tokenOverride || await getAuthToken();
+    const response = await fetch(`${API_BASE}/runcrew/${id}/runs`, {
+      headers: {
+        Authorization: `Bearer ${token}`
+      }
+    });
+
+    const data = await response.json();
+
+    if (!response.ok || !data.success) {
+      throw new Error(data.error || data.message || 'Failed to fetch runs');
+    }
+
+    const runList = Array.isArray(data.runs) ? data.runs : [];
+
+    if (isMountedRef.current) {
+      setRuns(sortRuns(runList));
+    }
+
+    return runList;
+  }, [id]);
+
+  const fetchEvents = useCallback(async (tokenOverride) => {
+    const token = tokenOverride || await getAuthToken();
+    const response = await fetch(`${API_BASE}/runcrew/${id}/events`, {
+      headers: {
+        Authorization: `Bearer ${token}`
+      }
+    });
+
+    const data = await response.json();
+
+    if (!response.ok || !data.success) {
+      throw new Error(data.error || data.message || 'Failed to fetch events');
+    }
+
+    const eventList = Array.isArray(data.events) ? data.events : [];
+
+    if (isMountedRef.current) {
+      const upcoming = eventList
+        .filter(event => !event.date || new Date(event.date) >= new Date())
+        .sort((a, b) => new Date(a.date) - new Date(b.date));
+      setUpcomingEvents(upcoming);
+    }
+
+    return eventList;
+  }, [id]);
+
+  const fetchCrewData = useCallback(async () => {
+    try {
+      if (isMountedRef.current) {
+        setLoading(true);
+        setLoadError(null);
+      }
+      const token = await getAuthToken();
+      await fetchCrewDetails(token);
+      await fetchRuns(token);
+      try {
+        await fetchEvents(token);
+      } catch (eventError) {
+        console.warn('âš ï¸ RUNCREW ADMIN: Failed to fetch events', eventError);
+      }
+    } catch (error) {
+      if (isMountedRef.current) {
+        setLoadError(error.message || 'Failed to hydrate crew');
+      }
+    } finally {
+      if (isMountedRef.current) {
+        setLoading(false);
+      }
+    }
+  }, [fetchCrewDetails, fetchRuns, fetchEvents]);
+
+  const upcomingRuns = useMemo(() => (
+    runs.filter(run => new Date(run.date) >= new Date())
+  ), [runs]);
   const apiKey = import.meta.env.VITE_GOOGLE_MAPS_API_KEY;
 
-  // Hydrate crew data from localStorage on mount
+  // Hydrate crew data from backend on mount / crew change
   useEffect(() => {
-    hydrateCrewData();
-  }, [id]);
+    isMountedRef.current = true;
+    fetchCrewData();
+    return () => {
+      isMountedRef.current = false;
+    };
+  }, [fetchCrewData]);
 
   useEffect(() => {
     if (!showRunForm || !apiKey) return;
@@ -221,73 +362,6 @@ export default function RunCrewCentralAdmin() {
     };
   }, [runForm.meetUpAddress, runForm.meetUpPoint]);
 
-  const hydrateCrewData = () => {
-    try {
-      let hydratedRuns = [];
-      let hydratedEvents = [];
-      let storedCrewPayload = null;
-
-      // Try to get hydrated crew data (from /api/runcrew/:id)
-      const hydratedCrewStr = localStorage.getItem(`runCrew_${id}`);
-      if (hydratedCrewStr) {
-        const hydratedCrew = JSON.parse(hydratedCrewStr);
-        storedCrewPayload = hydratedCrew;
-        if (hydratedCrew.name) {
-          setCrew({
-            id: hydratedCrew.id,
-            name: hydratedCrew.name,
-            joinCode: hydratedCrew.joinCode
-          });
-        }
-        if (hydratedCrew.members && Array.isArray(hydratedCrew.members)) {
-          setCrewMembers(hydratedCrew.members.map(m => ({
-            id: m.athlete?.id || m.id,
-            firstName: m.athlete?.firstName || m.firstName,
-            lastName: m.athlete?.lastName || m.lastName,
-            photoURL: m.athlete?.photoURL || m.photoURL,
-            initials: `${(m.athlete?.firstName || m.firstName || '')?.[0] || ''}${(m.athlete?.lastName || m.lastName || '')?.[0] || ''}`.toUpperCase()
-          })));
-        }
-        if (hydratedCrew.runs && Array.isArray(hydratedCrew.runs)) {
-          hydratedRuns = hydratedCrew.runs;
-          setRuns(sortRuns(hydratedRuns));
-        }
-        if (hydratedCrew.events && Array.isArray(hydratedCrew.events)) {
-          hydratedEvents = hydratedCrew.events;
-          setUpcomingEvents(hydratedEvents.filter(e => new Date(e.date) >= new Date()).sort((a, b) => new Date(a.date) - new Date(b.date)));
-        }
-      }
-
-      // Fallback to myCrews for basic info
-      const myCrewsStr = localStorage.getItem('myCrews');
-      if (myCrewsStr) {
-        const myCrews = JSON.parse(myCrewsStr);
-        const foundCrew = myCrews.find(c => c.id === id);
-        if (foundCrew) {
-          setCrew(prev => ({
-            id: foundCrew.id,
-            name: prev?.name || foundCrew.name || 'RunCrew',
-            joinCode: foundCrew.joinCode
-          }));
-          // if runs missing but myCrews has them (future hydration)
-          if (!hydratedRuns.length && foundCrew.runs) {
-            setRuns(sortRuns(foundCrew.runs));
-          }
-        }
-      }
-    } catch (error) {
-      console.error('Error hydrating crew data:', error);
-    }
-  };
-
-  const sortRuns = (runsList = []) => {
-    return [...runsList].sort((a, b) => new Date(a.date) - new Date(b.date));
-  };
-
-  const upcomingRuns = useMemo(() => (
-    runs.filter(run => new Date(run.date) >= new Date())
-  ), [runs]);
-
   // Get current date for welcome message
   const currentDate = new Date().toLocaleDateString('en-US', {
     weekday: 'long',
@@ -295,6 +369,41 @@ export default function RunCrewCentralAdmin() {
     month: 'long',
     day: 'numeric'
   });
+  if (loadError) {
+    return (
+      <div className="min-h-screen bg-gray-50 flex items-center justify-center px-6">
+        <div className="max-w-md w-full bg-white rounded-xl shadow-sm border border-gray-200 p-6 space-y-4 text-center">
+          <h1 className="text-xl font-semibold text-gray-900">Unable to hydrate crew</h1>
+          <p className="text-sm text-gray-600">{loadError}</p>
+          <div className="flex flex-col sm:flex-row gap-3 justify-center">
+            <button
+              onClick={fetchCrewData}
+              className="bg-orange-500 text-white px-4 py-2 rounded-lg hover:bg-orange-600 font-medium"
+            >
+              Try Again
+            </button>
+            <button
+              onClick={() => navigate('/runcrew-list')}
+              className="px-4 py-2 border border-gray-200 rounded-lg hover:bg-gray-50 font-medium text-gray-700"
+            >
+              Back to Crews
+            </button>
+          </div>
+        </div>
+      </div>
+    );
+  }
+
+  if (loading) {
+    return (
+      <div className="min-h-screen bg-gray-50 flex items-center justify-center">
+        <div className="text-center space-y-4">
+          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-orange-500 mx-auto" />
+          <p className="text-gray-600">Loading crew…</p>
+        </div>
+      </div>
+    );
+  }
 
   const convertToTimeString = () => {
     const hour = parseInt(runForm.startHour || '0', 10);
@@ -336,22 +445,6 @@ export default function RunCrewCentralAdmin() {
     setRunSuccess(null);
   };
 
-  const appendRunToLocalStorage = (newRun) => {
-    try {
-      const key = `runCrew_${id}`;
-      const existingStr = localStorage.getItem(key);
-      if (!existingStr) return;
-      const existing = JSON.parse(existingStr);
-      const updated = {
-        ...existing,
-        runs: existing.runs ? [newRun, ...existing.runs] : [newRun]
-      };
-      localStorage.setItem(key, JSON.stringify(updated));
-    } catch (error) {
-      console.warn('Failed to append run to localStorage', error);
-    }
-  };
-
   const handleCreateRun = async () => {
     const startTimeString = convertToTimeString();
     if (!runForm.title.trim() || !runForm.date || !startTimeString || !runForm.meetUpPoint.trim()) {
@@ -363,14 +456,7 @@ export default function RunCrewCentralAdmin() {
     setRunError(null);
 
     try {
-      const user = auth.currentUser;
-      if (!user) {
-        setRunError('Please sign in');
-        setCreatingRun(false);
-        return;
-      }
-
-      const token = await user.getIdToken();
+      const token = await getAuthToken();
       const response = await fetch(`${API_BASE}/runcrew/${id}/runs`, {
         method: 'POST',
         headers: {
@@ -407,8 +493,15 @@ export default function RunCrewCentralAdmin() {
 
       const newRun = data.data;
       setRuns(prev => sortRuns([newRun, ...prev]));
-      appendRunToLocalStorage(newRun);
-      hydrateCrewData();
+      const refreshResults = await Promise.allSettled([
+        fetchRuns(token),
+        fetchCrewDetails(token)
+      ]);
+      refreshResults.forEach(result => {
+        if (result.status === 'rejected') {
+          console.warn('âš ï¸ RUNCREW ADMIN: Refresh after run creation failed', result.reason);
+        }
+      });
       setRunSuccess('Run created successfully');
       setShowRunForm(false);
       setRunForm(getDefaultRunForm());
@@ -428,69 +521,52 @@ export default function RunCrewCentralAdmin() {
   };
 
   const handleAssignManager = async (athleteId, action) => {
-    if (action === 'remove') {
-      // Delete manager role
-      try {
-        const user = auth.currentUser;
-        if (!user) {
-          alert('Please sign in');
-          return;
-        }
+    try {
+      const token = await getAuthToken();
 
-        const token = await user.getIdToken();
+      if (action === 'remove') {
         const response = await fetch(`${API_BASE}/runcrew/${id}/managers/${athleteId}`, {
           method: 'DELETE',
           headers: {
-            'Authorization': `Bearer ${token}`
+            Authorization: `Bearer ${token}`
           }
         });
 
         const data = await response.json();
         if (response.ok && data.success) {
           alert('Manager role removed successfully');
-          // Refresh crew data
-          hydrateCrewData();
+          await fetchCrewDetails(token).catch((err) => {
+            console.warn('âš ï¸ RUNCREW ADMIN: Failed to refresh crew after removing manager', err);
+          });
         } else {
           alert(data.error || 'Failed to remove manager role');
         }
-      } catch (error) {
-        console.error('Error removing manager:', error);
-        alert('Failed to remove manager role');
-      }
-    } else {
-      // Upsert manager role
-      try {
-        const user = auth.currentUser;
-        if (!user) {
-          alert('Please sign in');
-          return;
-        }
-
-        const token = await user.getIdToken();
+      } else {
         const response = await fetch(`${API_BASE}/runcrew/${id}/managers`, {
           method: 'POST',
           headers: {
             'Content-Type': 'application/json',
-            'Authorization': `Bearer ${token}`
+            Authorization: `Bearer ${token}`
           },
           body: JSON.stringify({
             athleteId,
-            role: action // 'admin' or 'manager'
+            role: action
           })
         });
 
         const data = await response.json();
         if (response.ok && data.success) {
           alert(`Role assigned successfully: ${action}`);
-          // Refresh crew data
-          hydrateCrewData();
+          await fetchCrewDetails(token).catch((err) => {
+            console.warn('âš ï¸ RUNCREW ADMIN: Failed to refresh crew after role update', err);
+          });
         } else {
           alert(data.error || 'Failed to assign role');
         }
-      } catch (error) {
-        console.error('Error assigning manager:', error);
-        alert('Failed to assign role');
       }
+    } catch (error) {
+      console.error('Error assigning manager:', error);
+      alert('Failed to assign role');
     }
   };
 
@@ -504,18 +580,12 @@ export default function RunCrewCentralAdmin() {
     setEventError(null);
 
     try {
-      const user = auth.currentUser;
-      if (!user) {
-        setEventError('Please sign in');
-        return;
-      }
-
-      const token = await user.getIdToken();
+      const token = await getAuthToken();
       const response = await fetch(`${API_BASE}/runcrew/${id}/events`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
-          'Authorization': `Bearer ${token}`
+          Authorization: `Bearer ${token}`
         },
         body: JSON.stringify({
           title: eventForm.title,
@@ -534,25 +604,29 @@ export default function RunCrewCentralAdmin() {
         throw new Error(data.error || 'Failed to create event');
       }
 
-      // Add to local state
-    const newEvent = {
-        id: data.data.id,
-        title: data.data.title,
-        date: data.data.date,
-        time: data.data.time,
-        location: data.data.location,
-        attendees: data.data.rsvps?.length || 0
-      };
-      setUpcomingEvents([...upcomingEvents, newEvent].sort((a, b) => new Date(a.date) - new Date(b.date)));
+      const createdEvent = data.data;
+      try {
+        await fetchEvents(token);
+      } catch (refreshError) {
+        console.warn('âš ï¸ RUNCREW ADMIN: Failed to refresh events after creation', refreshError);
+        const fallbackEvent = {
+          id: createdEvent.id,
+          title: createdEvent.title,
+          date: createdEvent.date,
+          time: createdEvent.time,
+          location: createdEvent.location,
+          attendees: createdEvent.rsvps?.length || 0
+        };
+        setUpcomingEvents(prev => [...prev, fallbackEvent].sort((a, b) => new Date(a.date) - new Date(b.date)));
+      }
 
-      // Reset form
-    setEventForm({
-      title: '',
-      date: '',
-      time: '',
-      location: '',
-      address: '',
-      description: '',
+      setEventForm({
+        title: '',
+        date: '',
+        time: '',
+        location: '',
+        address: '',
+        description: '',
         eventType: ''
       });
       setShowEventForm(false);
@@ -563,7 +637,6 @@ export default function RunCrewCentralAdmin() {
       setCreatingEvent(false);
     }
   };
-
   const runTypeOptions = [
     { value: 'single', label: 'Single Day' },
     { value: 'recurring', label: 'Recurring' }
@@ -949,7 +1022,7 @@ export default function RunCrewCentralAdmin() {
                       placeholder="https://www.strava.com/activities/123456789"
                     />
                     {stravaStatus === 'loading' && (
-                      <p className="text-xs text-gray-500 mt-1">Loading Strava route…</p>
+                      <p className="text-xs text-gray-500 mt-1">Loading Strava routeâ€¦</p>
                     )}
                     {stravaStatus === 'error' && stravaError && (
                       <p className="text-xs text-red-500 mt-1">{stravaError}</p>
@@ -1019,7 +1092,7 @@ export default function RunCrewCentralAdmin() {
                       disabled={creatingRun}
                       className="bg-sky-600 text-white px-4 py-2 rounded-lg hover:bg-sky-700 text-sm font-semibold disabled:opacity-50"
                     >
-                      {creatingRun ? 'Creating…' : 'Create Run'}
+                      {creatingRun ? 'Creatingâ€¦' : 'Create Run'}
                     </button>
                     <button
                       onClick={() => {
@@ -1047,9 +1120,9 @@ export default function RunCrewCentralAdmin() {
                         <div>
                           <p className="text-sm font-semibold text-gray-900">{run.title}</p>
                           <p className="text-xs text-gray-500">
-                            {new Date(run.date).toLocaleDateString()} · {run.startTime} {run.timezone ? `(${run.timezone})` : ''}
+                            {new Date(run.date).toLocaleDateString()} Â· {run.startTime} {run.timezone ? `(${run.timezone})` : ''}
                           </p>
-                          <p className="text-xs text-gray-500">Meet at {run.meetUpPoint}{run.meetUpAddress ? ` · ${run.meetUpAddress}` : ''}</p>
+                          <p className="text-xs text-gray-500">Meet at {run.meetUpPoint}{run.meetUpAddress ? ` Â· ${run.meetUpAddress}` : ''}</p>
                         </div>
                         {run.totalMiles && (
                           <div className="text-xs font-semibold text-orange-600">
@@ -1179,7 +1252,7 @@ export default function RunCrewCentralAdmin() {
                       <div>
                         <p className="text-sm font-semibold text-gray-900">{event.title}</p>
                         <p className="text-xs text-gray-500">
-                          {new Date(event.date).toLocaleDateString()} at {event.time} · {event.location}
+                          {new Date(event.date).toLocaleDateString()} at {event.time} Â· {event.location}
                         </p>
                       </div>
                   </div>
@@ -1193,3 +1266,4 @@ export default function RunCrewCentralAdmin() {
     </div>
   );
 }
+
