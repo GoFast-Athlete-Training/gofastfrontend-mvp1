@@ -16,6 +16,7 @@ const AthleteHome = () => {
   const [runCrewId, setRunCrewId] = useState(null);
   const [runCrewAdminId, setRunCrewAdminId] = useState(null);
   const [athleteId, setAthleteId] = useState(null);
+  const [primaryCrew, setPrimaryCrew] = useState(null);
 
   useEffect(() => {
     const loadAthleteData = () => {
@@ -23,7 +24,7 @@ const AthleteHome = () => {
 
       try {
         const storedProfile = LocalStorageAPI.getAthleteProfile();
-        const storedAthleteId = LocalStorageAPI.getAthleteId();
+        const storedAthleteId = storedProfile?.athleteId || storedProfile?.id || LocalStorageAPI.getAthleteId();
         const storedRunCrewId = LocalStorageAPI.getRunCrewId();
         const storedRunCrewAdminId = LocalStorageAPI.getRunCrewAdminId();
         const storedOnboarding = localStorage.getItem('onboardingState');
@@ -35,9 +36,13 @@ const AthleteHome = () => {
         }
 
         setAthleteProfile(storedProfile);
-        setAthleteId(storedAthleteId || storedProfile.athleteId || storedProfile.id || null);
-        setRunCrewId(storedRunCrewId || null);
-        setRunCrewAdminId(storedRunCrewAdminId || null);
+        const primaryCrew = Array.isArray(storedProfile.runCrews) && storedProfile.runCrews.length > 0
+          ? storedProfile.runCrews[0]
+          : null;
+        setRunCrewId(primaryCrew?.id || null);
+        setRunCrewAdminId(primaryCrew?.isAdmin ? primaryCrew.id : null);
+        setAthleteId(storedAthleteId || null);
+        setPrimaryCrew(primaryCrew);
 
         if (storedProfile.weeklyActivities) {
           setWeeklyActivities(storedProfile.weeklyActivities);
@@ -92,7 +97,7 @@ const AthleteHome = () => {
       return;
     }
 
-    if (athleteId && runCrewAdminId && athleteId === runCrewAdminId) {
+    if (runCrewAdminId) {
       navigate('/crew/crewadmin');
     } else {
       navigate(`/runcrew/${runCrewId}`);
@@ -197,14 +202,14 @@ const AthleteHome = () => {
           </div>
         </div>
 
-        {runCrewId && (
+        {primaryCrew && (
           <div className="mb-8">
             <div
               onClick={goToRunCrew}
               className="bg-gradient-to-r from-sky-500 to-sky-600 rounded-3xl shadow-2xl p-8 hover:shadow-3xl transition-all cursor-pointer transform hover:scale-[1.02] text-center max-w-3xl mx-auto"
             >
               <h2 className="text-3xl md:text-4xl font-bold text-white mb-4">
-                {athleteProfile?.runCrewName || 'RunCrew Admin'}
+                {primaryCrew.name}
               </h2>
               <p className="text-lg text-sky-50/90 mb-6 max-w-2xl mx-auto">
                 Manage your crew, coordinate runs, and keep everyone accountable.

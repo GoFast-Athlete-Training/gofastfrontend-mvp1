@@ -12,11 +12,12 @@ export default function RunCrewCentralAdmin() {
     athlete: hydratedAthlete,
     athleteId,
     runCrewId,
-    runCrewAdminId
+    runCrewAdminId,
+    primaryCrew
   } = useHydratedAthlete();
 
-  const [crew, setCrew] = useState(hydratedAthlete?.runCrew || null);
-  const [crewLoading, setCrewLoading] = useState(!hydratedAthlete?.runCrew && !!runCrewId);
+  const [crew, setCrew] = useState(primaryCrew);
+  const [crewLoading, setCrewLoading] = useState(!primaryCrew && !!runCrewId);
   const [crewError, setCrewError] = useState(null);
 
   const [runs, setRuns] = useState([]);
@@ -26,11 +27,11 @@ export default function RunCrewCentralAdmin() {
   const [showRuns, setShowRuns] = useState(false);
 
   useEffect(() => {
-    if (hydratedAthlete?.runCrew) {
-      setCrew(hydratedAthlete.runCrew);
+    if (primaryCrew) {
+      setCrew(primaryCrew);
       setCrewLoading(false);
     }
-  }, [hydratedAthlete?.runCrew]);
+  }, [primaryCrew]);
 
   const missingContext = !athleteId || !runCrewId;
 
@@ -155,7 +156,7 @@ export default function RunCrewCentralAdmin() {
               )}
               <div className="mt-2 bg-sky-100 border border-sky-200 rounded px-3 py-2 text-xs text-sky-900">
                 <p>runCrewId: {runCrewId || '—'}</p>
-                <p>runCrewAdminId: {runCrewAdminId || '—'}</p>
+                <p>runCrewAdmin: {runCrewAdminId ? 'yes' : 'no'}</p>
               </div>
             </div>
           </div>

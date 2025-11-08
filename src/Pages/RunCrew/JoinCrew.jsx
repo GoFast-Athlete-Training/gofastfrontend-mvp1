@@ -127,15 +127,28 @@ export default function JoinCrew() {
 
       if (data.success) {
         if (data.runCrew) {
-          LocalStorageAPI.setRunCrewId(data.runCrew.id);
-          LocalStorageAPI.setRunCrewAdminId(data.runCrew.runcrewAdminId || '');
+          const isAdmin = data.runCrew?.runcrewAdminId === athleteId;
 
           const existingProfile = LocalStorageAPI.getAthleteProfile() || {};
+          const existingRunCrews = Array.isArray(existingProfile.runCrews) ? existingProfile.runCrews : [];
+
+          const updatedRunCrews = [
+            {
+              ...data.runCrew,
+              isAdmin
+            },
+            ...existingRunCrews.filter(crew => crew.id !== data.runCrew.id)
+          ];
+
           LocalStorageAPI.setAthleteProfile({
             ...existingProfile,
-            runCrewId: data.runCrew.id,
-            runCrewAdminId: data.runCrew.runcrewAdminId || ''
+            runCrews: updatedRunCrews
           });
+
+          if (isAdmin) {
+            LocalStorageAPI.setRunCrewAdminId(data.runCrew.id);
+          }
+          LocalStorageAPI.setRunCrewId(data.runCrew.id);
         }
 
         const isAdmin = data.runCrew?.runcrewAdminId === athleteId;

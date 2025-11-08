@@ -72,15 +72,19 @@ export class UserOnboardingCalculationService {
     }
 
     // Regular cards for established users (after 15 days)
+    const primaryCrew = Array.isArray(athlete.runCrews) && athlete.runCrews.length > 0
+      ? athlete.runCrews[0]
+      : null;
     return [
       ...baseCards,
       {
-        title: "RunCrew Dashboard",
-        description: athlete.runCrewId ? "Manage your crew" : "Want more accountability? Start a run crew",
+        title: primaryCrew ? primaryCrew.name : "RunCrew Dashboard",
+        description: primaryCrew ? `Go back to ${primaryCrew.name}` : "Want more accountability? Start a run crew",
         icon: "🤝",
-        path: athlete.runCrewId ? "/crew/crewadmin" : "/runcrew/start",
+        path: primaryCrew ? "/crew/crewadmin" : "/runcrew/start",
         color: "bg-green-500",
-        priority: "high"
+        priority: "high",
+        crewId: primaryCrew?.id || null
       },
       {
         title: "Training Analytics",
