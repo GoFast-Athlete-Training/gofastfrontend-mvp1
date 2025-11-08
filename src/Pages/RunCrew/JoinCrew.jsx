@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { useNavigate, useSearchParams } from 'react-router-dom';
 import { auth } from '../../firebase';
+import { LocalStorageAPI } from '../../config/LocalStorageConfig';
 
 const API_BASE = 'https://gofastbackendv2-fall2025.onrender.com/api';
 
@@ -88,7 +89,7 @@ export default function JoinCrew() {
     }
 
     // Get athleteId from localStorage (hydrated on signin/signup/welcome)
-    const athleteId = localStorage.getItem('athleteId');
+    const athleteId = LocalStorageAPI.getAthleteId();
     if (!athleteId) {
       setError('Please sign in again');
       navigate('/athlete-home');
@@ -125,17 +126,21 @@ export default function JoinCrew() {
       }
 
       if (data.success) {
-        // Save RunCrew to localStorage
         if (data.runCrew) {
-          const myCrews = JSON.parse(localStorage.getItem('myCrews') || '[]');
-          const updatedCrews = [...myCrews, data.runCrew];
-          localStorage.setItem('myCrews', JSON.stringify(updatedCrews));
+          LocalStorageAPI.setRunCrewId(data.runCrew.id);
+          LocalStorageAPI.setRunCrewAdminId(data.runCrew.runcrewAdminId || '');
+
+          const existingProfile = LocalStorageAPI.getAthleteProfile() || {};
+          LocalStorageAPI.setAthleteProfile({
+            ...existingProfile,
+            runCrewId: data.runCrew.id,
+            runCrewAdminId: data.runCrew.runcrewAdminId || ''
+          });
         }
 
-        // Navigate to RunCrew Central
         const isAdmin = data.runCrew?.runcrewAdminId === athleteId;
         if (isAdmin) {
-          navigate(`/runcrew/admin/${data.runCrew.id}`);
+          navigate('/crew/crewadmin');
         } else {
           navigate(`/runcrew/${data.runCrew.id}`);
         }

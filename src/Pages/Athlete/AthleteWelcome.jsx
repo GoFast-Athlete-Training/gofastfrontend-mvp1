@@ -2,6 +2,7 @@ import { useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import api from '../../api/axiosConfig';
 import { getAuth } from 'firebase/auth';
+import { LocalStorageAPI } from '../../config/LocalStorageConfig';
 
 export default function AthleteWelcome() {
   const navigate = useNavigate();
@@ -56,10 +57,15 @@ export default function AthleteWelcome() {
 
         // Cache Athlete data to localStorage
         console.log('💾 ATHLETE WELCOME: Caching athlete data to localStorage...');
-        localStorage.setItem('athleteProfile', JSON.stringify(hydratedAthlete));
-        localStorage.setItem('runCrewId', hydratedAthlete.runCrewId || '');
+        LocalStorageAPI.setAthleteProfile(hydratedAthlete);
+        if (hydratedAthlete.athleteId) {
+          LocalStorageAPI.setAthleteId(hydratedAthlete.athleteId);
+        }
+        LocalStorageAPI.setRunCrewId(hydratedAthlete.runCrewId || '');
+        LocalStorageAPI.setRunCrewAdminId(hydratedAthlete.runCrewAdminId || '');
         console.log('✅ ATHLETE WELCOME: athleteProfile cached for athlete:', hydratedAthlete.athleteId);
         console.log('✅ ATHLETE WELCOME: runCrewId cached:', hydratedAthlete.runCrewId || '');
+        console.log('✅ ATHLETE WELCOME: runCrewAdminId cached:', hydratedAthlete.runCrewAdminId || '');
         
         // Hydration complete - show button for user to click
         console.log('🎯 ATHLETE WELCOME: Hydration complete, ready for user action');

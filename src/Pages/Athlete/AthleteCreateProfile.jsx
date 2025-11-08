@@ -2,6 +2,7 @@ import React, { useState, useRef, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { auth } from '../../firebase';
 import api from '../../api/axiosConfig';
+import { LocalStorageAPI } from '../../config/LocalStorageConfig';
 
 const AthleteCreateProfile = () => {
   const navigate = useNavigate();
@@ -130,8 +131,8 @@ const AthleteCreateProfile = () => {
       console.log('✅ Step 2 - Profile updated:', profileData);
       
       // Store athlete data
-      localStorage.setItem('athleteId', athleteId);
-      localStorage.setItem('athleteProfile', JSON.stringify(profileData.athlete));
+      LocalStorageAPI.setAthleteId(athleteId);
+      LocalStorageAPI.setAthleteProfile(profileData.athlete);
 
       // Navigate to athlete home after profile setup
       console.log('🏠 Navigating to athlete home...');

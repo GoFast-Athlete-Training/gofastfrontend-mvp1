@@ -2,6 +2,7 @@ import React, { useState, useRef, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { auth } from '../../firebase';
 import api from '../../api/axiosConfig';
+import { LocalStorageAPI } from '../../config/LocalStorageConfig';
 
 const EditProfile = () => {
   const navigate = useNavigate();
@@ -28,13 +29,12 @@ const EditProfile = () => {
   useEffect(() => {
     const loadProfile = () => {
       try {
-        const storedProfile = localStorage.getItem('athleteProfile');
-        const storedAthleteId = localStorage.getItem('athleteId');
-        const firebaseUser = auth.currentUser;
+        const storedProfile = LocalStorageAPI.getAthleteProfile();
+        const storedAthleteId = LocalStorageAPI.getAthleteId();
 
         if (!storedProfile || !storedAthleteId) {
-          alert('No profile found. Redirecting to profile setup...');
-          navigate('/athlete-create-profile');
+          console.warn('⚠️ EDIT PROFILE: Missing profile or athleteId, routing to welcome');
+          navigate('/welcome');
           return;
         }
 
@@ -55,7 +55,7 @@ const EditProfile = () => {
           bio: athlete.bio || '',
           instagram: athlete.instagram || '',
           profilePhoto: null,
-          profilePhotoPreview: athlete.photoURL || firebaseUser?.photoURL || null
+          profilePhotoPreview: athlete.photoURL || auth.currentUser?.photoURL || null
         });
 
         setIsLoading(false);
@@ -153,7 +153,7 @@ const EditProfile = () => {
       console.log('✅ Profile updated:', profileData);
       
       // Update localStorage with new data
-      localStorage.setItem('athleteProfile', JSON.stringify(profileData.athlete));
+      LocalStorageAPI.setAthleteProfile(profileData.athlete);
 
       // Navigate back to profile page
       console.log('🏠 Navigating back to profile...');

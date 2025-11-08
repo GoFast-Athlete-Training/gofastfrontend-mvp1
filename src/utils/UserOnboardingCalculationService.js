@@ -78,7 +78,7 @@ export class UserOnboardingCalculationService {
         title: "RunCrew Dashboard",
         description: athlete.runCrewId ? "Manage your crew" : "Want more accountability? Start a run crew",
         icon: "🤝",
-        path: athlete.runCrewId ? "/runcrew/dashboard" : "/runcrew/start",
+        path: athlete.runCrewId ? "/crew/crewadmin" : "/runcrew/start",
         color: "bg-green-500",
         priority: "high"
       },

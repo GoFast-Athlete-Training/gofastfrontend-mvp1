@@ -2,6 +2,7 @@ import { useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import api from '../api/axiosConfig';
 import { getAuth } from 'firebase/auth';
+import { LocalStorageAPI } from '../config/LocalStorageConfig';
 
 export default function Welcome() {
   const navigate = useNavigate();
@@ -34,8 +35,12 @@ export default function Welcome() {
         console.log('✅ WELCOME: Athlete hydrated:', athlete);
 
         // Cache Athlete data to localStorage
-        localStorage.setItem('athleteProfile', JSON.stringify(athlete));
-        localStorage.setItem('runCrewId', athlete.runCrewId || '');
+        LocalStorageAPI.setAthleteProfile(athlete);
+        if (athlete.athleteId) {
+          LocalStorageAPI.setAthleteId(athlete.athleteId);
+        }
+        LocalStorageAPI.setRunCrewId(athlete.runCrewId || '');
+        LocalStorageAPI.setRunCrewAdminId(athlete.runCrewAdminId || '');
         
         // No-op for run crew arrays in MVP1 (single crew per athlete)
 

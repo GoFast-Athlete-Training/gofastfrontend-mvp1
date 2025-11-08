@@ -1,4 +1,4 @@
-import React, { useEffect, useState, useCallback, useMemo } from 'react';
+import React, { useEffect, useState, useCallback } from 'react';
 import { useNavigate } from 'react-router-dom';
 import axios from 'axios';
 import { auth } from '../../firebase';
@@ -10,25 +10,13 @@ export default function RunCrewCentralAdmin() {
   const navigate = useNavigate();
   const {
     athlete: hydratedAthlete,
-    crews,
     athleteId,
-    runCrewId
+    runCrewId,
+    runCrewAdminId
   } = useHydratedAthlete();
 
-  const hydratedCrew = useMemo(() => {
-    if (!runCrewId || !Array.isArray(crews)) {
-      return null;
-    }
-
-    const normalizedId = String(runCrewId);
-    return crews.find(crew => {
-      const crewId = crew?.id ?? crew?.runCrewId;
-      return crewId && String(crewId) === normalizedId;
-    }) || null;
-  }, [crews, runCrewId]);
-
-  const [crew, setCrew] = useState(hydratedCrew);
-  const [crewLoading, setCrewLoading] = useState(!hydratedCrew && !!runCrewId);
+  const [crew, setCrew] = useState(hydratedAthlete?.runCrew || null);
+  const [crewLoading, setCrewLoading] = useState(!hydratedAthlete?.runCrew && !!runCrewId);
   const [crewError, setCrewError] = useState(null);
 
   const [runs, setRuns] = useState([]);
@@ -38,13 +26,13 @@ export default function RunCrewCentralAdmin() {
   const [showRuns, setShowRuns] = useState(false);
 
   useEffect(() => {
-    setCrew(hydratedCrew);
-    if (hydratedCrew) {
+    if (hydratedAthlete?.runCrew) {
+      setCrew(hydratedAthlete.runCrew);
       setCrewLoading(false);
     }
-  }, [hydratedCrew]);
+  }, [hydratedAthlete?.runCrew]);
 
-  const missingContext = useMemo(() => !athleteId || !runCrewId, [athleteId, runCrewId]);
+  const missingContext = !athleteId || !runCrewId;
 
   useEffect(() => {
     if (missingContext) {
@@ -138,12 +126,9 @@ export default function RunCrewCentralAdmin() {
     day: 'numeric'
   });
 
-  const actingAthleteName = useMemo(() => {
-    if (hydratedAthlete?.firstName) {
-      return `${hydratedAthlete.firstName}${hydratedAthlete.lastName ? ` ${hydratedAthlete.lastName}` : ''}`;
-    }
-    return null;
-  }, [hydratedAthlete?.firstName, hydratedAthlete?.lastName]);
+  const actingAthleteName = hydratedAthlete?.firstName
+    ? `${hydratedAthlete.firstName}${hydratedAthlete.lastName ? ` ${hydratedAthlete.lastName}` : ''}`
+    : null;
 
   return (
     <div className="min-h-screen bg-gray-50 flex flex-col">
@@ -168,6 +153,10 @@ export default function RunCrewCentralAdmin() {
                   Welcome, athlete #{athleteId}{actingAthleteName ? ` (${actingAthleteName})` : ''}. How do you want to manage your crew today?
                 </p>
               )}
+              <div className="mt-2 bg-sky-100 border border-sky-200 rounded px-3 py-2 text-xs text-sky-900">
+                <p>runCrewId: {runCrewId || '—'}</p>
+                <p>runCrewAdminId: {runCrewAdminId || '—'}</p>
+              </div>
             </div>
           </div>
           <div className="flex items-center space-x-3">
