@@ -612,7 +612,6 @@ export default function RunCrewCentralAdmin() {
                 placeholder="Start typing address..."
                 className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-sky-500 focus:border-sky-500"
               />
-              <p className="text-xs text-gray-500">Type to search with Google Places autocomplete</p>
             </div>
 
             {/* Row 4: Distance & Pace */}
@@ -629,20 +628,31 @@ export default function RunCrewCentralAdmin() {
                 />
               </div>
               <div className="space-y-2">
-                <label className="text-xs font-semibold text-gray-600 uppercase tracking-wide">Pace</label>
-                <input
-                  type="text"
+                <label className="text-xs font-semibold text-gray-600 uppercase tracking-wide">Pace (min/mile)</label>
+                <select
                   value={runForm.pace}
                   onChange={handleRunFormChange('pace')}
-                  placeholder="8:00-9:00 min/mile"
                   className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-sky-500 focus:border-sky-500"
-                />
+                >
+                  <option value="">Select pace...</option>
+                  <option value="6:00-6:30">6:00-6:30 (Fast)</option>
+                  <option value="6:30-7:00">6:30-7:00</option>
+                  <option value="7:00-7:30">7:00-7:30</option>
+                  <option value="7:30-8:00">7:30-8:00</option>
+                  <option value="8:00-8:30">8:00-8:30 (Moderate)</option>
+                  <option value="8:30-9:00">8:30-9:00</option>
+                  <option value="9:00-9:30">9:00-9:30</option>
+                  <option value="9:30-10:00">9:30-10:00</option>
+                  <option value="10:00-10:30">10:00-10:30 (Easy)</option>
+                  <option value="10:30-11:00">10:30-11:00</option>
+                  <option value="11:00+">11:00+ (Recovery)</option>
+                </select>
               </div>
             </div>
 
             {/* Row 5: Strava Map URL with inline preview */}
             <div className="space-y-2">
-              <label className="text-xs font-semibold text-gray-600 uppercase tracking-wide">Strava Map URL (Optional)</label>
+              <label className="text-xs font-semibold text-gray-600 uppercase tracking-wide">Strava Route URL (Optional)</label>
               <input
                 type="url"
                 value={runForm.stravaMapUrl}
@@ -650,16 +660,14 @@ export default function RunCrewCentralAdmin() {
                 placeholder="https://www.strava.com/routes/..."
                 className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-sky-500 focus:border-sky-500"
               />
-              <p className="text-xs text-gray-500">Paste a Strava route URL to preview the map inline</p>
               
-              {/* Inline Strava Preview - Mock polyline for now */}
+              {/* Inline Strava Preview */}
               {runForm.stravaMapUrl && runForm.stravaMapUrl.includes('strava.com') && (
                 <div className="mt-3">
                   <StravaRoutePreview 
                     polylineString="ypweFnzbjVhAWnAc@bAa@dAe@fAi@hAm@jAq@lAs@nAw@pAy@rA{@tA}@vA_AvAaAxAcAzAeA|AgA~AiA`BiAaBkAdBmAfBoBhBoBlBqBnBsBpBuBrBwBtByB"
                     stravaUrl={runForm.stravaMapUrl}
                   />
-                  <p className="text-xs text-gray-500 italic mt-2">Preview shown with sample route data. Actual route will be displayed when run is created.</p>
                 </div>
               )}
             </div>
