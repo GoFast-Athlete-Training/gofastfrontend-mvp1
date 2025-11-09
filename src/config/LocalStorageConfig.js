@@ -1,12 +1,15 @@
 export const STORAGE_KEYS = {
   athleteProfile: 'athleteProfile',
   athleteId: 'athleteId',
+  // HYDRATION V2: Clean crew context keys
+  MyCrew: 'MyCrew', // Primary crew ID (replaces runCrewId)
+  MyCrewManagerId: 'MyCrewManagerId', // Manager record ID (replaces runCrewManagerId)
+  // Legacy keys (for backward compatibility)
   runCrewId: 'runCrewId',
   runCrewManagerId: 'runCrewManagerId',
   runCrewData: 'runCrewData',
   runCrewMemberships: 'runCrewMemberships',
   runCrewManagers: 'runCrewManagers',
-  adminRunCrews: 'adminRunCrews',
   weeklyActivities: 'weeklyActivities',
   weeklyTotals: 'weeklyTotals',
   hydrationVersion: 'hydrationVersion'
@@ -94,21 +97,18 @@ export const LocalStorageAPI = {
       localStorage.setItem(STORAGE_KEYS.adminRunCrews, JSON.stringify(athlete.adminRunCrews));
     }
 
-    // Flatten runCrewId / runCrewManagerId for compatibility
-    // Backend returns flattened runCrews array (not runCrewMemberships)
-    const latestCrew = athlete.runCrews?.[0] || null;
-    const manager = athlete.runCrewManagers?.find(
-      m => m.athleteId === (athlete.id || athlete.athleteId) && m.role === 'admin'
-    ) || null;
+    // HYDRATION V2: Use clean crew context from backend
+    const MyCrew = athlete.MyCrew || '';
+    const MyCrewManagerId = athlete.MyCrewManagerId || '';
 
-    // Get runCrewId from flattened runCrews array or fallback to manager record
-    const runCrewId = latestCrew?.id || manager?.runCrewId || '';
-    const runCrewManagerId = manager?.id || '';
+    localStorage.setItem(STORAGE_KEYS.MyCrew, MyCrew);
+    localStorage.setItem(STORAGE_KEYS.MyCrewManagerId, MyCrewManagerId);
 
-    localStorage.setItem(STORAGE_KEYS.runCrewId, runCrewId);
-    localStorage.setItem(STORAGE_KEYS.runCrewManagerId, runCrewManagerId);
+    // Legacy keys for backward compatibility
+    localStorage.setItem(STORAGE_KEYS.runCrewId, MyCrew);
+    localStorage.setItem(STORAGE_KEYS.runCrewManagerId, MyCrewManagerId);
 
-    console.log('✅ LocalStorageAPI: Flattened IDs - runCrewId:', runCrewId, 'managerId:', runCrewManagerId);
+    console.log('✅ LocalStorageAPI: HYDRATION V2 - MyCrew:', MyCrew, 'MyCrewManagerId:', MyCrewManagerId);
 
     // Activities and totals
     if (weeklyActivities) {
@@ -119,10 +119,14 @@ export const LocalStorageAPI = {
     }
 
     // Version marker
-    localStorage.setItem(STORAGE_KEYS.hydrationVersion, 'full-model-v1');
+    localStorage.setItem(STORAGE_KEYS.hydrationVersion, 'hydration-v2');
 
-    console.log('✅ LocalStorageAPI: Full hydration model stored');
+    console.log('✅ LocalStorageAPI: HYDRATION V2 model stored');
   },
+
+  // HYDRATION V2: Getters for new keys
+  getMyCrew: () => localStorage.getItem(STORAGE_KEYS.MyCrew),
+  getMyCrewManagerId: () => localStorage.getItem(STORAGE_KEYS.MyCrewManagerId),
 
   /**
    * getFullHydrationModel - Retrieve the complete hydration model
