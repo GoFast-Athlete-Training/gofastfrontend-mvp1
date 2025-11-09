@@ -18,7 +18,6 @@ import JoinOrStartCrew from './Pages/RunCrew/JoinOrStartCrew';
 import JoinCrew from './Pages/RunCrew/JoinCrew';
 import CreateCrew from './Pages/RunCrew/CreateCrew';
 import RunCrewCentral from './Pages/RunCrew/RunCrewCentral';
-import RunCrewList from './Pages/RunCrew/RunCrewList';
 import RunCrewCentralAdmin from './Pages/RunCrew/RunCrewCentralAdmin';
 import RunCrewSettings from './Pages/RunCrew/RunCrewSettings';
 import RunCrewRunDetail from './Pages/RunCrew/RunCrewRunDetail';
@@ -72,7 +71,6 @@ const App = () => {
         <Route path="/run-crew-join" element={<JoinCrew />} />
         <Route path="/form-run-crew" element={<CreateCrew />} />
         <Route path="/run-crew-success" element={<RunCrewSuccess />} />
-        <Route path="/runcrew-list" element={<RunCrewList />} />
         {/* RunCrew Routes - Per RunCrewArchitecture.md */}
         <Route path="/runcrew/:id" element={<RunCrewCentral />} />
         <Route path="/crew/crewadmin" element={<RunCrewCentralAdmin />} />

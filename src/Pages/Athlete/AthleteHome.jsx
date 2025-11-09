@@ -20,6 +20,7 @@ const AthleteHome = () => {
   const [runCrewAdminId, setRunCrewAdminId] = useState(null);
   const [athleteId, setAthleteId] = useState(null);
   const [primaryCrew, setPrimaryCrew] = useState(null);
+  const [isCrewHydrating, setIsCrewHydrating] = useState(false);
 
   useEffect(() => {
     const loadAthleteData = () => {
@@ -105,19 +106,38 @@ const AthleteHome = () => {
     }
   };
 
-  const hydrateRunCrewData = async () => {
-    if (!runCrewId) return null;
-
+  const handleGoToRunCrew = async () => {
     try {
-      const { data } = await axios.post(`${API_BASE}/runcrew/hydrate`, {
-        runCrewId
-      });
+      const storedRunCrewId = LocalStorageAPI.getRunCrewId();
+      const storedAthleteId = LocalStorageAPI.getAthleteId();
+
+      if (!storedRunCrewId || !storedAthleteId) {
+        console.warn('⚠️ ATHLETE HOME: Missing runCrewId/athleteId, routing to welcome');
+        navigate('/athlete-welcome');
+        return;
+      }
+
+      const user = auth.currentUser;
+      const token = await user?.getIdToken();
+
+      setIsCrewHydrating(true);
+
+      const { data } = await axios.post(
+        `${API_BASE}/runcrew/hydrate`,
+        { runCrewId: storedRunCrewId },
+        {
+          headers: token
+            ? { Authorization: `Bearer ${token}` }
+            : undefined
+        }
+      );
 
       if (!data?.success || !data.runCrew) {
         throw new Error(data?.error || data?.message || 'Failed to hydrate crew');
       }
 
-      const isAdmin = data.runCrew?.runcrewAdminId === athleteId;
+      const isAdmin = data.runCrew?.runcrewAdminId === storedAthleteId;
+
       LocalStorageAPI.setRunCrewData({
         ...data.runCrew,
         isAdmin
@@ -128,29 +148,17 @@ const AthleteHome = () => {
       setPrimaryCrew(data.runCrew);
       setRunCrewId(data.runCrew.id);
       setRunCrewAdminId(isAdmin ? data.runCrew.id : null);
-      return data.runCrew;
-    } catch (error) {
-      console.error('❌ ATHLETE HOME: Failed to hydrate RunCrew', error);
-      return null;
-    }
-  };
 
-  const goToRunCrew = async () => {
-    if (!runCrewId) {
-      navigate('/runcrew/join');
-      return;
-    }
+      if (!isAdmin) {
+        console.warn('⚠️ ATHLETE HOME: Athlete is not an admin; crew admin console unavailable.');
+      }
 
-    const cachedCrew = LocalStorageAPI.getRunCrewData();
-    if (!cachedCrew || cachedCrew.id !== runCrewId) {
-      await hydrateRunCrewData();
-    }
-
-    const adminFlag = LocalStorageAPI.getRunCrewAdminId();
-    if (adminFlag) {
       navigate('/crew/crewadmin');
-    } else {
-      navigate(`/runcrew/${runCrewId}`);
+    } catch (error) {
+      console.error('❌ ATHLETE HOME: Unable to load crew', error);
+      alert('Unable to load your crew. Please try again.');
+    } finally {
+      setIsCrewHydrating(false);
     }
   };
 
@@ -158,7 +166,7 @@ const AthleteHome = () => {
     console.log('🖱️ ATHLETE HOME: Card clicked:', card);
 
     if (card.crewId) {
-      goToRunCrew();
+      handleGoToRunCrew();
       return;
     }
 
@@ -255,7 +263,7 @@ const AthleteHome = () => {
         {primaryCrew && (
           <div className="mb-8">
             <div
-              onClick={goToRunCrew}
+              onClick={handleGoToRunCrew}
               className="bg-gradient-to-r from-sky-500 to-sky-600 rounded-3xl shadow-2xl p-8 hover:shadow-3xl transition-all cursor-pointer transform hover:scale-[1.02] text-center max-w-3xl mx-auto"
             >
               <h2 className="text-3xl md:text-4xl font-bold text-white mb-4">
@@ -264,9 +272,13 @@ const AthleteHome = () => {
               <p className="text-lg text-sky-50/90 mb-6 max-w-2xl mx-auto">
                 Manage your crew, coordinate runs, and keep everyone accountable.
               </p>
-              <div className="bg-orange-500 text-white px-8 py-4 rounded-xl font-bold text-lg inline-block hover:bg-orange-600 transition-colors">
-                Go to RunCrew →
-              </div>
+              <button
+                onClick={handleGoToRunCrew}
+                className="bg-orange-500 text-white px-6 py-3 rounded-lg font-semibold hover:bg-orange-600"
+                disabled={isCrewHydrating}
+              >
+                {isCrewHydrating ? 'Loading Crew…' : 'Go to RunCrew →'}
+              </button>
             </div>
           </div>
         )}

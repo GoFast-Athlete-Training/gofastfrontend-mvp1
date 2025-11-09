@@ -34,7 +34,7 @@ export default function RunCrewSettings() {
           <div className="flex items-center justify-between mb-4">
             <h1 className="text-3xl font-bold text-gray-900">Run Crew Settings</h1>
             <button
-              onClick={() => navigate('/runcrew-list')}
+              onClick={() => navigate('/athlete-home')}
               className="text-gray-600 hover:text-gray-800"
             >
               ← Back to Central

@@ -14,8 +14,7 @@ const RunCrewSuccess = () => {
   };
 
   const handleGoToCentral = () => {
-    // Navigate to list view (will show all crews)
-    navigate('/runcrew-list');
+    navigate('/crew/crewadmin');
   };
 
   const createShareMessage = () => {
