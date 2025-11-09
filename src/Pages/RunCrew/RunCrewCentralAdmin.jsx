@@ -36,7 +36,7 @@ export default function RunCrewCentralAdmin() {
   const [announcementContent, setAnnouncementContent] = useState('');
   const [runForm, setRunForm] = useState(initialRunForm);
   const [editingRunId, setEditingRunId] = useState(null); // Track which run is being edited
-  const [expandedRunId, setExpandedRunId] = useState(null); // Track which run details are expanded
+  const [selectedRun, setSelectedRun] = useState(null); // Track which run to show in modal
 
   const isAdmin = useMemo(() => {
     if (!crew || !athleteId) {
@@ -186,9 +186,14 @@ export default function RunCrewCentralAdmin() {
     const date = runForm.date;
     const time = runForm.time;
     const meetUpPoint = runForm.meetUpPoint.trim();
+    const meetUpAddress = runForm.meetUpAddress.trim();
+    const totalMiles = runForm.totalMiles;
+    const pace = runForm.pace.trim();
+    const stravaMapUrl = runForm.stravaMapUrl.trim();
+    const description = runForm.description.trim();
 
-    if (!title && !date) {
-      showToast('Add at least a title or date for the run');
+    if (!title || !date || !time || !meetUpPoint) {
+      showToast('Please fill in all required fields (Title, Date, Time, Meet-Up Point)');
       return;
     }
 
@@ -207,10 +212,15 @@ export default function RunCrewCentralAdmin() {
         const { data } = await axios.patch(
           `${API_BASE}/runcrew/runs/${editingRunId}`,
           {
-            title: title || 'Untitled Run',
+            title,
             date: isoDate,
-            startTime: time || null,
-            meetUpPoint: meetUpPoint || null
+            startTime: time,
+            meetUpPoint,
+            meetUpAddress: meetUpAddress || null,
+            totalMiles: totalMiles ? parseFloat(totalMiles) : null,
+            pace: pace || null,
+            stravaMapUrl: stravaMapUrl || null,
+            description: description || null
           },
           {
             headers: { Authorization: `Bearer ${token}` }
@@ -240,10 +250,15 @@ export default function RunCrewCentralAdmin() {
     // CREATE MODE: Add new run locally
     const newRun = {
       id: `local-run-${Date.now()}`,
-      title: title || 'Untitled Run',
+      title,
       date: isoDate,
-      startTime: time || null,
-      meetUpPoint: meetUpPoint || null,
+      startTime: time,
+      meetUpPoint,
+      meetUpAddress: meetUpAddress || null,
+      totalMiles: totalMiles ? parseFloat(totalMiles) : null,
+      pace: pace || null,
+      stravaMapUrl: stravaMapUrl || null,
+      description: description || null,
       createdAt: new Date().toISOString(),
       createdBy: hydratedAthlete
         ? {
@@ -262,7 +277,7 @@ export default function RunCrewCentralAdmin() {
 
     setRunForm(initialRunForm);
     persistCrew(updatedCrew);
-    showToast('Run created');
+    showToast('Run created successfully!');
   };
 
   const formatRunDate = (run) => {
@@ -332,8 +347,12 @@ export default function RunCrewCentralAdmin() {
     setRunForm(initialRunForm);
   };
 
-  const toggleRunDetails = (runId) => {
-    setExpandedRunId(expandedRunId === runId ? null : runId);
+  const handleViewRunDetails = (run) => {
+    setSelectedRun(run);
+  };
+
+  const closeRunDetailsModal = () => {
+    setSelectedRun(null);
   };
 
   const goToMemberView = () => {
@@ -521,51 +540,134 @@ export default function RunCrewCentralAdmin() {
             )}
           </div>
 
-          <form onSubmit={handleRunSubmit} className="grid grid-cols-1 md:grid-cols-2 gap-4">
+          <form onSubmit={handleRunSubmit} className="space-y-6">
+            {/* Row 1: Title & Date */}
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+              <div className="space-y-2">
+                <label className="text-xs font-semibold text-gray-600 uppercase tracking-wide">Title *</label>
+                <input
+                  type="text"
+                  value={runForm.title}
+                  onChange={handleRunFormChange('title')}
+                  placeholder="Saturday Sunrise Run"
+                  className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-sky-500 focus:border-sky-500"
+                  required
+                />
+              </div>
+              <div className="space-y-2">
+                <label className="text-xs font-semibold text-gray-600 uppercase tracking-wide">Date *</label>
+                <input
+                  type="date"
+                  value={runForm.date}
+                  onChange={handleRunFormChange('date')}
+                  className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-sky-500 focus:border-sky-500"
+                  required
+                />
+              </div>
+            </div>
+
+            {/* Row 2: Time & Meet-Up Point */}
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+              <div className="space-y-2">
+                <label className="text-xs font-semibold text-gray-600 uppercase tracking-wide">Start Time *</label>
+                <input
+                  type="time"
+                  value={runForm.time}
+                  onChange={handleRunFormChange('time')}
+                  className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-sky-500 focus:border-sky-500"
+                  required
+                />
+              </div>
+              <div className="space-y-2">
+                <label className="text-xs font-semibold text-gray-600 uppercase tracking-wide">Meet-Up Point *</label>
+                <input
+                  type="text"
+                  value={runForm.meetUpPoint}
+                  onChange={handleRunFormChange('meetUpPoint')}
+                  placeholder="Central Park – Bethesda Terrace"
+                  className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-sky-500 focus:border-sky-500"
+                  required
+                />
+              </div>
+            </div>
+
+            {/* Row 3: Address (full width) */}
             <div className="space-y-2">
-              <label className="text-xs font-semibold text-gray-600 uppercase tracking-wide">Title</label>
+              <label className="text-xs font-semibold text-gray-600 uppercase tracking-wide">Meet-Up Address</label>
               <input
                 type="text"
-                value={runForm.title}
-                onChange={handleRunFormChange('title')}
-                placeholder="Saturday Sunrise Run"
+                value={runForm.meetUpAddress}
+                onChange={handleRunFormChange('meetUpAddress')}
+                placeholder="123 Park Ave, New York, NY 10001"
                 className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-sky-500 focus:border-sky-500"
               />
             </div>
+
+            {/* Row 4: Distance & Pace */}
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+              <div className="space-y-2">
+                <label className="text-xs font-semibold text-gray-600 uppercase tracking-wide">Total Miles</label>
+                <input
+                  type="number"
+                  step="0.1"
+                  value={runForm.totalMiles}
+                  onChange={handleRunFormChange('totalMiles')}
+                  placeholder="5.0"
+                  className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-sky-500 focus:border-sky-500"
+                />
+              </div>
+              <div className="space-y-2">
+                <label className="text-xs font-semibold text-gray-600 uppercase tracking-wide">Pace</label>
+                <input
+                  type="text"
+                  value={runForm.pace}
+                  onChange={handleRunFormChange('pace')}
+                  placeholder="8:00-9:00 min/mile"
+                  className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-sky-500 focus:border-sky-500"
+                />
+              </div>
+            </div>
+
+            {/* Row 5: Strava Map URL */}
             <div className="space-y-2">
-              <label className="text-xs font-semibold text-gray-600 uppercase tracking-wide">Date</label>
+              <label className="text-xs font-semibold text-gray-600 uppercase tracking-wide">Strava Map URL</label>
               <input
-                type="date"
-                value={runForm.date}
-                onChange={handleRunFormChange('date')}
+                type="url"
+                value={runForm.stravaMapUrl}
+                onChange={handleRunFormChange('stravaMapUrl')}
+                placeholder="https://www.strava.com/routes/..."
                 className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-sky-500 focus:border-sky-500"
               />
             </div>
+
+            {/* Row 6: Description */}
             <div className="space-y-2">
-              <label className="text-xs font-semibold text-gray-600 uppercase tracking-wide">Start Time</label>
-              <input
-                type="time"
-                value={runForm.time}
-                onChange={handleRunFormChange('time')}
+              <label className="text-xs font-semibold text-gray-600 uppercase tracking-wide">Description</label>
+              <textarea
+                value={runForm.description}
+                onChange={handleRunFormChange('description')}
+                placeholder="Tell your crew what to expect... route details, coffee after, etc."
+                rows={3}
                 className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-sky-500 focus:border-sky-500"
               />
             </div>
-            <div className="space-y-2">
-              <label className="text-xs font-semibold text-gray-600 uppercase tracking-wide">Meet-Up Point</label>
-              <input
-                type="text"
-                value={runForm.meetUpPoint}
-                onChange={handleRunFormChange('meetUpPoint')}
-                placeholder="Central Park – Bethesda Terrace"
-                className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-sky-500 focus:border-sky-500"
-              />
-            </div>
-            <div className="md:col-span-2 flex justify-end">
+
+            {/* Submit Button */}
+            <div className="flex justify-end gap-3">
+              {editingRunId && (
+                <button
+                  type="button"
+                  onClick={handleCancelEdit}
+                  className="border border-gray-300 text-gray-700 px-5 py-2 rounded-lg text-sm font-semibold hover:bg-gray-50 transition"
+                >
+                  Cancel
+                </button>
+              )}
               <button
                 type="submit"
                 className="bg-emerald-500 hover:bg-emerald-600 text-white px-5 py-2 rounded-lg text-sm font-semibold transition"
               >
-                {editingRunId ? 'Save Changes' : 'Add Run'}
+                {editingRunId ? 'Save Changes' : 'Create Run'}
               </button>
             </div>
           </form>
