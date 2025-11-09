@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
+import { LocalStorageAPI } from '../../config/LocalStorageConfig';
 
 const ActivityDetail = () => {
   const navigate = useNavigate();
@@ -8,33 +9,25 @@ const ActivityDetail = () => {
   const [isLoading, setIsLoading] = useState(true);
 
   useEffect(() => {
-    // Load activity from localStorage (find by id in weeklyActivities array)
     const loadActivity = () => {
       setIsLoading(true);
-      
+
       try {
-        // Try loading from athleteProfile first
-        const storedProfile = localStorage.getItem('athleteProfile');
-        let activities = [];
-        
-        if (storedProfile) {
-          const athlete = JSON.parse(storedProfile);
-          if (athlete.weeklyActivities) {
-            activities = athlete.weeklyActivities;
-          }
+        const model = LocalStorageAPI.getFullHydrationModel();
+        const athlete = model.athlete || LocalStorageAPI.getAthleteProfile();
+
+        let activities = Array.isArray(model.weeklyActivities)
+          ? model.weeklyActivities
+          : [];
+
+        if (activities.length === 0 && athlete?.weeklyActivities?.length) {
+          activities = athlete.weeklyActivities;
         }
-        
-        // Fallback to separate localStorage key
-        if (activities.length === 0) {
-          const storedActivities = localStorage.getItem('weeklyActivities');
-          if (storedActivities) {
-            activities = JSON.parse(storedActivities);
-          }
-        }
-        
-        // Find the specific activity by id
-        const foundActivity = activities.find(a => a.id === id || a.sourceActivityId === id);
-        
+
+        const foundActivity = activities.find(
+          (a) => a.id === id || a.sourceActivityId === id
+        );
+
         if (foundActivity) {
           setActivity(foundActivity);
         } else {
@@ -46,7 +39,7 @@ const ActivityDetail = () => {
         setIsLoading(false);
       }
     };
-    
+
     if (id) {
       loadActivity();
     } else {

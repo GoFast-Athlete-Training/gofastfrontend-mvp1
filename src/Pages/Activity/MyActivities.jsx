@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
+import { LocalStorageAPI } from '../../config/LocalStorageConfig';
 
 const MyActivities = () => {
   const navigate = useNavigate();
@@ -8,32 +9,32 @@ const MyActivities = () => {
   const [isLoading, setIsLoading] = useState(true);
 
   useEffect(() => {
-    // Load activities from localStorage (hydrated by universal hydrate route)
     const loadActivities = () => {
       setIsLoading(true);
-      
+
       try {
-        // Try loading from athleteProfile first (from hydrate)
-        const storedProfile = localStorage.getItem('athleteProfile');
-        if (storedProfile) {
-          const athlete = JSON.parse(storedProfile);
-          if (athlete.weeklyActivities) {
-            setActivities(athlete.weeklyActivities);
-            setWeeklyTotals(athlete.weeklyTotals);
-            setIsLoading(false);
-            return;
-          }
+        const model = LocalStorageAPI.getFullHydrationModel();
+        const athlete = model.athlete || LocalStorageAPI.getAthleteProfile();
+
+        const hydratedActivities = Array.isArray(model.weeklyActivities)
+          ? model.weeklyActivities
+          : [];
+        const hydratedTotals = model.weeklyTotals || null;
+
+        if (hydratedActivities.length > 0) {
+          setActivities(hydratedActivities);
+        } else if (athlete?.weeklyActivities?.length) {
+          setActivities(athlete.weeklyActivities);
+        } else {
+          setActivities([]);
         }
-        
-        // Fallback to separate localStorage keys
-        const storedActivities = localStorage.getItem('weeklyActivities');
-        const storedTotals = localStorage.getItem('weeklyTotals');
-        
-        if (storedActivities) {
-          setActivities(JSON.parse(storedActivities));
-        }
-        if (storedTotals) {
-          setWeeklyTotals(JSON.parse(storedTotals));
+
+        if (hydratedTotals) {
+          setWeeklyTotals(hydratedTotals);
+        } else if (athlete?.weeklyTotals) {
+          setWeeklyTotals(athlete.weeklyTotals);
+        } else {
+          setWeeklyTotals(null);
         }
       } catch (error) {
         console.error('❌ MY ACTIVITIES: Error loading activities:', error);
@@ -41,7 +42,7 @@ const MyActivities = () => {
         setIsLoading(false);
       }
     };
-    
+
     loadActivities();
   }, []);
 

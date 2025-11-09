@@ -62,6 +62,144 @@ export const LocalStorageAPI = {
     const data = localStorage.getItem(STORAGE_KEYS.runCrewData);
     return data ? JSON.parse(data) : null;
   },
+  setCrewHydration: (runCrewId, crewData) => {
+    if (!runCrewId || !crewData) return;
+
+    try {
+      const safeName = (athlete) => {
+        if (!athlete) return '';
+        const first = athlete.firstName ? athlete.firstName.trim() : '';
+        const lastInitial = athlete.lastName ? `${athlete.lastName.trim().charAt(0)}.` : '';
+        return `${first} ${lastInitial}`.trim();
+      };
+
+      const normalizeLeaderboard = (entries) => {
+        if (!Array.isArray(entries)) return [];
+        return entries
+          .map((entry) => ({
+            athleteId: entry.athleteId || entry.athlete?.id || null,
+            firstName: entry.firstName || entry.athlete?.firstName || null,
+            lastName: entry.lastName || entry.athlete?.lastName || null,
+            photoURL: entry.photoURL || entry.athlete?.photoURL || null,
+            totalDistanceMiles: Number(entry.totalDistanceMiles ?? 0),
+            totalDuration: Number(entry.totalDuration ?? 0),
+            totalCalories: Number(entry.totalCalories ?? 0),
+            activityCount: Number(entry.activityCount ?? 0)
+          }))
+          .filter((entry) => entry.athleteId);
+      };
+
+      const normalizeRsvps = (rsvps) => {
+        if (!Array.isArray(rsvps)) return [];
+        return rsvps
+          .map((rsvp) => ({
+            athleteId: rsvp.athleteId || rsvp.athlete?.id || null,
+            name: rsvp.name || safeName(rsvp.athlete),
+            photoURL: rsvp.photoURL || rsvp.athlete?.photoURL || null,
+            status: rsvp.status || 'going'
+          }))
+          .filter((rsvp) => rsvp.athleteId);
+      };
+
+      const safeRuns = Array.isArray(crewData.runs)
+        ? crewData.runs.slice(0, 5).map((run) => ({
+            id: run.id,
+            title: run.title,
+            date: run.date,
+            time: run.time || run.startTime,
+            meetUpPoint: run.meetUpPoint,
+            meetUpAddress: run.meetUpAddress,
+            totalMiles: run.totalMiles,
+            pace: run.pace,
+            description: run.description,
+            stravaMapUrl: run.stravaMapUrl,
+            rsvps: normalizeRsvps(run.rsvps)
+          }))
+        : [];
+
+      const safeMessages = Array.isArray(crewData.messages)
+        ? crewData.messages
+            .slice(0, 10)
+            .map((message) => ({
+              id: message.id,
+              content: message.content,
+              createdAt: message.createdAt,
+              author: {
+                athleteId: message.athleteId || message.athlete?.id || null,
+                name: safeName(message.athlete),
+                photoURL: message.athlete?.photoURL || null
+              }
+            }))
+            .filter((message) => message.author.athleteId)
+        : [];
+
+      const membershipsSource = Array.isArray(crewData.memberships)
+        ? crewData.memberships
+        : Array.isArray(crewData.members)
+        ? crewData.members
+        : [];
+
+      const memberPreviews = membershipsSource
+        .map((membership) => {
+          const athlete = membership.athlete || membership;
+          const athleteId = membership.athleteId || athlete?.id || null;
+          return {
+            athleteId,
+            name: safeName(athlete),
+            photoURL: athlete?.photoURL || null
+          };
+        })
+        .filter((member) => member.athleteId);
+
+      const announcements = Array.isArray(crewData.announcements)
+        ? crewData.announcements.map((announcement) => ({
+            id: announcement.id,
+            title: announcement.title,
+            content: announcement.content,
+            createdAt: announcement.createdAt,
+            author: announcement.author
+              ? {
+                  id: announcement.author.id,
+                  name: safeName(announcement.author),
+                  photoURL: announcement.author.photoURL || null
+                }
+              : null
+          }))
+        : [];
+
+      const sanitizedCrew = {
+        id: crewData.id,
+        name: crewData.name,
+        description: crewData.description,
+        logo: crewData.logo,
+        icon: crewData.icon,
+        isAdmin: Boolean(crewData.isAdmin),
+        currentManagerId: crewData.currentManagerId || null,
+        leaderboardDynamic: normalizeLeaderboard(crewData.leaderboardDynamic),
+        memberPreviews,
+        runs: safeRuns,
+        messages: safeMessages,
+        announcements
+      };
+
+      localStorage.setItem(
+        `crew_${runCrewId}_hydration`,
+        JSON.stringify(sanitizedCrew)
+      );
+    } catch (error) {
+      console.error('❌ LocalStorageAPI: Failed to set crew hydration', error);
+    }
+  },
+  getCrewHydration: (runCrewId) => {
+    if (!runCrewId) return null;
+    try {
+      const data = localStorage.getItem(`crew_${runCrewId}_hydration`);
+      return data ? JSON.parse(data) : null;
+    } catch (error) {
+      console.error('❌ LocalStorageAPI: Failed to parse crew hydration', error);
+      return null;
+    }
+  },
   getContext: () => ({
     athleteId: LocalStorageAPI.getAthleteId(),
     runCrewId: LocalStorageAPI.getRunCrewId(),
