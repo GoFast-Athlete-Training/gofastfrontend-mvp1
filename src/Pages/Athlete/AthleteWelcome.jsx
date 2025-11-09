@@ -55,32 +55,17 @@ export default function AthleteWelcome() {
           console.log('✅ ATHLETE WELCOME: RunCrews:', hydratedAthlete.runCrews.map(c => c.name).join(', '));
         }
 
-        // Cache Athlete data to localStorage
+        // Cache Athlete data to localStorage (ATHLETE ONLY)
         console.log('💾 ATHLETE WELCOME: Caching athlete data to localStorage...');
         LocalStorageAPI.setAthleteProfile(hydratedAthlete);
-        LocalStorageAPI.setAthleteId(hydratedAthlete.athleteId || hydratedAthlete.id || null);
+        LocalStorageAPI.setAthleteId(hydratedAthlete.athleteId || hydratedAthlete.id);
 
-        const primaryCrew = hydratedAthlete.primaryRunCrew
-          || (Array.isArray(hydratedAthlete.runCrews) ? hydratedAthlete.runCrews[0] : null);
-
-        const managerRecord = Array.isArray(hydratedAthlete.runCrewManagers)
-          ? hydratedAthlete.runCrewManagers.find(
-              (manager) => manager.runCrewId === primaryCrew?.id && manager.role === 'admin'
-            )
-          : null;
-
-        if (primaryCrew) {
-          LocalStorageAPI.setRunCrewData(primaryCrew);
-          LocalStorageAPI.setRunCrewId(primaryCrew.id);
-        } else {
-          LocalStorageAPI.setRunCrewData(null);
-          LocalStorageAPI.setRunCrewId(null);
-        }
-
-        LocalStorageAPI.setRunCrewManagerId(managerRecord?.id || null);
-        console.log('✅ ATHLETE WELCOME: athleteProfile cached for athlete:', hydratedAthlete.athleteId || hydratedAthlete.id);
-        console.log('✅ ATHLETE WELCOME: runCrewId cached:', primaryCrew?.id || '');
-        console.log('✅ ATHLETE WELCOME: runCrewManagerId cached:', managerRecord?.id || '');
+        // Clear crew context - will be set when user clicks "Go to RunCrew"
+        LocalStorageAPI.setRunCrewId(null);
+        LocalStorageAPI.setRunCrewManagerId(null);
+        LocalStorageAPI.setRunCrewData(null);
+        
+        console.log('✅ ATHLETE WELCOME: Athlete context cached (crew context cleared)');
         
         // Hydration complete - show button for user to click
         console.log('🎯 ATHLETE WELCOME: Hydration complete, ready for user action');

@@ -19,7 +19,6 @@ const AthleteHome = () => {
   const [runCrewId, setRunCrewId] = useState(null);
   const [runCrewManagerId, setRunCrewManagerId] = useState(null);
   const [athleteId, setAthleteId] = useState(null);
-  const [primaryCrew, setPrimaryCrew] = useState(null);
   const [isCrewHydrating, setIsCrewHydrating] = useState(false);
 
   useEffect(() => {
@@ -28,10 +27,9 @@ const AthleteHome = () => {
 
       try {
         const storedProfile = LocalStorageAPI.getAthleteProfile();
-        const storedAthleteId = storedProfile?.athleteId || storedProfile?.id || LocalStorageAPI.getAthleteId();
+        const storedAthleteId = LocalStorageAPI.getAthleteId();
         const storedRunCrewId = LocalStorageAPI.getRunCrewId();
         const storedRunCrewManagerId = LocalStorageAPI.getRunCrewManagerId();
-        const storedRunCrewData = LocalStorageAPI.getRunCrewData();
         const storedOnboarding = localStorage.getItem('onboardingState');
 
         if (!storedProfile) {
@@ -41,30 +39,9 @@ const AthleteHome = () => {
         }
 
         setAthleteProfile(storedProfile);
-        const primaryCrew = storedRunCrewData
-          || (Array.isArray(storedProfile.runCrews) && storedProfile.runCrews.length > 0
-            ? storedProfile.runCrews[0]
-            : null);
-
-        const managerRecord = Array.isArray(primaryCrew.managers)
-          ? primaryCrew.managers.find((manager) => manager.role === 'admin' && manager.athleteId === storedAthleteId)
-          : null;
-
-        if (!storedRunCrewData && primaryCrew) {
-          LocalStorageAPI.setRunCrewData(primaryCrew);
-          LocalStorageAPI.setRunCrewId(primaryCrew.id);
-
-          LocalStorageAPI.setRunCrewManagerId(managerRecord?.id || null);
-        }
-
-        if (!storedRunCrewManagerId && managerRecord?.id) {
-          LocalStorageAPI.setRunCrewManagerId(managerRecord.id);
-        }
-
-        setPrimaryCrew(primaryCrew);
-        setRunCrewId(storedRunCrewId || primaryCrew?.id || null);
-        setRunCrewManagerId(storedRunCrewManagerId || managerRecord?.id || null);
-        setAthleteId(storedAthleteId || null);
+        setAthleteId(storedAthleteId);
+        setRunCrewId(storedRunCrewId);
+        setRunCrewManagerId(storedRunCrewManagerId);
 
         if (storedProfile.weeklyActivities) {
           setWeeklyActivities(storedProfile.weeklyActivities);
@@ -118,9 +95,15 @@ const AthleteHome = () => {
       const storedRunCrewId = LocalStorageAPI.getRunCrewId();
       const storedAthleteId = LocalStorageAPI.getAthleteId();
 
-      if (!storedRunCrewId || !storedAthleteId) {
-        console.warn('⚠️ ATHLETE HOME: Missing runCrewId/athleteId, routing to welcome');
+      if (!storedAthleteId) {
+        console.warn('⚠️ ATHLETE HOME: Missing athleteId, routing to welcome');
         navigate('/athlete-welcome');
+        return;
+      }
+
+      if (!storedRunCrewId) {
+        console.warn('⚠️ ATHLETE HOME: No crew context - join or create a crew first');
+        alert('Join or create a crew first!');
         return;
       }
 
@@ -151,7 +134,6 @@ const AthleteHome = () => {
       LocalStorageAPI.setRunCrewId(data.runCrew.id);
       LocalStorageAPI.setRunCrewManagerId(managerRecord?.id || null);
 
-      setPrimaryCrew(data.runCrew);
       setRunCrewId(data.runCrew.id);
       setRunCrewManagerId(managerRecord?.id || null);
 

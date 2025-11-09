@@ -34,32 +34,14 @@ export default function Welcome() {
         const { athlete } = response.data;
         console.log('✅ WELCOME: Athlete hydrated:', athlete);
 
-        // Cache Athlete data to localStorage
+        // Cache Athlete data to localStorage (ATHLETE ONLY)
         LocalStorageAPI.setAthleteProfile(athlete);
-        if (athlete.athleteId) {
-          LocalStorageAPI.setAthleteId(athlete.athleteId);
-        }
+        LocalStorageAPI.setAthleteId(athlete.athleteId || athlete.id);
 
-        const primaryCrew = athlete.primaryRunCrew
-          || (Array.isArray(athlete.runCrews) && athlete.runCrews.length > 0
-            ? athlete.runCrews[0]
-            : null);
-        const managerRecord = Array.isArray(athlete.runCrewManagers)
-          ? athlete.runCrewManagers.find(
-              (manager) => manager.runCrewId === primaryCrew?.id && manager.role === 'admin'
-            )
-          : null;
-
-        if (primaryCrew) {
-          LocalStorageAPI.setRunCrewData(primaryCrew);
-          LocalStorageAPI.setRunCrewId(primaryCrew.id);
-        } else {
-          LocalStorageAPI.setRunCrewData(null);
-          LocalStorageAPI.setRunCrewId(null);
-        }
-        LocalStorageAPI.setRunCrewManagerId(managerRecord?.id || null);
-        
-        // No-op for run crew arrays in MVP1 (single crew per athlete)
+        // Clear crew context - will be set when user clicks "Go to RunCrew"
+        LocalStorageAPI.setRunCrewId(null);
+        LocalStorageAPI.setRunCrewManagerId(null);
+        LocalStorageAPI.setRunCrewData(null);
 
         // Routing Logic based on what's missing
         // Profile check: Does athlete have gofastHandle? (basic profile requirement)

@@ -1,24 +1,22 @@
 import { LocalStorageAPI } from '../config/LocalStorageConfig';
 
+/**
+ * useHydratedAthlete - Local-only context reader
+ * Reads athlete and crew context from LocalStorageAPI
+ * No derivation, no fallbacks - just reads what's there
+ */
 export default function useHydratedAthlete() {
   const athlete = LocalStorageAPI.getAthleteProfile();
-  const athleteId = athlete?.athleteId || athlete?.id || null;
-
-  const storedCrew = LocalStorageAPI.getRunCrewData();
-  const storedRunCrewId = LocalStorageAPI.getRunCrewId();
-  const storedRunCrewManagerId = LocalStorageAPI.getRunCrewManagerId();
-
-  const primaryCrew = storedCrew
-    || (Array.isArray(athlete?.runCrews) && athlete.runCrews.length > 0 ? athlete.runCrews[0] : null);
-
-  const runCrewId = storedRunCrewId || primaryCrew?.id || null;
-  const runCrewManagerId = storedRunCrewManagerId || null;
+  const athleteId = LocalStorageAPI.getAthleteId();
+  const runCrewId = LocalStorageAPI.getRunCrewId();
+  const runCrewManagerId = LocalStorageAPI.getRunCrewManagerId();
+  const runCrew = LocalStorageAPI.getRunCrewData();
 
   return {
     athlete,
     athleteId,
     runCrewId,
     runCrewManagerId,
-    primaryCrew
+    runCrew
   };
 }
