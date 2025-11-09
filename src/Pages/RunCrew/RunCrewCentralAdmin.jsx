@@ -356,11 +356,8 @@ export default function RunCrewCentralAdmin() {
   };
 
   const goToMemberView = () => {
-    if (runCrewId) {
-      navigate(`/runcrew/${runCrewId}`);
-    } else {
-      navigate('/athlete-home');
-    }
+    // Local-first: No params needed, member view reads from LocalStorageAPI
+    navigate('/runcrew/central');
   };
 
   const goToSettings = () => {

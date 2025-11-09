@@ -72,6 +72,7 @@ const App = () => {
         <Route path="/form-run-crew" element={<CreateCrew />} />
         <Route path="/run-crew-success" element={<RunCrewSuccess />} />
         {/* RunCrew Routes - Per RunCrewArchitecture.md */}
+        <Route path="/runcrew/central" element={<RunCrewCentral />} />
         <Route path="/runcrew/:id" element={<RunCrewCentral />} />
         <Route path="/crew/crewadmin" element={<RunCrewCentralAdmin />} />
         {/* Legacy routes - redirect to new routes */}
