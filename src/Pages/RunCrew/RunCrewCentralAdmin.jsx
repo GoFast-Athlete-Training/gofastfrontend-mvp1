@@ -582,9 +582,10 @@ export default function RunCrewCentralAdmin() {
               <div className="space-y-2">
                 <label className="text-xs font-semibold text-gray-600 uppercase tracking-wide">Start Time *</label>
                 <input
-                  type="time"
+                  type="text"
                   value={runForm.time}
                   onChange={handleRunFormChange('time')}
+                  placeholder="6:30 AM"
                   className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-sky-500 focus:border-sky-500"
                   required
                 />
