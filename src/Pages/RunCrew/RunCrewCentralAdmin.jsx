@@ -613,19 +613,6 @@ export default function RunCrewCentralAdmin() {
                 className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-sky-500 focus:border-sky-500"
               />
               <p className="text-xs text-gray-500">Type to search with Google Places autocomplete</p>
-              
-              {/* Show selected location on map */}
-              {placeData && placeData.lat && placeData.lng && (
-                <div className="mt-3 border border-gray-300 rounded-lg overflow-hidden bg-white">
-                  <div className="bg-gray-100 rounded-lg h-48 flex items-center justify-center border border-gray-200">
-                    <div className="text-center text-gray-700">
-                      <p className="text-sm font-medium">📍 Meetup Location Selected</p>
-                      <p className="text-xs mt-1 text-gray-500">Lat: {placeData.lat.toFixed(6)}, Lng: {placeData.lng.toFixed(6)}</p>
-                      <p className="text-xs mt-2 text-green-600 font-semibold">✓ Location will be saved with run</p>
-                    </div>
-                  </div>
-                </div>
-              )}
             </div>
 
             {/* Row 4: Distance & Pace */}
