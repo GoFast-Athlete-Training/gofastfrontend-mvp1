@@ -4,6 +4,8 @@ import axios from 'axios';
 import { auth } from '../../firebase';
 import useHydratedAthlete from '../../hooks/useHydratedAthlete';
 import { LocalStorageAPI } from '../../config/LocalStorageConfig';
+import GooglePlacesAutocomplete from '../../Components/RunCrew/GooglePlacesAutocomplete';
+import StravaRoutePreview from '../../Components/RunCrew/StravaRoutePreview';
 
 const API_BASE = 'https://gofastbackendv2-fall2025.onrender.com/api';
 
@@ -37,6 +39,7 @@ export default function RunCrewCentralAdmin() {
   const [runForm, setRunForm] = useState(initialRunForm);
   const [editingRunId, setEditingRunId] = useState(null); // Track which run is being edited
   const [expandedRunId, setExpandedRunId] = useState(null); // Track which run details are expanded
+  const [placeData, setPlaceData] = useState(null); // Google Places data (lat/lng/placeId)
 
   const isAdmin = useMemo(() => {
     if (!crew || !athleteId) {
@@ -237,6 +240,7 @@ export default function RunCrewCentralAdmin() {
           showToast('Run updated successfully');
           setEditingRunId(null);
           setRunForm(initialRunForm);
+          setPlaceData(null);
         } else {
           throw new Error(data?.error || 'Failed to update run');
         }
@@ -276,6 +280,7 @@ export default function RunCrewCentralAdmin() {
     };
 
     setRunForm(initialRunForm);
+    setPlaceData(null);
     persistCrew(updatedCrew);
     showToast('Run created successfully!');
   };
@@ -301,6 +306,18 @@ export default function RunCrewCentralAdmin() {
     setRunForm((prev) => ({
       ...prev,
       [field]: value
+    }));
+  };
+
+  const handlePlaceSelected = (place) => {
+    setPlaceData({
+      placeId: place.placeId,
+      lat: place.lat,
+      lng: place.lng
+    });
+    setRunForm((prev) => ({
+      ...prev,
+      meetUpAddress: place.address
     }));
   };
 
@@ -345,6 +362,7 @@ export default function RunCrewCentralAdmin() {
   const handleCancelEdit = () => {
     setEditingRunId(null);
     setRunForm(initialRunForm);
+    setPlaceData(null);
   };
 
   const toggleRunDetails = (runId) => {
@@ -584,16 +602,30 @@ export default function RunCrewCentralAdmin() {
               </div>
             </div>
 
-            {/* Row 3: Address (full width) */}
+            {/* Row 3: Address (full width) with Google Places Autocomplete */}
             <div className="space-y-2">
-              <label className="text-xs font-semibold text-gray-600 uppercase tracking-wide">Meet-Up Address</label>
-              <input
-                type="text"
+              <label className="text-xs font-semibold text-gray-600 uppercase tracking-wide">Meetup Address</label>
+              <GooglePlacesAutocomplete
                 value={runForm.meetUpAddress}
                 onChange={handleRunFormChange('meetUpAddress')}
-                placeholder="123 Park Ave, New York, NY 10001"
+                onPlaceSelected={handlePlaceSelected}
+                placeholder="Start typing address..."
                 className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-sky-500 focus:border-sky-500"
               />
+              <p className="text-xs text-gray-500">Type to search with Google Places autocomplete</p>
+              
+              {/* Show selected location on map */}
+              {placeData && placeData.lat && placeData.lng && (
+                <div className="mt-3 border border-gray-300 rounded-lg overflow-hidden bg-white">
+                  <div className="bg-gray-100 rounded-lg h-48 flex items-center justify-center border border-gray-200">
+                    <div className="text-center text-gray-700">
+                      <p className="text-sm font-medium">📍 Meetup Location Selected</p>
+                      <p className="text-xs mt-1 text-gray-500">Lat: {placeData.lat.toFixed(6)}, Lng: {placeData.lng.toFixed(6)}</p>
+                      <p className="text-xs mt-2 text-green-600 font-semibold">✓ Location will be saved with run</p>
+                    </div>
+                  </div>
+                </div>
+              )}
             </div>
 
             {/* Row 4: Distance & Pace */}
@@ -621,9 +653,9 @@ export default function RunCrewCentralAdmin() {
               </div>
             </div>
 
-            {/* Row 5: Strava Map URL */}
+            {/* Row 5: Strava Map URL with inline preview */}
             <div className="space-y-2">
-              <label className="text-xs font-semibold text-gray-600 uppercase tracking-wide">Strava Map URL</label>
+              <label className="text-xs font-semibold text-gray-600 uppercase tracking-wide">Strava Map URL (Optional)</label>
               <input
                 type="url"
                 value={runForm.stravaMapUrl}
@@ -631,6 +663,18 @@ export default function RunCrewCentralAdmin() {
                 placeholder="https://www.strava.com/routes/..."
                 className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-sky-500 focus:border-sky-500"
               />
+              <p className="text-xs text-gray-500">Paste a Strava route URL to preview the map inline</p>
+              
+              {/* Inline Strava Preview - Mock polyline for now */}
+              {runForm.stravaMapUrl && runForm.stravaMapUrl.includes('strava.com') && (
+                <div className="mt-3">
+                  <StravaRoutePreview 
+                    polylineString="ypweFnzbjVhAWnAc@bAa@dAe@fAi@hAm@jAq@lAs@nAw@pAy@rA{@tA}@vA_AvAaAxAcAzAeA|AgA~AiA`BiAaBkAdBmAfBoBhBoBlBqBnBsBpBuBrBwBtByB"
+                    stravaUrl={runForm.stravaMapUrl}
+                  />
+                  <p className="text-xs text-gray-500 italic mt-2">Preview shown with sample route data. Actual route will be displayed when run is created.</p>
+                </div>
+              )}
             </div>
 
             {/* Row 6: Description */}
