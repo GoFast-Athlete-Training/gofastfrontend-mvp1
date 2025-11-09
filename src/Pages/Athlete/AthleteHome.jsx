@@ -17,7 +17,7 @@ const AthleteHome = () => {
   const [weeklyActivities, setWeeklyActivities] = useState([]);
   const [weeklyTotals, setWeeklyTotals] = useState(null);
   const [runCrewId, setRunCrewId] = useState(null);
-  const [runCrewAdminId, setRunCrewAdminId] = useState(null);
+  const [runCrewManagerId, setRunCrewManagerId] = useState(null);
   const [athleteId, setAthleteId] = useState(null);
   const [primaryCrew, setPrimaryCrew] = useState(null);
   const [isCrewHydrating, setIsCrewHydrating] = useState(false);
@@ -30,7 +30,7 @@ const AthleteHome = () => {
         const storedProfile = LocalStorageAPI.getAthleteProfile();
         const storedAthleteId = storedProfile?.athleteId || storedProfile?.id || LocalStorageAPI.getAthleteId();
         const storedRunCrewId = LocalStorageAPI.getRunCrewId();
-        const storedRunCrewAdminId = LocalStorageAPI.getRunCrewAdminId();
+        const storedRunCrewManagerId = LocalStorageAPI.getRunCrewManagerId();
         const storedRunCrewData = LocalStorageAPI.getRunCrewData();
         const storedOnboarding = localStorage.getItem('onboardingState');
 
@@ -46,17 +46,24 @@ const AthleteHome = () => {
             ? storedProfile.runCrews[0]
             : null);
 
+        const managerRecord = Array.isArray(primaryCrew.managers)
+          ? primaryCrew.managers.find((manager) => manager.role === 'admin' && manager.athleteId === storedAthleteId)
+          : null;
+
         if (!storedRunCrewData && primaryCrew) {
           LocalStorageAPI.setRunCrewData(primaryCrew);
           LocalStorageAPI.setRunCrewId(primaryCrew.id);
-          const isAdmin = primaryCrew.isAdmin === true
-            || (primaryCrew.runcrewAdminId && primaryCrew.runcrewAdminId === storedAthleteId);
-          LocalStorageAPI.setRunCrewAdminId(isAdmin ? primaryCrew.id : null);
+
+          LocalStorageAPI.setRunCrewManagerId(managerRecord?.id || null);
+        }
+
+        if (!storedRunCrewManagerId && managerRecord?.id) {
+          LocalStorageAPI.setRunCrewManagerId(managerRecord.id);
         }
 
         setPrimaryCrew(primaryCrew);
         setRunCrewId(storedRunCrewId || primaryCrew?.id || null);
-        setRunCrewAdminId(storedRunCrewAdminId || (primaryCrew?.isAdmin ? primaryCrew.id : null));
+        setRunCrewManagerId(storedRunCrewManagerId || managerRecord?.id || null);
         setAthleteId(storedAthleteId || null);
 
         if (storedProfile.weeklyActivities) {
@@ -124,7 +131,7 @@ const AthleteHome = () => {
 
       const { data } = await axios.post(
         `${API_BASE}/runcrew/hydrate`,
-        { runCrewId: storedRunCrewId },
+        { runCrewId: storedRunCrewId, athleteId: storedAthleteId },
         {
           headers: token
             ? { Authorization: `Bearer ${token}` }
@@ -136,22 +143,17 @@ const AthleteHome = () => {
         throw new Error(data?.error || data?.message || 'Failed to hydrate crew');
       }
 
-      const isAdmin = data.runCrew?.runcrewAdminId === storedAthleteId;
+      const managerRecord = Array.isArray(data.runCrew?.managers)
+        ? data.runCrew.managers.find((manager) => manager.athleteId === storedAthleteId && manager.role === 'admin')
+        : null;
 
-      LocalStorageAPI.setRunCrewData({
-        ...data.runCrew,
-        isAdmin
-      });
+      LocalStorageAPI.setRunCrewData(data.runCrew);
       LocalStorageAPI.setRunCrewId(data.runCrew.id);
-      LocalStorageAPI.setRunCrewAdminId(isAdmin ? data.runCrew.id : null);
+      LocalStorageAPI.setRunCrewManagerId(managerRecord?.id || null);
 
       setPrimaryCrew(data.runCrew);
       setRunCrewId(data.runCrew.id);
-      setRunCrewAdminId(isAdmin ? data.runCrew.id : null);
-
-      if (!isAdmin) {
-        console.warn('⚠️ ATHLETE HOME: Athlete is not an admin; crew admin console unavailable.');
-      }
+      setRunCrewManagerId(managerRecord?.id || null);
 
       navigate('/crew/crewadmin');
     } catch (error) {
@@ -256,7 +258,7 @@ const AthleteHome = () => {
             <p className="text-sky-800 font-semibold">Debug Context</p>
             <p className="text-sm text-sky-800">athleteId: {athleteId || '—'}</p>
             <p className="text-sm text-sky-800">runCrewId: {runCrewId || '—'}</p>
-            <p className="text-sm text-sky-800">runCrewAdminId: {runCrewAdminId || '—'}</p>
+            <p className="text-sm text-sky-800">runCrewManagerId: {runCrewManagerId || '—'}</p>
           </div>
         </div>
 

@@ -127,7 +127,10 @@ export default function JoinCrew() {
 
       if (data.success) {
         if (data.runCrew) {
-          const isAdmin = data.runCrew?.runcrewAdminId === athleteId;
+          const managerRecord = Array.isArray(data.runCrew?.managers)
+            ? data.runCrew.managers.find((manager) => manager.athleteId === athleteId && manager.role === 'admin')
+            : null;
+          const isAdmin = Boolean(managerRecord);
 
           const existingProfile = LocalStorageAPI.getAthleteProfile() || {};
           const existingRunCrews = Array.isArray(existingProfile.runCrews) ? existingProfile.runCrews : [];
@@ -150,11 +153,13 @@ export default function JoinCrew() {
             isAdmin
           });
           LocalStorageAPI.setRunCrewId(data.runCrew.id);
-          LocalStorageAPI.setRunCrewAdminId(isAdmin ? data.runCrew.id : null);
+          LocalStorageAPI.setRunCrewManagerId(managerRecord?.id || null);
         }
 
-        const isAdmin = data.runCrew?.runcrewAdminId === athleteId;
-        if (isAdmin) {
+        const managerRecord = Array.isArray(data.runCrew?.managers)
+          ? data.runCrew.managers.find((manager) => manager.athleteId === athleteId && manager.role === 'admin')
+          : null;
+        if (managerRecord) {
           navigate('/crew/crewadmin');
         } else {
           navigate(`/runcrew/${data.runCrew.id}`);

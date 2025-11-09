@@ -23,7 +23,7 @@ export default function Welcome() {
         console.log('🚀 WELCOME: Hydrating Athlete data...');
         
         // Call hydration endpoint (token automatically added by api interceptor)
-        const response = await api.get('/athlete/hydrate');
+        const response = await api.post('/athlete/hydrate');
         
         if (!response.data.success) {
           console.error('❌ Hydration failed:', response.data.error);
@@ -40,22 +40,24 @@ export default function Welcome() {
           LocalStorageAPI.setAthleteId(athlete.athleteId);
         }
 
-        const primaryCrew = Array.isArray(athlete.runCrews) && athlete.runCrews.length > 0
-          ? athlete.runCrews[0]
+        const primaryCrew = athlete.primaryRunCrew
+          || (Array.isArray(athlete.runCrews) && athlete.runCrews.length > 0
+            ? athlete.runCrews[0]
+            : null);
+        const managerRecord = Array.isArray(athlete.runCrewManagers)
+          ? athlete.runCrewManagers.find(
+              (manager) => manager.runCrewId === primaryCrew?.id && manager.role === 'admin'
+            )
           : null;
+
         if (primaryCrew) {
-          const isAdmin = primaryCrew.runcrewAdminId === athlete.athleteId || primaryCrew.isAdmin;
-          LocalStorageAPI.setRunCrewData({
-            ...primaryCrew,
-            isAdmin
-          });
+          LocalStorageAPI.setRunCrewData(primaryCrew);
           LocalStorageAPI.setRunCrewId(primaryCrew.id);
-          LocalStorageAPI.setRunCrewAdminId(isAdmin ? primaryCrew.id : null);
         } else {
           LocalStorageAPI.setRunCrewData(null);
           LocalStorageAPI.setRunCrewId(null);
-          LocalStorageAPI.setRunCrewAdminId(null);
         }
+        LocalStorageAPI.setRunCrewManagerId(managerRecord?.id || null);
         
         // No-op for run crew arrays in MVP1 (single crew per athlete)
 

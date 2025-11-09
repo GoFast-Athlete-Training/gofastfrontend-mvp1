@@ -2,7 +2,7 @@ export const STORAGE_KEYS = {
   athleteProfile: 'athleteProfile',
   athleteId: 'athleteId',
   runCrewId: 'runCrewId',
-  runCrewAdminId: 'runCrewAdminId',
+  runCrewManagerId: 'runCrewManagerId',
   runCrewData: 'runCrewData'
 };
 
@@ -34,14 +34,14 @@ export const LocalStorageAPI = {
     }
   },
   getRunCrewId: () => localStorage.getItem(STORAGE_KEYS.runCrewId),
-  setRunCrewAdminId: (id) => {
+  setRunCrewManagerId: (id) => {
     if (id) {
-      localStorage.setItem(STORAGE_KEYS.runCrewAdminId, id);
+      localStorage.setItem(STORAGE_KEYS.runCrewManagerId, id);
     } else {
-      localStorage.removeItem(STORAGE_KEYS.runCrewAdminId);
+      localStorage.removeItem(STORAGE_KEYS.runCrewManagerId);
     }
   },
-  getRunCrewAdminId: () => localStorage.getItem(STORAGE_KEYS.runCrewAdminId),
+  getRunCrewManagerId: () => localStorage.getItem(STORAGE_KEYS.runCrewManagerId),
   setRunCrewData: (crew) => {
     if (crew) {
       localStorage.setItem(STORAGE_KEYS.runCrewData, JSON.stringify(crew));
@@ -56,7 +56,7 @@ export const LocalStorageAPI = {
   getContext: () => ({
     athleteId: LocalStorageAPI.getAthleteId(),
     runCrewId: LocalStorageAPI.getRunCrewId(),
-    runCrewAdminId: LocalStorageAPI.getRunCrewAdminId()
+    runCrewManagerId: LocalStorageAPI.getRunCrewManagerId()
   }),
   clearAll: () => localStorage.clear()
 };

@@ -6,20 +6,19 @@ export default function useHydratedAthlete() {
 
   const storedCrew = LocalStorageAPI.getRunCrewData();
   const storedRunCrewId = LocalStorageAPI.getRunCrewId();
-  const storedRunCrewAdminId = LocalStorageAPI.getRunCrewAdminId();
+  const storedRunCrewManagerId = LocalStorageAPI.getRunCrewManagerId();
 
   const primaryCrew = storedCrew
     || (Array.isArray(athlete?.runCrews) && athlete.runCrews.length > 0 ? athlete.runCrews[0] : null);
 
   const runCrewId = storedRunCrewId || primaryCrew?.id || null;
-  const runCrewAdminId = storedRunCrewAdminId
-    || (primaryCrew?.isAdmin ? primaryCrew?.id || null : null);
+  const runCrewManagerId = storedRunCrewManagerId || null;
 
   return {
     athlete,
     athleteId,
     runCrewId,
-    runCrewAdminId,
+    runCrewManagerId,
     primaryCrew
   };
 }

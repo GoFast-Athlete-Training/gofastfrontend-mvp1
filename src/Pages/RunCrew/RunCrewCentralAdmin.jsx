@@ -19,7 +19,7 @@ export default function RunCrewCentralAdmin() {
     athlete: hydratedAthlete,
     athleteId,
     runCrewId,
-    runCrewAdminId
+    runCrewManagerId
   } = useHydratedAthlete();
 
   const [crew, setCrew] = useState(() => LocalStorageAPI.getRunCrewData());
@@ -30,7 +30,20 @@ export default function RunCrewCentralAdmin() {
   const [announcementContent, setAnnouncementContent] = useState('');
   const [runForm, setRunForm] = useState(initialRunForm);
 
-  const isAdmin = Boolean(runCrewAdminId) || crew?.runcrewAdminId === athleteId;
+  const isAdmin = useMemo(() => {
+    if (!crew || !athleteId) {
+      return false;
+    }
+    if (runCrewManagerId) {
+      return true;
+    }
+    if (Array.isArray(crew.managers)) {
+      return crew.managers.some(
+        (manager) => manager.athleteId === athleteId && manager.role === 'admin'
+      );
+    }
+    return false;
+  }, [crew, athleteId, runCrewManagerId]);
   const currentDate = useMemo(() => new Date().toLocaleDateString('en-US', {
     weekday: 'long',
     year: 'numeric',
@@ -61,12 +74,16 @@ export default function RunCrewCentralAdmin() {
     };
 
     const idToPersist = enrichedCrew.id || runCrewId || null;
+    const managerRecord = Array.isArray(enrichedCrew.managers)
+      ? enrichedCrew.managers.find((manager) => manager.athleteId === athleteId && manager.role === 'admin')
+      : null;
+    const managerIdToPersist = managerRecord?.id || enrichedCrew.currentManagerId || runCrewManagerId || null;
 
     if (idToPersist) {
       LocalStorageAPI.setRunCrewId(idToPersist);
     }
 
-    LocalStorageAPI.setRunCrewAdminId(runCrewAdminId || null);
+    LocalStorageAPI.setRunCrewManagerId(managerIdToPersist);
     LocalStorageAPI.setRunCrewData(enrichedCrew);
     setCrew(enrichedCrew);
   };
@@ -82,14 +99,29 @@ export default function RunCrewCentralAdmin() {
       setSyncError(null);
 
       const { data } = await axios.post(`${API_BASE}/runcrew/hydrate`, {
-        runCrewId
+        runCrewId,
+        athleteId
       });
 
       if (!data?.success || !data.runCrew) {
         throw new Error(data?.error || data?.message || 'Unable to hydrate crew');
       }
 
-      persistCrew(data.runCrew);
+      const managerRecord = Array.isArray(data.runCrew?.managers)
+        ? data.runCrew.managers.find((manager) => manager.athleteId === athleteId && manager.role === 'admin')
+        : null;
+
+      LocalStorageAPI.setRunCrewData({
+        ...data.runCrew,
+        isAdmin: managerRecord ? true : data.runCrew.isAdmin
+      });
+      LocalStorageAPI.setRunCrewId(data.runCrew.id);
+      LocalStorageAPI.setRunCrewManagerId(managerRecord?.id || data.runCrew.currentManagerId || null);
+
+      setCrew({
+        ...data.runCrew,
+        isAdmin: managerRecord ? true : data.runCrew.isAdmin
+      });
       showToast('Crew re-synced from server');
     } catch (error) {
       setSyncError(error.message || 'Unable to sync crew. Try again.');
@@ -282,7 +314,7 @@ export default function RunCrewCentralAdmin() {
               <div className="mt-2 bg-sky-100 border border-sky-200 rounded px-3 py-2 text-xs text-sky-900 space-y-1">
                 <p>athleteId: {athleteId || '—'}</p>
                 <p>runCrewId: {runCrewId || crew.id || '—'}</p>
-                <p>admin: {isAdmin ? 'yes' : 'no'}</p>
+                <p>managerId: {runCrewManagerId || '—'}</p>
               </div>
             </div>
           </div>
@@ -507,13 +539,15 @@ export default function RunCrewCentralAdmin() {
           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
             {memberships.map((membership) => {
               const athlete = membership.athlete || membership;
-              const isCrewAdmin = athlete?.id === crew.runcrewAdminId;
+              const managerRecord = Array.isArray(crew.managers)
+                ? crew.managers.find((manager) => manager.athleteId === athlete?.id && manager.role === 'admin')
+                : null;
 
               return (
                 <div key={athlete?.id || membership.id} className="border border-gray-200 rounded-xl px-4 py-3 bg-gray-50">
                   <p className="text-sm font-semibold text-gray-900">
                     {athlete?.firstName || 'Athlete'} {athlete?.lastName || ''}
-                    {isCrewAdmin && <span className="text-orange-600 text-xs font-bold ml-2">(Admin)</span>}
+                    {managerRecord && <span className="text-orange-600 text-xs font-bold ml-2">(Admin)</span>}
                   </p>
                   {athlete?.email && (
                     <p className="text-xs text-gray-500 mt-1">{athlete.email}</p>

@@ -33,7 +33,7 @@ export default function AthleteWelcome() {
         console.log('🚀 ATHLETE WELCOME: Calling hydration endpoint...');
         
         // Call hydration endpoint (token automatically added by api interceptor)
-        const response = await api.get('/athlete/hydrate');
+        const response = await api.post('/athlete/hydrate');
         
         console.log('📡 ATHLETE WELCOME: Response received:', response.status);
         
@@ -58,29 +58,29 @@ export default function AthleteWelcome() {
         // Cache Athlete data to localStorage
         console.log('💾 ATHLETE WELCOME: Caching athlete data to localStorage...');
         LocalStorageAPI.setAthleteProfile(hydratedAthlete);
-        if (hydratedAthlete.athleteId) {
-          LocalStorageAPI.setAthleteId(hydratedAthlete.athleteId);
-        }
+        LocalStorageAPI.setAthleteId(hydratedAthlete.athleteId || hydratedAthlete.id || null);
 
-        const primaryCrew = Array.isArray(hydratedAthlete.runCrews) && hydratedAthlete.runCrews.length > 0
-          ? hydratedAthlete.runCrews[0]
+        const primaryCrew = hydratedAthlete.primaryRunCrew
+          || (Array.isArray(hydratedAthlete.runCrews) ? hydratedAthlete.runCrews[0] : null);
+
+        const managerRecord = Array.isArray(hydratedAthlete.runCrewManagers)
+          ? hydratedAthlete.runCrewManagers.find(
+              (manager) => manager.runCrewId === primaryCrew?.id && manager.role === 'admin'
+            )
           : null;
+
         if (primaryCrew) {
-          const isAdmin = primaryCrew.runcrewAdminId === hydratedAthlete.athleteId || primaryCrew.isAdmin;
-          LocalStorageAPI.setRunCrewData({
-            ...primaryCrew,
-            isAdmin
-          });
+          LocalStorageAPI.setRunCrewData(primaryCrew);
           LocalStorageAPI.setRunCrewId(primaryCrew.id);
-          LocalStorageAPI.setRunCrewAdminId(isAdmin ? primaryCrew.id : null);
         } else {
           LocalStorageAPI.setRunCrewData(null);
           LocalStorageAPI.setRunCrewId(null);
-          LocalStorageAPI.setRunCrewAdminId(null);
         }
-        console.log('✅ ATHLETE WELCOME: athleteProfile cached for athlete:', hydratedAthlete.athleteId);
+
+        LocalStorageAPI.setRunCrewManagerId(managerRecord?.id || null);
+        console.log('✅ ATHLETE WELCOME: athleteProfile cached for athlete:', hydratedAthlete.athleteId || hydratedAthlete.id);
         console.log('✅ ATHLETE WELCOME: runCrewId cached:', primaryCrew?.id || '');
-        console.log('✅ ATHLETE WELCOME: runCrewAdminId cached:', primaryCrew?.runcrewAdminId || '');
+        console.log('✅ ATHLETE WELCOME: runCrewManagerId cached:', managerRecord?.id || '');
         
         // Hydration complete - show button for user to click
         console.log('🎯 ATHLETE WELCOME: Hydration complete, ready for user action');
