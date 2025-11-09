@@ -157,7 +157,8 @@ const AthleteHome = () => {
     navigate(card.path);
   };
 
-  if (isLoading) {
+  // Render guard: prevent white screen if data is missing or loading
+  if (isLoading || !athleteProfile) {
     return (
       <div className="min-h-screen bg-white flex items-center justify-center">
         <div className="text-center">
@@ -244,14 +245,14 @@ const AthleteHome = () => {
           </div>
         </div>
 
-        {primaryCrew && (
+        {runCrewId && (
           <div className="mb-8">
             <div
               onClick={handleGoToRunCrew}
               className="bg-gradient-to-r from-sky-500 to-sky-600 rounded-3xl shadow-2xl p-8 hover:shadow-3xl transition-all cursor-pointer transform hover:scale-[1.02] text-center max-w-3xl mx-auto"
             >
               <h2 className="text-3xl md:text-4xl font-bold text-white mb-4">
-                {primaryCrew.name}
+                My Run Crew
               </h2>
               <p className="text-lg text-sky-50/90 mb-6 max-w-2xl mx-auto">
                 Manage your crew, coordinate runs, and keep everyone accountable.
