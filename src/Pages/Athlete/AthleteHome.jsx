@@ -43,12 +43,8 @@ const AthleteHome = () => {
         setRunCrewManagerId(LocalStorageAPI.getRunCrewManagerId());
 
         // Set activities from full model
-        if (cachedActivities && cachedActivities.length > 0) {
-          setWeeklyActivities(cachedActivities);
-        }
-        if (cachedTotals) {
-          setWeeklyTotals(cachedTotals);
-        }
+        setWeeklyActivities(Array.isArray(cachedActivities) ? cachedActivities : []);
+        setWeeklyTotals(cachedTotals || null);
 
         // Calculate onboarding state
         const storedOnboarding = localStorage.getItem('onboardingState');
@@ -270,7 +266,7 @@ const AthleteHome = () => {
           </div>
         )}
 
-        {weeklyActivities && weeklyActivities.length > 0 && (
+        { (weeklyTotals || (weeklyActivities && weeklyActivities.length > 0)) && (
           <div className="bg-white rounded-xl shadow-lg p-6 mb-8 max-w-2xl mx-auto">
             <div className="flex justify-between items-center mb-4">
               <h2 className="text-2xl font-bold text-gray-900">This Week's Activities</h2>
@@ -283,15 +279,15 @@ const AthleteHome = () => {
             </div>
             <div className="grid grid-cols-3 gap-4">
               <div className="text-center">
-                <p className="text-2xl font-bold text-orange-600">{weeklyTotals?.totalDistanceMiles || '0'}</p>
+                <p className="text-2xl font-bold text-orange-600">{weeklyTotals?.totalDistanceMiles ?? '0'}</p>
                 <p className="text-sm text-gray-600">Miles</p>
               </div>
               <div className="text-center">
-                <p className="text-2xl font-bold text-orange-600">{weeklyActivities.length}</p>
+                <p className="text-2xl font-bold text-orange-600">{weeklyTotals?.activityCount ?? weeklyActivities.length}</p>
                 <p className="text-sm text-gray-600">Activities</p>
               </div>
               <div className="text-center">
-                <p className="text-2xl font-bold text-orange-600">{weeklyTotals?.totalCalories || '0'}</p>
+                <p className="text-2xl font-bold text-orange-600">{weeklyTotals?.totalCalories ?? '0'}</p>
                 <p className="text-sm text-gray-600">Calories</p>
               </div>
             </div>
