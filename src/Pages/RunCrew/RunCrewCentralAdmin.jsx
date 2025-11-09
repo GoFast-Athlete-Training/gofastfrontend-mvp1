@@ -36,7 +36,7 @@ export default function RunCrewCentralAdmin() {
   const [announcementContent, setAnnouncementContent] = useState('');
   const [runForm, setRunForm] = useState(initialRunForm);
   const [editingRunId, setEditingRunId] = useState(null); // Track which run is being edited
-  const [selectedRun, setSelectedRun] = useState(null); // Track which run to show in modal
+  const [expandedRunId, setExpandedRunId] = useState(null); // Track which run details are expanded
 
   const isAdmin = useMemo(() => {
     if (!crew || !athleteId) {
@@ -347,12 +347,8 @@ export default function RunCrewCentralAdmin() {
     setRunForm(initialRunForm);
   };
 
-  const handleViewRunDetails = (run) => {
-    setSelectedRun(run);
-  };
-
-  const closeRunDetailsModal = () => {
-    setSelectedRun(null);
+  const toggleRunDetails = (runId) => {
+    setExpandedRunId(expandedRunId === runId ? null : runId);
   };
 
   const goToMemberView = () => {
