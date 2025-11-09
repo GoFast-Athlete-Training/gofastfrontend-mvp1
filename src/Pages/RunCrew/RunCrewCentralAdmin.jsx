@@ -11,7 +11,12 @@ const initialRunForm = {
   title: '',
   date: '',
   time: '',
-  meetUpPoint: ''
+  meetUpPoint: '',
+  meetUpAddress: '',
+  totalMiles: '',
+  pace: '',
+  description: '',
+  stravaMapUrl: ''
 };
 
 export default function RunCrewCentralAdmin() {
@@ -31,6 +36,7 @@ export default function RunCrewCentralAdmin() {
   const [announcementContent, setAnnouncementContent] = useState('');
   const [runForm, setRunForm] = useState(initialRunForm);
   const [editingRunId, setEditingRunId] = useState(null); // Track which run is being edited
+  const [expandedRunId, setExpandedRunId] = useState(null); // Track which run details are expanded
 
   const isAdmin = useMemo(() => {
     if (!crew || !athleteId) {
@@ -309,7 +315,12 @@ export default function RunCrewCentralAdmin() {
       title: run.title || '',
       date: dateValue,
       time: timeValue,
-      meetUpPoint: run.meetUpPoint || ''
+      meetUpPoint: run.meetUpPoint || '',
+      meetUpAddress: run.meetUpAddress || '',
+      totalMiles: run.totalMiles || '',
+      pace: run.pace || '',
+      description: run.description || '',
+      stravaMapUrl: run.stravaMapUrl || ''
     });
     
     // Scroll to form
@@ -319,6 +330,10 @@ export default function RunCrewCentralAdmin() {
   const handleCancelEdit = () => {
     setEditingRunId(null);
     setRunForm(initialRunForm);
+  };
+
+  const toggleRunDetails = (runId) => {
+    setExpandedRunId(expandedRunId === runId ? null : runId);
   };
 
   const goToMemberView = () => {
@@ -565,35 +580,128 @@ export default function RunCrewCentralAdmin() {
                 // Fix RSVP count: check both run.rsvps array and run._count.rsvps
                 const rsvpCount = run.rsvps?.length || run._count?.rsvps || 0;
                 const goingCount = run.rsvps?.filter(r => r.status === 'going').length || rsvpCount;
+                const isExpanded = expandedRunId === run.id;
                 
                 return (
-                  <div key={run.id} className="border border-gray-200 rounded-xl px-4 py-3 bg-gray-50">
-                    <div className="flex items-start justify-between">
-                      <div className="flex-1">
-                        <p className="font-semibold text-gray-900">{run.title || 'Untitled Run'}</p>
-                        <p className="text-xs text-gray-500">{formatRunDate(run)}</p>
-                        {run.meetUpPoint && (
-                          <p className="text-xs text-gray-500 mt-1">Meet at {run.meetUpPoint}</p>
-                        )}
-                      </div>
-                      <div className="flex items-center gap-2">
-                        <span className="text-xs text-gray-500">
-                          {goingCount} going
-                        </span>
-                        <button
-                          onClick={() => navigate(`/runcrew-run-detail/${run.id}`)}
-                          className="text-xs text-orange-600 hover:text-orange-800 font-semibold border border-orange-300 rounded px-3 py-1 hover:bg-orange-50 transition"
-                        >
-                          Details
-                        </button>
-                        <button
-                          onClick={() => handleEditRun(run)}
-                          className="text-xs text-sky-600 hover:text-sky-800 font-semibold border border-sky-300 rounded px-3 py-1 hover:bg-sky-50 transition"
-                        >
-                          Edit
-                        </button>
+                  <div key={run.id} className="border border-gray-200 rounded-xl bg-gray-50 overflow-hidden">
+                    {/* Run Card Header */}
+                    <div className="px-4 py-3">
+                      <div className="flex items-start justify-between">
+                        <div className="flex-1">
+                          <p className="font-semibold text-gray-900">{run.title || 'Untitled Run'}</p>
+                          <p className="text-xs text-gray-500">{formatRunDate(run)}</p>
+                          {run.meetUpPoint && (
+                            <p className="text-xs text-gray-500 mt-1">📍 {run.meetUpPoint}</p>
+                          )}
+                        </div>
+                        <div className="flex items-center gap-2">
+                          <span className="text-xs text-gray-500">
+                            {goingCount} going
+                          </span>
+                          <button
+                            onClick={() => toggleRunDetails(run.id)}
+                            className="text-xs text-orange-600 hover:text-orange-800 font-semibold border border-orange-300 rounded px-3 py-1 hover:bg-orange-50 transition"
+                          >
+                            {isExpanded ? 'Hide' : 'Details'}
+                          </button>
+                          <button
+                            onClick={() => handleEditRun(run)}
+                            className="text-xs text-sky-600 hover:text-sky-800 font-semibold border border-sky-300 rounded px-3 py-1 hover:bg-sky-50 transition"
+                          >
+                            Edit
+                          </button>
+                        </div>
                       </div>
                     </div>
+
+                    {/* Expanded Details Section */}
+                    {isExpanded && (
+                      <div className="border-t border-gray-200 bg-white px-4 py-4 space-y-4">
+                        {/* Run Details Grid */}
+                        <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+                          {run.totalMiles && (
+                            <div>
+                              <p className="text-xs text-gray-500 uppercase tracking-wide">Distance</p>
+                              <p className="font-semibold text-gray-900">{run.totalMiles} miles</p>
+                            </div>
+                          )}
+                          {run.pace && (
+                            <div>
+                              <p className="text-xs text-gray-500 uppercase tracking-wide">Pace</p>
+                              <p className="font-semibold text-gray-900">{run.pace}</p>
+                            </div>
+                          )}
+                          {run.meetUpAddress && (
+                            <div className="col-span-2">
+                              <p className="text-xs text-gray-500 uppercase tracking-wide">Address</p>
+                              <p className="text-sm text-gray-900">{run.meetUpAddress}</p>
+                            </div>
+                          )}
+                        </div>
+
+                        {/* Description */}
+                        {run.description && (
+                          <div>
+                            <p className="text-xs text-gray-500 uppercase tracking-wide mb-1">Description</p>
+                            <p className="text-sm text-gray-700 whitespace-pre-line">{run.description}</p>
+                          </div>
+                        )}
+
+                        {/* Strava Map */}
+                        {run.stravaMapUrl && (
+                          <div>
+                            <p className="text-xs text-gray-500 uppercase tracking-wide mb-2">Route Map</p>
+                            <a
+                              href={run.stravaMapUrl}
+                              target="_blank"
+                              rel="noopener noreferrer"
+                              className="inline-flex items-center gap-2 text-sm text-orange-600 hover:text-orange-800 font-semibold"
+                            >
+                              View on Strava
+                              <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M10 6H6a2 2 0 00-2 2v10a2 2 0 002 2h10a2 2 0 002-2v-4M14 4h6m0 0v6m0-6L10 14" />
+                              </svg>
+                            </a>
+                          </div>
+                        )}
+
+                        {/* Map Placeholder (if coordinates exist) */}
+                        {(run.meetUpLat && run.meetUpLng) && (
+                          <div>
+                            <p className="text-xs text-gray-500 uppercase tracking-wide mb-2">Location</p>
+                            <div className="bg-gray-100 rounded-lg h-48 flex items-center justify-center border border-gray-200">
+                              <div className="text-center text-gray-500">
+                                <p className="text-sm font-medium">Map View</p>
+                                <p className="text-xs mt-1">Lat: {run.meetUpLat}, Lng: {run.meetUpLng}</p>
+                              </div>
+                            </div>
+                          </div>
+                        )}
+
+                        {/* RSVPs */}
+                        {run.rsvps && run.rsvps.length > 0 && (
+                          <div>
+                            <p className="text-xs text-gray-500 uppercase tracking-wide mb-2">Who's Going</p>
+                            <div className="flex flex-wrap gap-2">
+                              {run.rsvps.filter(r => r.status === 'going').map((rsvp) => (
+                                <div key={rsvp.id} className="flex items-center gap-2 bg-green-50 border border-green-200 rounded-full px-3 py-1">
+                                  {rsvp.athlete?.photoURL && (
+                                    <img
+                                      src={rsvp.athlete.photoURL}
+                                      alt={rsvp.athlete.firstName}
+                                      className="w-5 h-5 rounded-full object-cover"
+                                    />
+                                  )}
+                                  <span className="text-xs font-medium text-green-900">
+                                    {rsvp.athlete?.firstName} {rsvp.athlete?.lastName}
+                                  </span>
+                                </div>
+                              ))}
+                            </div>
+                          </div>
+                        )}
+                      </div>
+                    )}
                   </div>
                 );
               })}
