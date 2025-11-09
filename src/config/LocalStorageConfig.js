@@ -95,12 +95,13 @@ export const LocalStorageAPI = {
     }
 
     // Flatten runCrewId / runCrewManagerId for compatibility
-    const latestCrew = athlete.runCrewMemberships?.[0]?.runCrew || null;
+    // Backend returns flattened runCrews array (not runCrewMemberships)
+    const latestCrew = athlete.runCrews?.[0] || null;
     const manager = athlete.runCrewManagers?.find(
       m => m.athleteId === (athlete.id || athlete.athleteId) && m.role === 'admin'
     ) || null;
 
-    // If no crew from memberships, try to get it from manager record
+    // Get runCrewId from flattened runCrews array or fallback to manager record
     const runCrewId = latestCrew?.id || manager?.runCrewId || '';
     const runCrewManagerId = manager?.id || '';
 
