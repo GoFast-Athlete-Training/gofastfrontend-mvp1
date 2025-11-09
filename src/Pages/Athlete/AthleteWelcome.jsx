@@ -61,11 +61,26 @@ export default function AthleteWelcome() {
         if (hydratedAthlete.athleteId) {
           LocalStorageAPI.setAthleteId(hydratedAthlete.athleteId);
         }
-        LocalStorageAPI.setRunCrewId(hydratedAthlete.runCrewId || '');
-        LocalStorageAPI.setRunCrewAdminId(hydratedAthlete.runCrewAdminId || '');
+
+        const primaryCrew = Array.isArray(hydratedAthlete.runCrews) && hydratedAthlete.runCrews.length > 0
+          ? hydratedAthlete.runCrews[0]
+          : null;
+        if (primaryCrew) {
+          const isAdmin = primaryCrew.runcrewAdminId === hydratedAthlete.athleteId || primaryCrew.isAdmin;
+          LocalStorageAPI.setRunCrewData({
+            ...primaryCrew,
+            isAdmin
+          });
+          LocalStorageAPI.setRunCrewId(primaryCrew.id);
+          LocalStorageAPI.setRunCrewAdminId(isAdmin ? primaryCrew.id : null);
+        } else {
+          LocalStorageAPI.setRunCrewData(null);
+          LocalStorageAPI.setRunCrewId(null);
+          LocalStorageAPI.setRunCrewAdminId(null);
+        }
         console.log('✅ ATHLETE WELCOME: athleteProfile cached for athlete:', hydratedAthlete.athleteId);
-        console.log('✅ ATHLETE WELCOME: runCrewId cached:', hydratedAthlete.runCrewId || '');
-        console.log('✅ ATHLETE WELCOME: runCrewAdminId cached:', hydratedAthlete.runCrewAdminId || '');
+        console.log('✅ ATHLETE WELCOME: runCrewId cached:', primaryCrew?.id || '');
+        console.log('✅ ATHLETE WELCOME: runCrewAdminId cached:', primaryCrew?.runcrewAdminId || '');
         
         // Hydration complete - show button for user to click
         console.log('🎯 ATHLETE WELCOME: Hydration complete, ready for user action');

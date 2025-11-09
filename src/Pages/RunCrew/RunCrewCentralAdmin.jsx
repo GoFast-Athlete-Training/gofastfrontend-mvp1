@@ -3,6 +3,7 @@ import { useNavigate } from 'react-router-dom';
 import axios from 'axios';
 import { auth } from '../../firebase';
 import useHydratedAthlete from '../../hooks/useHydratedAthlete';
+import { LocalStorageAPI } from '../../config/LocalStorageConfig';
 
 const API_BASE = 'https://gofastbackendv2-fall2025.onrender.com/api';
 
@@ -16,8 +17,10 @@ export default function RunCrewCentralAdmin() {
     primaryCrew
   } = useHydratedAthlete();
 
-  const [crew, setCrew] = useState(primaryCrew);
-  const [crewLoading, setCrewLoading] = useState(!primaryCrew && !!runCrewId);
+  const initialCrew = LocalStorageAPI.getRunCrewData() || primaryCrew || null;
+
+  const [crew, setCrew] = useState(initialCrew);
+  const [crewLoading, setCrewLoading] = useState(!initialCrew && !!runCrewId);
   const [crewError, setCrewError] = useState(null);
 
   const [runs, setRuns] = useState([]);
@@ -27,11 +30,11 @@ export default function RunCrewCentralAdmin() {
   const [showRuns, setShowRuns] = useState(false);
 
   useEffect(() => {
-    if (primaryCrew) {
+    if (primaryCrew && (!crew || crew.id !== primaryCrew.id)) {
       setCrew(primaryCrew);
       setCrewLoading(false);
     }
-  }, [primaryCrew]);
+  }, [primaryCrew, crew]);
 
   const missingContext = !athleteId || !runCrewId;
 
@@ -46,26 +49,25 @@ export default function RunCrewCentralAdmin() {
       return;
     }
 
-    const user = auth.currentUser;
-    if (!user) {
-      console.warn('[WARN] RUNCREW ADMIN: Firebase user missing during hydrateCrew');
-      return;
-    }
-
     try {
       setCrewLoading(true);
       setCrewError(null);
 
-      const token = await user.getIdToken();
-      const { data } = await axios.get(`${API_BASE}/runcrew/${runCrewId}/context/${athleteId}`, {
-        headers: {
-          Authorization: `Bearer ${token}`
-        }
+      const { data } = await axios.post(`${API_BASE}/runcrew/hydrate`, {
+        runCrewId
       });
 
       if (!data?.success || !data.runCrew) {
         throw new Error(data?.error || data?.message || 'Failed to load crew context.');
       }
+
+      const isAdmin = data.runCrew?.runcrewAdminId === athleteId;
+      LocalStorageAPI.setRunCrewData({
+        ...data.runCrew,
+        isAdmin
+      });
+      LocalStorageAPI.setRunCrewId(data.runCrew.id);
+      LocalStorageAPI.setRunCrewAdminId(isAdmin ? data.runCrew.id : null);
 
       setCrew(data.runCrew);
     } catch (error) {
@@ -115,10 +117,10 @@ export default function RunCrewCentralAdmin() {
   }, [missingContext, runCrewId]);
 
   useEffect(() => {
-    if (!missingContext) {
+    if (!missingContext && (!crew || crew.id !== runCrewId)) {
       hydrateCrew();
     }
-  }, [hydrateCrew, missingContext]);
+  }, [hydrateCrew, missingContext, crew, runCrewId]);
 
   const currentDate = new Date().toLocaleDateString('en-US', {
     weekday: 'long',

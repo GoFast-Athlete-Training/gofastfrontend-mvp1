@@ -39,8 +39,23 @@ export default function Welcome() {
         if (athlete.athleteId) {
           LocalStorageAPI.setAthleteId(athlete.athleteId);
         }
-        LocalStorageAPI.setRunCrewId(athlete.runCrewId || '');
-        LocalStorageAPI.setRunCrewAdminId(athlete.runCrewAdminId || '');
+
+        const primaryCrew = Array.isArray(athlete.runCrews) && athlete.runCrews.length > 0
+          ? athlete.runCrews[0]
+          : null;
+        if (primaryCrew) {
+          const isAdmin = primaryCrew.runcrewAdminId === athlete.athleteId || primaryCrew.isAdmin;
+          LocalStorageAPI.setRunCrewData({
+            ...primaryCrew,
+            isAdmin
+          });
+          LocalStorageAPI.setRunCrewId(primaryCrew.id);
+          LocalStorageAPI.setRunCrewAdminId(isAdmin ? primaryCrew.id : null);
+        } else {
+          LocalStorageAPI.setRunCrewData(null);
+          LocalStorageAPI.setRunCrewId(null);
+          LocalStorageAPI.setRunCrewAdminId(null);
+        }
         
         // No-op for run crew arrays in MVP1 (single crew per athlete)
 

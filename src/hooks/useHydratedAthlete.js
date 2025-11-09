@@ -1,30 +1,25 @@
-import { useMemo, useRef } from 'react';
 import { LocalStorageAPI } from '../config/LocalStorageConfig';
 
 export default function useHydratedAthlete() {
-  const cacheRef = useRef(null);
+  const athlete = LocalStorageAPI.getAthleteProfile();
+  const athleteId = athlete?.athleteId || athlete?.id || null;
 
-  return useMemo(() => {
-    if (!cacheRef.current) {
-      const athlete = LocalStorageAPI.getAthleteProfile();
-      const athleteId = athlete?.athleteId || athlete?.id || null;
+  const storedCrew = LocalStorageAPI.getRunCrewData();
+  const storedRunCrewId = LocalStorageAPI.getRunCrewId();
+  const storedRunCrewAdminId = LocalStorageAPI.getRunCrewAdminId();
 
-      const primaryCrew = Array.isArray(athlete?.runCrews) && athlete.runCrews.length > 0
-        ? athlete.runCrews[0]
-        : null;
+  const primaryCrew = storedCrew
+    || (Array.isArray(athlete?.runCrews) && athlete.runCrews.length > 0 ? athlete.runCrews[0] : null);
 
-      const runCrewId = primaryCrew?.id || null;
-      const runCrewAdminId = primaryCrew?.isAdmin ? primaryCrew.id : null;
+  const runCrewId = storedRunCrewId || primaryCrew?.id || null;
+  const runCrewAdminId = storedRunCrewAdminId
+    || (primaryCrew?.isAdmin ? primaryCrew?.id || null : null);
 
-      cacheRef.current = {
-        athlete,
-        athleteId,
-        runCrewId,
-        runCrewAdminId,
-        primaryCrew
-      };
-    }
-
-    return cacheRef.current;
-  }, []);
+  return {
+    athlete,
+    athleteId,
+    runCrewId,
+    runCrewAdminId,
+    primaryCrew
+  };
 }

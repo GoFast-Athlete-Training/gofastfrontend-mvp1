@@ -145,10 +145,12 @@ export default function JoinCrew() {
             runCrews: updatedRunCrews
           });
 
-          if (isAdmin) {
-            LocalStorageAPI.setRunCrewAdminId(data.runCrew.id);
-          }
+          LocalStorageAPI.setRunCrewData({
+            ...data.runCrew,
+            isAdmin
+          });
           LocalStorageAPI.setRunCrewId(data.runCrew.id);
+          LocalStorageAPI.setRunCrewAdminId(isAdmin ? data.runCrew.id : null);
         }
 
         const isAdmin = data.runCrew?.runcrewAdminId === athleteId;

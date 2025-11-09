@@ -1,9 +1,12 @@
 import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
+import axios from 'axios';
 import { signOut } from 'firebase/auth';
 import { auth } from '../../firebase';
 import UserOnboardingCalculationService from '../../utils/UserOnboardingCalculationService';
 import { LocalStorageAPI } from '../../config/LocalStorageConfig';
+
+const API_BASE = 'https://gofastbackendv2-fall2025.onrender.com/api';
 
 const AthleteHome = () => {
   const navigate = useNavigate();
@@ -27,6 +30,7 @@ const AthleteHome = () => {
         const storedAthleteId = storedProfile?.athleteId || storedProfile?.id || LocalStorageAPI.getAthleteId();
         const storedRunCrewId = LocalStorageAPI.getRunCrewId();
         const storedRunCrewAdminId = LocalStorageAPI.getRunCrewAdminId();
+        const storedRunCrewData = LocalStorageAPI.getRunCrewData();
         const storedOnboarding = localStorage.getItem('onboardingState');
 
         if (!storedProfile) {
@@ -36,13 +40,23 @@ const AthleteHome = () => {
         }
 
         setAthleteProfile(storedProfile);
-        const primaryCrew = Array.isArray(storedProfile.runCrews) && storedProfile.runCrews.length > 0
-          ? storedProfile.runCrews[0]
-          : null;
-        setRunCrewId(primaryCrew?.id || null);
-        setRunCrewAdminId(primaryCrew?.isAdmin ? primaryCrew.id : null);
-        setAthleteId(storedAthleteId || null);
+        const primaryCrew = storedRunCrewData
+          || (Array.isArray(storedProfile.runCrews) && storedProfile.runCrews.length > 0
+            ? storedProfile.runCrews[0]
+            : null);
+
+        if (!storedRunCrewData && primaryCrew) {
+          LocalStorageAPI.setRunCrewData(primaryCrew);
+          LocalStorageAPI.setRunCrewId(primaryCrew.id);
+          const isAdmin = primaryCrew.isAdmin === true
+            || (primaryCrew.runcrewAdminId && primaryCrew.runcrewAdminId === storedAthleteId);
+          LocalStorageAPI.setRunCrewAdminId(isAdmin ? primaryCrew.id : null);
+        }
+
         setPrimaryCrew(primaryCrew);
+        setRunCrewId(storedRunCrewId || primaryCrew?.id || null);
+        setRunCrewAdminId(storedRunCrewAdminId || (primaryCrew?.isAdmin ? primaryCrew.id : null));
+        setAthleteId(storedAthleteId || null);
 
         if (storedProfile.weeklyActivities) {
           setWeeklyActivities(storedProfile.weeklyActivities);
@@ -91,13 +105,49 @@ const AthleteHome = () => {
     }
   };
 
-  const goToRunCrew = () => {
+  const hydrateRunCrewData = async () => {
+    if (!runCrewId) return null;
+
+    try {
+      const { data } = await axios.post(`${API_BASE}/runcrew/hydrate`, {
+        runCrewId
+      });
+
+      if (!data?.success || !data.runCrew) {
+        throw new Error(data?.error || data?.message || 'Failed to hydrate crew');
+      }
+
+      const isAdmin = data.runCrew?.runcrewAdminId === athleteId;
+      LocalStorageAPI.setRunCrewData({
+        ...data.runCrew,
+        isAdmin
+      });
+      LocalStorageAPI.setRunCrewId(data.runCrew.id);
+      LocalStorageAPI.setRunCrewAdminId(isAdmin ? data.runCrew.id : null);
+
+      setPrimaryCrew(data.runCrew);
+      setRunCrewId(data.runCrew.id);
+      setRunCrewAdminId(isAdmin ? data.runCrew.id : null);
+      return data.runCrew;
+    } catch (error) {
+      console.error('❌ ATHLETE HOME: Failed to hydrate RunCrew', error);
+      return null;
+    }
+  };
+
+  const goToRunCrew = async () => {
     if (!runCrewId) {
       navigate('/runcrew/join');
       return;
     }
 
-    if (runCrewAdminId) {
+    const cachedCrew = LocalStorageAPI.getRunCrewData();
+    if (!cachedCrew || cachedCrew.id !== runCrewId) {
+      await hydrateRunCrewData();
+    }
+
+    const adminFlag = LocalStorageAPI.getRunCrewAdminId();
+    if (adminFlag) {
       navigate('/crew/crewadmin');
     } else {
       navigate(`/runcrew/${runCrewId}`);
