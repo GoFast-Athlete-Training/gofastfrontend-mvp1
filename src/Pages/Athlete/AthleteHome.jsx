@@ -235,6 +235,15 @@ const AthleteHome = () => {
             <p className="text-sm text-sky-800">athleteId: {athleteId || '—'}</p>
             <p className="text-sm text-sky-800">runCrewId: {runCrewId || '—'}</p>
             <p className="text-sm text-sky-800">runCrewManagerId: {runCrewManagerId || '—'}</p>
+            <p className="text-sm text-sky-800">
+              weeklyActivities: {weeklyActivities ? weeklyActivities.length : 0}
+            </p>
+            <p className="text-sm text-sky-800">
+              totalDistanceMiles: {weeklyTotals?.totalDistanceMiles ?? '—'}
+            </p>
+            <p className="text-sm text-sky-800">
+              totalCalories: {weeklyTotals?.totalCalories ?? '—'}
+            </p>
           </div>
         </div>
 
