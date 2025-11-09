@@ -1,6 +1,7 @@
 import React, { useMemo, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import axios from 'axios';
+import { auth } from '../../firebase';
 import useHydratedAthlete from '../../hooks/useHydratedAthlete';
 import { LocalStorageAPI } from '../../config/LocalStorageConfig';
 
@@ -29,6 +30,7 @@ export default function RunCrewCentralAdmin() {
 
   const [announcementContent, setAnnouncementContent] = useState('');
   const [runForm, setRunForm] = useState(initialRunForm);
+  const [editingRunId, setEditingRunId] = useState(null); // Track which run is being edited
 
   const isAdmin = useMemo(() => {
     if (!crew || !athleteId) {
@@ -167,7 +169,7 @@ export default function RunCrewCentralAdmin() {
     showToast('Announcement added');
   };
 
-  const handleRunSubmit = (event) => {
+  const handleRunSubmit = async (event) => {
     event.preventDefault();
     if (!crew) {
       showToast('Sync your crew before creating runs');
@@ -186,6 +188,50 @@ export default function RunCrewCentralAdmin() {
 
     const isoDate = date ? `${date}T${time || '00:00'}` : null;
 
+    // EDIT MODE: Update existing run via backend
+    if (editingRunId) {
+      try {
+        const user = auth.currentUser;
+        if (!user) {
+          showToast('Please sign in to edit runs');
+          return;
+        }
+
+        const token = await user.getIdToken();
+        const { data } = await axios.patch(
+          `${API_BASE}/runcrew/runs/${editingRunId}`,
+          {
+            title: title || 'Untitled Run',
+            date: isoDate,
+            startTime: time || null,
+            meetUpPoint: meetUpPoint || null
+          },
+          {
+            headers: { Authorization: `Bearer ${token}` }
+          }
+        );
+
+        if (data?.success && data.data) {
+          // Update the run in the local crew object
+          const updatedRuns = runs.map((r) =>
+            r.id === editingRunId ? data.data : r
+          );
+          const updatedCrew = { ...crew, runs: updatedRuns };
+          persistCrew(updatedCrew);
+          showToast('Run updated successfully');
+          setEditingRunId(null);
+          setRunForm(initialRunForm);
+        } else {
+          throw new Error(data?.error || 'Failed to update run');
+        }
+      } catch (error) {
+        console.error('Error updating run:', error);
+        showToast(error.message || 'Failed to update run');
+      }
+      return;
+    }
+
+    // CREATE MODE: Add new run locally
     const newRun = {
       id: `local-run-${Date.now()}`,
       title: title || 'Untitled Run',
@@ -239,6 +285,40 @@ export default function RunCrewCentralAdmin() {
 
   const handleAnnouncementChange = (event) => {
     setAnnouncementContent(event.target.value);
+  };
+
+  const handleEditRun = (run) => {
+    // Parse the date and time from the run object
+    let dateValue = '';
+    let timeValue = '';
+    
+    if (run.date) {
+      try {
+        const runDate = new Date(run.date);
+        // Format date as YYYY-MM-DD for input[type="date"]
+        dateValue = runDate.toISOString().split('T')[0];
+        // Format time as HH:MM for input[type="time"]
+        timeValue = run.startTime || runDate.toTimeString().slice(0, 5);
+      } catch (error) {
+        console.error('Error parsing run date:', error);
+      }
+    }
+
+    setEditingRunId(run.id);
+    setRunForm({
+      title: run.title || '',
+      date: dateValue,
+      time: timeValue,
+      meetUpPoint: run.meetUpPoint || ''
+    });
+    
+    // Scroll to form
+    window.scrollTo({ top: 0, behavior: 'smooth' });
+  };
+
+  const handleCancelEdit = () => {
+    setEditingRunId(null);
+    setRunForm(initialRunForm);
   };
 
   const goToMemberView = () => {
@@ -408,9 +488,22 @@ export default function RunCrewCentralAdmin() {
         <section className="bg-white rounded-2xl border border-gray-200 shadow-sm p-6 space-y-6">
           <div className="flex items-center justify-between">
             <div>
-              <h2 className="text-xl font-bold text-gray-900">Create a Run</h2>
-              <p className="text-sm text-gray-500">Schedule meetups and keep your crew moving.</p>
+              <h2 className="text-xl font-bold text-gray-900">
+                {editingRunId ? 'Edit Run' : 'Create a Run'}
+              </h2>
+              <p className="text-sm text-gray-500">
+                {editingRunId ? 'Update the details below and save changes.' : 'Schedule meetups and keep your crew moving.'}
+              </p>
             </div>
+            {editingRunId && (
+              <button
+                type="button"
+                onClick={handleCancelEdit}
+                className="text-sm text-gray-600 hover:text-gray-900 border border-gray-300 rounded-lg px-4 py-2"
+              >
+                Cancel Edit
+              </button>
+            )}
           </div>
 
           <form onSubmit={handleRunSubmit} className="grid grid-cols-1 md:grid-cols-2 gap-4">
@@ -457,7 +550,7 @@ export default function RunCrewCentralAdmin() {
                 type="submit"
                 className="bg-emerald-500 hover:bg-emerald-600 text-white px-5 py-2 rounded-lg text-sm font-semibold transition"
               >
-                Add Run
+                {editingRunId ? 'Save Changes' : 'Add Run'}
               </button>
             </div>
           </form>
@@ -468,22 +561,36 @@ export default function RunCrewCentralAdmin() {
               <p className="text-sm text-gray-500">No runs yet — create one above.</p>
             )}
             <div className="space-y-3">
-              {runs.map((run) => (
-                <div key={run.id} className="border border-gray-200 rounded-xl px-4 py-3 bg-gray-50">
-                  <div className="flex items-start justify-between">
-                    <div>
-                      <p className="font-semibold text-gray-900">{run.title || 'Untitled Run'}</p>
-                      <p className="text-xs text-gray-500">{formatRunDate(run)}</p>
-                      {run.meetUpPoint && (
-                        <p className="text-xs text-gray-500 mt-1">Meet at {run.meetUpPoint}</p>
-                      )}
+              {runs.map((run) => {
+                // Fix RSVP count: check both run.rsvps array and run._count.rsvps
+                const rsvpCount = run.rsvps?.length || run._count?.rsvps || 0;
+                const goingCount = run.rsvps?.filter(r => r.status === 'going').length || rsvpCount;
+                
+                return (
+                  <div key={run.id} className="border border-gray-200 rounded-xl px-4 py-3 bg-gray-50">
+                    <div className="flex items-start justify-between">
+                      <div className="flex-1">
+                        <p className="font-semibold text-gray-900">{run.title || 'Untitled Run'}</p>
+                        <p className="text-xs text-gray-500">{formatRunDate(run)}</p>
+                        {run.meetUpPoint && (
+                          <p className="text-xs text-gray-500 mt-1">Meet at {run.meetUpPoint}</p>
+                        )}
+                      </div>
+                      <div className="flex items-center gap-3">
+                        <span className="text-xs text-gray-500">
+                          {goingCount} going
+                        </span>
+                        <button
+                          onClick={() => handleEditRun(run)}
+                          className="text-xs text-sky-600 hover:text-sky-800 font-semibold border border-sky-300 rounded px-3 py-1 hover:bg-sky-50 transition"
+                        >
+                          Edit
+                        </button>
+                      </div>
                     </div>
-                    <span className="text-xs text-gray-500">
-                      {Array.isArray(run.rsvps) ? `${run.rsvps.length} going` : 'RSVPs pending'}
-                    </span>
                   </div>
-                </div>
-              ))}
+                );
+              })}
             </div>
           </div>
         </section>
