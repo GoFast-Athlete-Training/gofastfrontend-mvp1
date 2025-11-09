@@ -100,8 +100,14 @@ export const LocalStorageAPI = {
       m => m.athleteId === (athlete.id || athlete.athleteId) && m.role === 'admin'
     ) || null;
 
-    localStorage.setItem(STORAGE_KEYS.runCrewId, latestCrew?.id || '');
-    localStorage.setItem(STORAGE_KEYS.runCrewManagerId, manager?.id || '');
+    // If no crew from memberships, try to get it from manager record
+    const runCrewId = latestCrew?.id || manager?.runCrewId || '';
+    const runCrewManagerId = manager?.id || '';
+
+    localStorage.setItem(STORAGE_KEYS.runCrewId, runCrewId);
+    localStorage.setItem(STORAGE_KEYS.runCrewManagerId, runCrewManagerId);
+
+    console.log('✅ LocalStorageAPI: Flattened IDs - runCrewId:', runCrewId, 'managerId:', runCrewManagerId);
 
     // Activities and totals
     if (weeklyActivities) {
