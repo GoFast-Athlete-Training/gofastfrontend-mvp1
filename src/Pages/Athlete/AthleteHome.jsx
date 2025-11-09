@@ -26,11 +26,9 @@ const AthleteHome = () => {
       setIsLoading(true);
 
       try {
-        const storedProfile = LocalStorageAPI.getAthleteProfile();
-        const storedAthleteId = LocalStorageAPI.getAthleteId();
-        const storedRunCrewId = LocalStorageAPI.getRunCrewId();
-        const storedRunCrewManagerId = LocalStorageAPI.getRunCrewManagerId();
-        const storedOnboarding = localStorage.getItem('onboardingState');
+        // Load the full hydration model
+        const model = LocalStorageAPI.getFullHydrationModel();
+        const { athlete: storedProfile, weeklyActivities: cachedActivities, weeklyTotals: cachedTotals } = model;
 
         if (!storedProfile) {
           console.log('⚠️ ATHLETE HOME: No profile data found, redirecting to welcome');
@@ -38,27 +36,22 @@ const AthleteHome = () => {
           return;
         }
 
+        // Set athlete context from model
         setAthleteProfile(storedProfile);
-        setAthleteId(storedAthleteId);
-        setRunCrewId(storedRunCrewId);
-        setRunCrewManagerId(storedRunCrewManagerId);
+        setAthleteId(LocalStorageAPI.getAthleteId());
+        setRunCrewId(LocalStorageAPI.getRunCrewId());
+        setRunCrewManagerId(LocalStorageAPI.getRunCrewManagerId());
 
-        if (storedProfile.weeklyActivities) {
-          setWeeklyActivities(storedProfile.weeklyActivities);
-          setWeeklyTotals(storedProfile.weeklyTotals);
-          localStorage.setItem('weeklyActivities', JSON.stringify(storedProfile.weeklyActivities));
-          localStorage.setItem('weeklyTotals', JSON.stringify(storedProfile.weeklyTotals));
-        } else {
-          const cachedActivities = localStorage.getItem('weeklyActivities');
-          const cachedTotals = localStorage.getItem('weeklyTotals');
-          if (cachedActivities) {
-            setWeeklyActivities(JSON.parse(cachedActivities));
-          }
-          if (cachedTotals) {
-            setWeeklyTotals(JSON.parse(cachedTotals));
-          }
+        // Set activities from full model
+        if (cachedActivities && cachedActivities.length > 0) {
+          setWeeklyActivities(cachedActivities);
+        }
+        if (cachedTotals) {
+          setWeeklyTotals(cachedTotals);
         }
 
+        // Calculate onboarding state
+        const storedOnboarding = localStorage.getItem('onboardingState');
         let onboarding;
         if (storedOnboarding) {
           onboarding = JSON.parse(storedOnboarding);

@@ -37,35 +37,34 @@ export default function AthleteWelcome() {
         
         console.log('📡 ATHLETE WELCOME: Response received:', response.status);
         
-        if (!response.data.success) {
-          console.error('❌ ATHLETE WELCOME: Hydration failed:', response.data.error);
+        const { success, athlete, weeklyActivities, weeklyTotals } = response.data;
+
+        if (!success || !athlete) {
+          console.error('❌ ATHLETE WELCOME: Hydration failed:', response.data.error || 'Invalid response');
           setError(response.data.error || 'Failed to load athlete data');
           setIsLoading(false);
           return;
         }
 
-        const hydratedAthlete = response.data.athlete;
         console.log('✅ ATHLETE WELCOME: Athlete hydrated successfully');
-        console.log('✅ ATHLETE WELCOME: Athlete ID:', hydratedAthlete.athleteId);
-        console.log('✅ ATHLETE WELCOME: Email:', hydratedAthlete.email);
-        console.log('✅ ATHLETE WELCOME: Name:', hydratedAthlete.firstName, hydratedAthlete.lastName);
-        console.log('✅ ATHLETE WELCOME: RunCrews count:', hydratedAthlete.runCrews?.length || 0);
+        console.log('✅ ATHLETE WELCOME: Athlete ID:', athlete.athleteId || athlete.id);
+        console.log('✅ ATHLETE WELCOME: Email:', athlete.email);
+        console.log('✅ ATHLETE WELCOME: Name:', athlete.firstName, athlete.lastName);
+        console.log('✅ ATHLETE WELCOME: RunCrews count:', athlete.runCrews?.length || 0);
         
-        if (hydratedAthlete.runCrews && hydratedAthlete.runCrews.length > 0) {
-          console.log('✅ ATHLETE WELCOME: RunCrews:', hydratedAthlete.runCrews.map(c => c.name).join(', '));
+        if (athlete.runCrews && athlete.runCrews.length > 0) {
+          console.log('✅ ATHLETE WELCOME: RunCrews:', athlete.runCrews.map(c => c.name).join(', '));
         }
 
-        // Cache Athlete data to localStorage (ATHLETE ONLY)
-        console.log('💾 ATHLETE WELCOME: Caching athlete data to localStorage...');
-        LocalStorageAPI.setAthleteProfile(hydratedAthlete);
-        LocalStorageAPI.setAthleteId(hydratedAthlete.athleteId || hydratedAthlete.id);
-
-        // Clear crew context - will be set when user clicks "Go to RunCrew"
-        LocalStorageAPI.setRunCrewId(null);
-        LocalStorageAPI.setRunCrewManagerId(null);
-        LocalStorageAPI.setRunCrewData(null);
+        // Store the complete Prisma model (athlete + all relations + activities)
+        console.log('💾 ATHLETE WELCOME: Caching full hydration model to localStorage...');
+        LocalStorageAPI.setFullHydrationModel({
+          athlete,
+          weeklyActivities: weeklyActivities || [],
+          weeklyTotals: weeklyTotals || null
+        });
         
-        console.log('✅ ATHLETE WELCOME: Athlete context cached (crew context cleared)');
+        console.log('✅ ATHLETE WELCOME: Full hydration model cached');
         
         // Hydration complete - show button for user to click
         console.log('🎯 ATHLETE WELCOME: Hydration complete, ready for user action');

@@ -25,23 +25,22 @@ export default function Welcome() {
         // Call hydration endpoint (token automatically added by api interceptor)
         const response = await api.post('/athlete/hydrate');
         
-        if (!response.data.success) {
-          console.error('❌ Hydration failed:', response.data.error);
+        const { success, athlete, weeklyActivities, weeklyTotals } = response.data;
+
+        if (!success || !athlete) {
+          console.error('❌ Hydration failed:', response.data.error || 'Invalid response');
           navigate('/athletesignup');
           return;
         }
 
-        const { athlete } = response.data;
         console.log('✅ WELCOME: Athlete hydrated:', athlete);
 
-        // Cache Athlete data to localStorage (ATHLETE ONLY)
-        LocalStorageAPI.setAthleteProfile(athlete);
-        LocalStorageAPI.setAthleteId(athlete.athleteId || athlete.id);
-
-        // Clear crew context - will be set when user clicks "Go to RunCrew"
-        LocalStorageAPI.setRunCrewId(null);
-        LocalStorageAPI.setRunCrewManagerId(null);
-        LocalStorageAPI.setRunCrewData(null);
+        // Store the complete Prisma model (athlete + all relations + activities)
+        LocalStorageAPI.setFullHydrationModel({
+          athlete,
+          weeklyActivities: weeklyActivities || [],
+          weeklyTotals: weeklyTotals || null
+        });
 
         // Routing Logic based on what's missing
         // Profile check: Does athlete have gofastHandle? (basic profile requirement)
