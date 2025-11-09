@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { auth } from '../../firebase';
+import { LocalStorageAPI } from '../../config/LocalStorageConfig';
 
 const API_BASE = 'https://gofastbackendv2-fall2025.onrender.com/api';
 
@@ -57,9 +58,17 @@ export default function RunCrewList() {
   };
 
   const handleCrewClick = (crew) => {
-    // Route based on admin status - crew is the primary relationship manager (per RunCrewArchitecture.md)
-    if (crew.isAdmin) {
-      navigate(`/runcrew/admin/${crew.id}`);
+    const isAdmin = crew.isAdmin === true;
+
+    LocalStorageAPI.setRunCrewData({
+      ...crew,
+      isAdmin
+    });
+    LocalStorageAPI.setRunCrewId(crew.id);
+    LocalStorageAPI.setRunCrewAdminId(isAdmin ? crew.id : null);
+
+    if (isAdmin) {
+      navigate('/crew/crewadmin');
     } else {
       navigate(`/runcrew/${crew.id}`);
     }
