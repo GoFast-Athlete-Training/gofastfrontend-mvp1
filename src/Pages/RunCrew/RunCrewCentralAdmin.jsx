@@ -581,14 +581,45 @@ export default function RunCrewCentralAdmin() {
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
               <div className="space-y-2">
                 <label className="text-xs font-semibold text-gray-600 uppercase tracking-wide">Start Time *</label>
-                <input
-                  type="text"
+                <select
                   value={runForm.time}
                   onChange={handleRunFormChange('time')}
-                  placeholder="6:30 AM"
                   className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-sky-500 focus:border-sky-500"
                   required
-                />
+                >
+                  <option value="">Select time...</option>
+                  <option value="5:00 AM">5:00 AM</option>
+                  <option value="5:30 AM">5:30 AM</option>
+                  <option value="6:00 AM">6:00 AM</option>
+                  <option value="6:30 AM">6:30 AM</option>
+                  <option value="7:00 AM">7:00 AM</option>
+                  <option value="7:30 AM">7:30 AM</option>
+                  <option value="8:00 AM">8:00 AM</option>
+                  <option value="8:30 AM">8:30 AM</option>
+                  <option value="9:00 AM">9:00 AM</option>
+                  <option value="9:30 AM">9:30 AM</option>
+                  <option value="10:00 AM">10:00 AM</option>
+                  <option value="10:30 AM">10:30 AM</option>
+                  <option value="11:00 AM">11:00 AM</option>
+                  <option value="11:30 AM">11:30 AM</option>
+                  <option value="12:00 PM">12:00 PM</option>
+                  <option value="12:30 PM">12:30 PM</option>
+                  <option value="1:00 PM">1:00 PM</option>
+                  <option value="1:30 PM">1:30 PM</option>
+                  <option value="2:00 PM">2:00 PM</option>
+                  <option value="2:30 PM">2:30 PM</option>
+                  <option value="3:00 PM">3:00 PM</option>
+                  <option value="3:30 PM">3:30 PM</option>
+                  <option value="4:00 PM">4:00 PM</option>
+                  <option value="4:30 PM">4:30 PM</option>
+                  <option value="5:00 PM">5:00 PM</option>
+                  <option value="5:30 PM">5:30 PM</option>
+                  <option value="6:00 PM">6:00 PM</option>
+                  <option value="6:30 PM">6:30 PM</option>
+                  <option value="7:00 PM">7:00 PM</option>
+                  <option value="7:30 PM">7:30 PM</option>
+                  <option value="8:00 PM">8:00 PM</option>
+                </select>
               </div>
               <div className="space-y-2">
                 <label className="text-xs font-semibold text-gray-600 uppercase tracking-wide">Meet-Up Point *</label>
