@@ -576,10 +576,16 @@ export default function RunCrewCentralAdmin() {
                           <p className="text-xs text-gray-500 mt-1">Meet at {run.meetUpPoint}</p>
                         )}
                       </div>
-                      <div className="flex items-center gap-3">
+                      <div className="flex items-center gap-2">
                         <span className="text-xs text-gray-500">
                           {goingCount} going
                         </span>
+                        <button
+                          onClick={() => navigate(`/runcrew-run-detail/${run.id}`)}
+                          className="text-xs text-orange-600 hover:text-orange-800 font-semibold border border-orange-300 rounded px-3 py-1 hover:bg-orange-50 transition"
+                        >
+                          Details
+                        </button>
                         <button
                           onClick={() => handleEditRun(run)}
                           className="text-xs text-sky-600 hover:text-sky-800 font-semibold border border-sky-300 rounded px-3 py-1 hover:bg-sky-50 transition"
