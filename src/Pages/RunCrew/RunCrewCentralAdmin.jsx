@@ -40,6 +40,7 @@ export default function RunCrewCentralAdmin() {
   const [editingRunId, setEditingRunId] = useState(null); // Track which run is being edited
   const [expandedRunId, setExpandedRunId] = useState(null); // Track which run details are expanded
   const [placeData, setPlaceData] = useState(null); // Google Places data (lat/lng/placeId)
+  const [showEditModal, setShowEditModal] = useState(false); // Control edit modal visibility
 
   const isAdmin = useMemo(() => {
     if (!crew || !athleteId) {
@@ -241,6 +242,7 @@ export default function RunCrewCentralAdmin() {
           setEditingRunId(null);
           setRunForm(initialRunForm);
           setPlaceData(null);
+          setShowEditModal(false);
         } else {
           throw new Error(data?.error || 'Failed to update run');
         }
@@ -326,17 +328,14 @@ export default function RunCrewCentralAdmin() {
   };
 
   const handleEditRun = (run) => {
-    // Parse the date and time from the run object
+    // Parse the date from the run object
     let dateValue = '';
-    let timeValue = '';
     
     if (run.date) {
       try {
         const runDate = new Date(run.date);
         // Format date as YYYY-MM-DD for input[type="date"]
         dateValue = runDate.toISOString().split('T')[0];
-        // Format time as HH:MM for input[type="time"]
-        timeValue = run.startTime || runDate.toTimeString().slice(0, 5);
       } catch (error) {
         console.error('Error parsing run date:', error);
       }
@@ -346,7 +345,7 @@ export default function RunCrewCentralAdmin() {
     setRunForm({
       title: run.title || '',
       date: dateValue,
-      time: timeValue,
+      time: run.time || run.startTime || '', // Use existing time format (e.g., "6:30 AM")
       meetUpPoint: run.meetUpPoint || '',
       meetUpAddress: run.meetUpAddress || '',
       totalMiles: run.totalMiles || '',
@@ -355,14 +354,15 @@ export default function RunCrewCentralAdmin() {
       stravaMapUrl: run.stravaMapUrl || ''
     });
     
-    // Scroll to form
-    window.scrollTo({ top: 0, behavior: 'smooth' });
+    // Open modal instead of scrolling
+    setShowEditModal(true);
   };
 
   const handleCancelEdit = () => {
     setEditingRunId(null);
     setRunForm(initialRunForm);
     setPlaceData(null);
+    setShowEditModal(false);
   };
 
   const toggleRunDetails = (runId) => {
@@ -948,6 +948,198 @@ export default function RunCrewCentralAdmin() {
           </div>
         </section>
       </main>
+
+      {/* Edit Run Modal */}
+      {showEditModal && editingRunId && (
+        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
+          <div className="bg-white rounded-2xl shadow-2xl max-w-3xl w-full max-h-[90vh] overflow-y-auto">
+            <div className="sticky top-0 bg-white border-b border-gray-200 px-6 py-4 flex items-center justify-between">
+              <h2 className="text-xl font-bold text-gray-900">Edit Run</h2>
+              <button
+                onClick={handleCancelEdit}
+                className="text-gray-400 hover:text-gray-600 transition"
+              >
+                <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+                </svg>
+              </button>
+            </div>
+            
+            <form onSubmit={handleRunSubmit} className="p-6 space-y-6">
+              {/* Row 1: Title & Date */}
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                <div className="space-y-2">
+                  <label className="text-xs font-semibold text-gray-600 uppercase tracking-wide">Title *</label>
+                  <input
+                    type="text"
+                    value={runForm.title}
+                    onChange={handleRunFormChange('title')}
+                    placeholder="Saturday Sunrise Run"
+                    className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-sky-500 focus:border-sky-500"
+                    required
+                  />
+                </div>
+                <div className="space-y-2">
+                  <label className="text-xs font-semibold text-gray-600 uppercase tracking-wide">Date *</label>
+                  <input
+                    type="date"
+                    value={runForm.date}
+                    onChange={handleRunFormChange('date')}
+                    className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-sky-500 focus:border-sky-500"
+                    required
+                  />
+                </div>
+              </div>
+
+              {/* Row 2: Time & Meet-Up Point */}
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                <div className="space-y-2">
+                  <label className="text-xs font-semibold text-gray-600 uppercase tracking-wide">Start Time *</label>
+                  <select
+                    value={runForm.time}
+                    onChange={handleRunFormChange('time')}
+                    className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-sky-500 focus:border-sky-500"
+                    required
+                  >
+                    <option value="">Select time...</option>
+                    <option value="5:00 AM">5:00 AM</option>
+                    <option value="5:30 AM">5:30 AM</option>
+                    <option value="6:00 AM">6:00 AM</option>
+                    <option value="6:30 AM">6:30 AM</option>
+                    <option value="7:00 AM">7:00 AM</option>
+                    <option value="7:30 AM">7:30 AM</option>
+                    <option value="8:00 AM">8:00 AM</option>
+                    <option value="8:30 AM">8:30 AM</option>
+                    <option value="9:00 AM">9:00 AM</option>
+                    <option value="9:30 AM">9:30 AM</option>
+                    <option value="10:00 AM">10:00 AM</option>
+                    <option value="10:30 AM">10:30 AM</option>
+                    <option value="11:00 AM">11:00 AM</option>
+                    <option value="11:30 AM">11:30 AM</option>
+                    <option value="12:00 PM">12:00 PM</option>
+                    <option value="12:30 PM">12:30 PM</option>
+                    <option value="1:00 PM">1:00 PM</option>
+                    <option value="1:30 PM">1:30 PM</option>
+                    <option value="2:00 PM">2:00 PM</option>
+                    <option value="2:30 PM">2:30 PM</option>
+                    <option value="3:00 PM">3:00 PM</option>
+                    <option value="3:30 PM">3:30 PM</option>
+                    <option value="4:00 PM">4:00 PM</option>
+                    <option value="4:30 PM">4:30 PM</option>
+                    <option value="5:00 PM">5:00 PM</option>
+                    <option value="5:30 PM">5:30 PM</option>
+                    <option value="6:00 PM">6:00 PM</option>
+                    <option value="6:30 PM">6:30 PM</option>
+                    <option value="7:00 PM">7:00 PM</option>
+                    <option value="7:30 PM">7:30 PM</option>
+                    <option value="8:00 PM">8:00 PM</option>
+                  </select>
+                </div>
+                <div className="space-y-2">
+                  <label className="text-xs font-semibold text-gray-600 uppercase tracking-wide">Meet-Up Point *</label>
+                  <input
+                    type="text"
+                    value={runForm.meetUpPoint}
+                    onChange={handleRunFormChange('meetUpPoint')}
+                    placeholder="Central Park – Bethesda Terrace"
+                    className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-sky-500 focus:border-sky-500"
+                    required
+                  />
+                </div>
+              </div>
+
+              {/* Row 3: Address */}
+              <div className="space-y-2">
+                <label className="text-xs font-semibold text-gray-600 uppercase tracking-wide">Meetup Address</label>
+                <GooglePlacesAutocomplete
+                  value={runForm.meetUpAddress}
+                  onChange={handleRunFormChange('meetUpAddress')}
+                  onPlaceSelected={handlePlaceSelected}
+                  placeholder="Start typing address..."
+                  className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-sky-500 focus:border-sky-500"
+                />
+              </div>
+
+              {/* Row 4: Distance & Pace */}
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                <div className="space-y-2">
+                  <label className="text-xs font-semibold text-gray-600 uppercase tracking-wide">Total Miles</label>
+                  <input
+                    type="number"
+                    step="0.1"
+                    value={runForm.totalMiles}
+                    onChange={handleRunFormChange('totalMiles')}
+                    placeholder="5.0"
+                    className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-sky-500 focus:border-sky-500"
+                  />
+                </div>
+                <div className="space-y-2">
+                  <label className="text-xs font-semibold text-gray-600 uppercase tracking-wide">Pace (min/mile)</label>
+                  <select
+                    value={runForm.pace}
+                    onChange={handleRunFormChange('pace')}
+                    className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-sky-500 focus:border-sky-500"
+                  >
+                    <option value="">Select pace...</option>
+                    <option value="6:00-6:30">6:00-6:30 (Fast)</option>
+                    <option value="6:30-7:00">6:30-7:00</option>
+                    <option value="7:00-7:30">7:00-7:30</option>
+                    <option value="7:30-8:00">7:30-8:00</option>
+                    <option value="8:00-8:30">8:00-8:30 (Moderate)</option>
+                    <option value="8:30-9:00">8:30-9:00</option>
+                    <option value="9:00-9:30">9:00-9:30</option>
+                    <option value="9:30-10:00">9:30-10:00</option>
+                    <option value="10:00-10:30">10:00-10:30 (Easy)</option>
+                    <option value="10:30-11:00">10:30-11:00</option>
+                    <option value="11:00+">11:00+ (Recovery)</option>
+                  </select>
+                </div>
+              </div>
+
+              {/* Row 5: Strava URL */}
+              <div className="space-y-2">
+                <label className="text-xs font-semibold text-gray-600 uppercase tracking-wide">Strava Route URL (Optional)</label>
+                <input
+                  type="url"
+                  value={runForm.stravaMapUrl}
+                  onChange={handleRunFormChange('stravaMapUrl')}
+                  placeholder="https://www.strava.com/routes/..."
+                  className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-sky-500 focus:border-sky-500"
+                />
+              </div>
+
+              {/* Row 6: Description */}
+              <div className="space-y-2">
+                <label className="text-xs font-semibold text-gray-600 uppercase tracking-wide">Description</label>
+                <textarea
+                  value={runForm.description}
+                  onChange={handleRunFormChange('description')}
+                  placeholder="Tell your crew what to expect..."
+                  rows={3}
+                  className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-sky-500 focus:border-sky-500"
+                />
+              </div>
+
+              {/* Modal Footer */}
+              <div className="flex justify-end gap-3 pt-4 border-t border-gray-200">
+                <button
+                  type="button"
+                  onClick={handleCancelEdit}
+                  className="border border-gray-300 text-gray-700 px-5 py-2 rounded-lg text-sm font-semibold hover:bg-gray-50 transition"
+                >
+                  Cancel
+                </button>
+                <button
+                  type="submit"
+                  className="bg-orange-500 text-white px-5 py-2 rounded-lg text-sm font-semibold hover:bg-orange-600 transition"
+                >
+                  Save Changes
+                </button>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
     </div>
   );
 }
