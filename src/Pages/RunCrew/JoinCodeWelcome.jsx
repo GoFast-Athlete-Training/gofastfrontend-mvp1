@@ -15,6 +15,9 @@ export default function JoinCodeWelcome() {
   const [crewPreview, setCrewPreview] = useState(null);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState(null);
+  
+  // Check if code came from URL (auto-hydrate mode)
+  const hasCodeInUrl = !!(code || codeFromQuery);
 
   // Separate lookup function that can be called with a code
   const handleLookupWithCode = async (codeToLookup) => {
@@ -150,9 +153,17 @@ export default function JoinCodeWelcome() {
     <div className="min-h-screen bg-gray-50 flex items-center justify-center px-6 py-12">
       <div className="max-w-md w-full bg-white border border-gray-200 rounded-xl shadow-sm p-8 space-y-6">
         <div className="text-center space-y-2">
-          <h1 className="text-3xl font-bold text-gray-900">Welcome to RunCrew!</h1>
+          <h1 className="text-3xl font-bold text-gray-900">
+            {crewPreview 
+              ? `Welcome to ${crewPreview.name}!` 
+              : loading 
+                ? 'Loading...' 
+                : 'Welcome to RunCrew!'}
+          </h1>
           <p className="text-gray-600 text-sm">
-            Someone shared a crew code with you — awesome.
+            {crewPreview 
+              ? 'Ready to join this crew? Click below to get started.' 
+              : 'Someone shared a crew code with you — awesome.'}
           </p>
         </div>
 
@@ -162,24 +173,57 @@ export default function JoinCodeWelcome() {
           </div>
         )}
 
-        <div className="space-y-4">
-          <div>
-            <label className="block text-sm font-medium text-gray-700 mb-2">
-              Enter your join code
-            </label>
-            <input
-              type="text"
-              value={joinCode}
-              onChange={handleCodeChange}
-              onKeyPress={handleKeyPress}
-              placeholder="Enter your join code"
-              className="w-full border border-gray-300 rounded-lg px-4 py-3 text-lg font-mono uppercase focus:outline-none focus:ring-2 focus:ring-orange-500 focus:border-orange-500"
-              disabled={loading}
-              maxLength={20}
-            />
+        {loading && !crewPreview && (
+          <div className="text-center py-8">
+            <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-orange-500 mx-auto"></div>
+            <p className="text-gray-600 mt-4">Finding your crew...</p>
           </div>
+        )}
 
-          {!crewPreview ? (
+        {crewPreview ? (
+          <div className="space-y-4">
+            <div className="bg-gray-50 border border-gray-200 rounded-lg p-6 space-y-4">
+              <div className="space-y-2">
+                {crewPreview.description && (
+                  <div>
+                    <p className="text-sm text-gray-500">Description</p>
+                    <p className="text-base text-gray-700">{crewPreview.description}</p>
+                  </div>
+                )}
+                <div>
+                  <p className="text-sm text-gray-500">Members</p>
+                  <p className="text-base text-gray-700">{crewPreview.memberCount} member{crewPreview.memberCount !== 1 ? 's' : ''}</p>
+                </div>
+              </div>
+            </div>
+
+            <button
+              onClick={handleJoinCrew}
+              disabled={loading}
+              className="w-full bg-green-600 hover:bg-green-700 text-white font-semibold py-3 rounded-lg transition disabled:opacity-60 disabled:cursor-not-allowed"
+            >
+              {loading ? 'Joining...' : 'Join Crew'}
+            </button>
+          </div>
+        ) : !hasCodeInUrl ? (
+          // Manual entry mode - only show if no code in URL
+          <div className="space-y-4">
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-2">
+                Enter your join code
+              </label>
+              <input
+                type="text"
+                value={joinCode}
+                onChange={handleCodeChange}
+                onKeyPress={handleKeyPress}
+                placeholder="Enter your join code"
+                className="w-full border border-gray-300 rounded-lg px-4 py-3 text-lg font-mono uppercase focus:outline-none focus:ring-2 focus:ring-orange-500 focus:border-orange-500"
+                disabled={loading}
+                maxLength={20}
+              />
+            </div>
+
             <button
               onClick={handleLookup}
               disabled={loading || !joinCode.trim()}
@@ -187,38 +231,8 @@ export default function JoinCodeWelcome() {
             >
               {loading ? 'Finding...' : 'Find My Crew'}
             </button>
-          ) : (
-            <>
-              <div className="bg-gray-50 border border-gray-200 rounded-lg p-6 space-y-4">
-                <h3 className="text-lg font-semibold text-gray-900">Crew Preview</h3>
-                <div className="space-y-2">
-                  <div>
-                    <p className="text-sm text-gray-500">Name</p>
-                    <p className="text-lg font-bold text-gray-900">{crewPreview.name}</p>
-                  </div>
-                  {crewPreview.description && (
-                    <div>
-                      <p className="text-sm text-gray-500">Description</p>
-                      <p className="text-base text-gray-700">{crewPreview.description}</p>
-                    </div>
-                  )}
-                  <div>
-                    <p className="text-sm text-gray-500">Members</p>
-                    <p className="text-base text-gray-700">{crewPreview.memberCount} member{crewPreview.memberCount !== 1 ? 's' : ''}</p>
-                  </div>
-                </div>
-              </div>
-
-              <button
-                onClick={handleJoinCrew}
-                disabled={loading}
-                className="w-full bg-green-600 hover:bg-green-700 text-white font-semibold py-3 rounded-lg transition disabled:opacity-60 disabled:cursor-not-allowed"
-              >
-                {loading ? 'Joining...' : 'Join Crew'}
-              </button>
-            </>
-          )}
-        </div>
+          </div>
+        ) : null}
 
         <button
           onClick={() => navigate('/athlete-home')}
