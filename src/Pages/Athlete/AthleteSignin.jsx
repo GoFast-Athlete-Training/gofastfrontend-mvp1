@@ -9,34 +9,6 @@ export default function Signin() {
   const [showApprovalCode, setShowApprovalCode] = useState(false);
   const [approvalCode, setApprovalCode] = useState("");
 
-  const nuclearLogout = async () => {
-    try {
-      console.log('🚨 NUCLEAR LOGOUT - Clearing EVERYTHING...');
-      
-      // Clear all storage
-      localStorage.clear();
-      sessionStorage.clear();
-      
-      // Clear all cookies
-      document.cookie.split(";").forEach((c) => {
-        const eqPos = c.indexOf("=");
-        const name = eqPos > -1 ? c.substr(0, eqPos) : c;
-        document.cookie = `${name}=;expires=Thu, 01 Jan 1970 00:00:00 GMT;path=/`;
-      });
-      
-      // Sign out from Firebase
-      await auth.signOut();
-      
-      alert("🧹 All auth data cleared! Close this tab and open a fresh incognito window to sign in with a different account.");
-      
-      // Force reload
-      window.location.reload();
-    } catch (err) {
-      console.error('Logout error:', err);
-      window.location.reload();
-    }
-  };
-
   const handleSignIn = async () => {
     if (isSigningIn) return;
     
@@ -224,19 +196,6 @@ export default function Signin() {
             Sign Up
           </button>
         </p>
-
-        {/* NUCLEAR LOGOUT BUTTON */}
-        <div className="pt-4 border-t border-gray-200">
-          <button
-            onClick={nuclearLogout}
-            className="w-full bg-red-600 text-white py-2 px-4 rounded-lg hover:bg-red-700 transition text-sm font-medium"
-          >
-            🧹 Clear Auth & Switch Account
-          </button>
-          <p className="text-xs text-gray-500 mt-2">
-            Use this if you're stuck on the wrong account
-          </p>
-        </div>
       </div>
     </div>
   );
