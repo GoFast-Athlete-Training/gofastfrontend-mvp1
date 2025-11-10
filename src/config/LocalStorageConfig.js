@@ -246,6 +246,17 @@ export const LocalStorageAPI = {
     localStorage.setItem(STORAGE_KEYS.runCrewId, MyCrew);
     localStorage.setItem(STORAGE_KEYS.runCrewManagerId, MyCrewManagerId);
 
+    // Store full crew data if MyCrew ID exists and we have runCrewMemberships
+    if (MyCrew && athlete.runCrewMemberships) {
+      const crewMembership = athlete.runCrewMemberships.find(
+        membership => membership.runCrew?.id === MyCrew
+      );
+      if (crewMembership?.runCrew) {
+        LocalStorageAPI.setRunCrewData(crewMembership.runCrew);
+        console.log('✅ LocalStorageAPI: Stored full crew data for:', crewMembership.runCrew.name);
+      }
+    }
+
     console.log('✅ LocalStorageAPI: HYDRATION V2 - MyCrew:', MyCrew, 'MyCrewManagerId:', MyCrewManagerId);
 
     // Activities and totals
