@@ -22,15 +22,42 @@ const AthleteHome = () => {
   const [runCrewManagerId, setRunCrewManagerId] = useState(null);
   const [athleteId, setAthleteId] = useState(null);
   const [isCrewHydrating, setIsCrewHydrating] = useState(false);
-  const [activeSection, setActiveSection] = useState('track'); // 'track', 'runcrew', 'events'
+  const [activeSection, setActiveSection] = useState('activity'); // 'activity', 'crew', 'events'
+  const [garminConnected, setGarminConnected] = useState(false);
+  const [checkingConnection, setCheckingConnection] = useState(true);
+
+  // Check Garmin connection status
+  useEffect(() => {
+    const checkGarminConnection = async () => {
+      try {
+        const athleteId = LocalStorageAPI.getAthleteId();
+        if (!athleteId) {
+          setCheckingConnection(false);
+          return;
+        }
+
+        const response = await fetch(`${API_BASE}/garmin/status?athleteId=${athleteId}`);
+        if (response.ok) {
+          const data = await response.json();
+          setGarminConnected(data.connected || false);
+        }
+      } catch (error) {
+        console.error('Error checking Garmin connection:', error);
+      } finally {
+        setCheckingConnection(false);
+      }
+    };
+
+    checkGarminConnection();
+  }, []);
 
   // Update active section based on current route
   useEffect(() => {
     const path = location.pathname;
     if (path.includes('/my-activities') || path.includes('/activity/')) {
-      setActiveSection('track');
+      setActiveSection('activity');
     } else if (path.includes('/crew/') || path.includes('/runcrew/')) {
-      setActiveSection('runcrew');
+      setActiveSection('crew');
     } else if (path.includes('/settings/events')) {
       setActiveSection('events');
     }
@@ -179,8 +206,8 @@ const AthleteHome = () => {
     : `Welcome, ${athleteProfile?.firstName || 'Athlete'}!`;
 
   const sidebarItems = [
-    { id: 'track', label: 'Track', icon: Activity, path: '/my-activities' },
-    { id: 'runcrew', label: 'Run Crew', icon: Users, path: runCrewId ? '/crew/crewadmin' : '/runcrew/join-or-start' },
+    { id: 'activity', label: 'Activity', icon: Activity, path: '/my-activities' },
+    { id: 'crew', label: 'Crew', icon: Users, path: runCrewId ? '/crew/crewadmin' : '/runcrew/join-or-start' },
     { id: 'events', label: 'Events', icon: Calendar, path: '/settings/events' },
   ];
 
@@ -249,13 +276,13 @@ const AthleteHome = () => {
           <div className="flex items-center justify-between">
             <div>
               <h1 className="text-2xl font-bold text-gray-900">
-                {activeSection === 'track' && 'Track Activities'}
-                {activeSection === 'runcrew' && 'Run Crew'}
+                {activeSection === 'activity' && 'Activity'}
+                {activeSection === 'crew' && 'Crew'}
                 {activeSection === 'events' && 'Events'}
               </h1>
               <p className="text-sm text-gray-600 mt-1">
-                {activeSection === 'track' && 'View and manage your activity tracking'}
-                {activeSection === 'runcrew' && 'Manage your crew and coordinate runs'}
+                {activeSection === 'activity' && 'View and manage your activity tracking'}
+                {activeSection === 'crew' && 'Manage your crew and coordinate runs'}
                 {activeSection === 'events' && 'Create and manage events, view volunteers'}
               </p>
             </div>
@@ -280,8 +307,8 @@ const AthleteHome = () => {
         {/* Content */}
         <div className="flex-1 overflow-y-auto bg-gray-50">
           <div className="max-w-6xl mx-auto px-6 py-8">
-            {/* Track Section */}
-            {activeSection === 'track' && (
+            {/* Activity Section */}
+            {activeSection === 'activity' && (
               <div className="space-y-6">
                 {!isProfileComplete && (
                   <div className="bg-orange-500 border-2 border-orange-600 rounded-lg p-6 shadow-lg">
@@ -299,7 +326,27 @@ const AthleteHome = () => {
                   </div>
                 )}
 
-                {(weeklyTotals || (weeklyActivities && weeklyActivities.length > 0)) ? (
+                {/* Connection Prompt - Show if not connected */}
+                {!checkingConnection && !garminConnected && (
+                  <div className="bg-white rounded-xl shadow-lg p-8 border-2 border-orange-200">
+                    <div className="text-center">
+                      <Activity className="h-16 w-16 text-orange-500 mx-auto mb-4" />
+                      <h3 className="text-2xl font-semibold text-gray-900 mb-2">Connect Garmin to Start Tracking</h3>
+                      <p className="text-gray-600 mb-6 max-w-md mx-auto">
+                        Connect your Garmin device to automatically sync activities and track your runs.
+                      </p>
+                      <button
+                        onClick={() => navigate('/settings')}
+                        className="px-6 py-3 bg-orange-500 text-white rounded-lg font-semibold hover:bg-orange-600 transition shadow-md"
+                      >
+                        Connect Device →
+                      </button>
+                    </div>
+                  </div>
+                )}
+
+                {/* Weekly Summary - Show if connected and has activities */}
+                {!checkingConnection && garminConnected && (weeklyTotals || (weeklyActivities && weeklyActivities.length > 0)) && (
                   <div className="bg-white rounded-xl shadow-lg p-6">
                     <div className="flex justify-between items-center mb-4">
                       <h2 className="text-2xl font-bold text-gray-900">This Week's Activities</h2>
@@ -330,24 +377,27 @@ const AthleteHome = () => {
                       </p>
                     </div>
                   </div>
-                ) : (
+                )}
+
+                {/* Empty State - Connected but no activities */}
+                {!checkingConnection && garminConnected && (!weeklyTotals && (!weeklyActivities || weeklyActivities.length === 0)) && (
                   <div className="bg-white rounded-xl shadow-lg p-12 text-center">
                     <Activity className="h-16 w-16 text-gray-400 mx-auto mb-4" />
                     <h3 className="text-xl font-semibold text-gray-900 mb-2">No Activities Yet</h3>
-                    <p className="text-gray-600 mb-6">Connect your Garmin device to start tracking activities</p>
+                    <p className="text-gray-600 mb-6">Your activities will appear here once you sync with Garmin Connect.</p>
                     <button
-                      onClick={() => navigate('/settings')}
+                      onClick={() => navigate('/my-activities')}
                       className="px-6 py-3 bg-orange-500 text-white rounded-lg font-semibold hover:bg-orange-600 transition"
                     >
-                      Connect Device
+                      View Activity History
                     </button>
                   </div>
                 )}
               </div>
             )}
 
-            {/* Run Crew Section */}
-            {activeSection === 'runcrew' && (
+            {/* Crew Section */}
+            {activeSection === 'crew' && (
               <div className="space-y-6">
                 {runCrewId ? (
                   <div
