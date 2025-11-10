@@ -1,5 +1,5 @@
-import React, { useState } from 'react';
-import { useNavigate } from 'react-router-dom';
+import React, { useState, useEffect } from 'react';
+import { useNavigate, useParams, useSearchParams } from 'react-router-dom';
 import { auth, signInWithGoogle } from '../../firebase';
 import { LocalStorageAPI } from '../../config/LocalStorageConfig';
 import axios from 'axios';
@@ -8,10 +8,21 @@ const API_BASE = 'https://gofastbackendv2-fall2025.onrender.com/api';
 
 export default function JoinCodeWelcome() {
   const navigate = useNavigate();
+  const { code } = useParams(); // Get code from URL path /join/:code
+  const [searchParams] = useSearchParams();
+  const codeFromQuery = searchParams.get('code'); // Fallback to query param
   const [joinCode, setJoinCode] = useState('');
   const [crewPreview, setCrewPreview] = useState(null);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState(null);
+
+  // Auto-fill join code from URL
+  useEffect(() => {
+    const codeToUse = code || codeFromQuery;
+    if (codeToUse) {
+      setJoinCode(codeToUse.toUpperCase().trim());
+    }
+  }, [code, codeFromQuery]);
 
   const handleLookup = async () => {
     if (!joinCode.trim()) {

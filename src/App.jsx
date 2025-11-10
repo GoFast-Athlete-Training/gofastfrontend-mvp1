@@ -78,6 +78,10 @@ const App = () => {
         <Route path="/settings/devices" element={<div className="min-h-screen bg-gray-50 flex items-center justify-center"><h1 className="text-4xl font-bold text-gray-900">Device Settings - Coming Soon!</h1></div>} />
         <Route path="/crew-explainer" element={<CrewExplainer />} />
         {/* Join Code Welcome Flow - New join-first onboarding */}
+        {/* Clean external URL: /join/:code or /join?code=XXX */}
+        <Route path="/join/:code" element={<JoinCodeWelcome />} />
+        <Route path="/join" element={<JoinCodeWelcome />} />
+        {/* Legacy route - redirect to new clean route */}
         <Route path="/runcrew/join" element={<JoinCodeWelcome />} />
         {/* Existing Join or Start Flow (PRESERVED) */}
         <Route path="/runcrew/join-or-start" element={<JoinOrStartCrew />} />
