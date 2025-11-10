@@ -1,7 +1,8 @@
-import React, { useMemo, useState } from 'react';
+import React, { useCallback, useMemo, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import useHydratedAthlete from '../../hooks/useHydratedAthlete';
 import { LocalStorageAPI } from '../../config/LocalStorageConfig';
+import api from '../../api/axiosConfig';
 
 /**
  * RunCrewCentral - Member View
@@ -10,8 +11,12 @@ import { LocalStorageAPI } from '../../config/LocalStorageConfig';
  */
 export default function RunCrewCentral() {
   const navigate = useNavigate();
-  const { athleteId, runCrewId } = useHydratedAthlete();
+  const { athlete, athleteId, runCrewId } = useHydratedAthlete();
   const [crew, setCrew] = useState(() => LocalStorageAPI.getRunCrewData());
+  const [messageContent, setMessageContent] = useState('');
+  const [isSendingMessage, setIsSendingMessage] = useState(false);
+  const [copyState, setCopyState] = useState('idle');
+  const [isRsvpUpdating, setIsRsvpUpdating] = useState(false);
 
   const runs = useMemo(() => (Array.isArray(crew?.runs) ? crew.runs : []), [crew]);
   const announcements = useMemo(() => (Array.isArray(crew?.announcements) ? crew.announcements : []), [crew]);
@@ -54,6 +59,156 @@ export default function RunCrewCentral() {
       }))
       .slice(0, 5);
   }, [leaderboard, activeMetric]);
+
+  const persistCrew = useCallback((updater) => {
+    setCrew((prevCrew) => {
+      const nextCrew = typeof updater === 'function' ? updater(prevCrew) : updater;
+      if (nextCrew) {
+        LocalStorageAPI.setRunCrewData(nextCrew);
+      }
+      return nextCrew ?? prevCrew;
+    });
+  }, []);
+
+  const refreshCrew = useCallback(async () => {
+    if (!runCrewId || !athleteId) return;
+    try {
+      const { data } = await api.post('/runcrew/hydrate', { runCrewId, athleteId });
+      if (data?.success && data.runCrew) {
+        LocalStorageAPI.setRunCrewData(data.runCrew);
+        setCrew(data.runCrew);
+      }
+    } catch (error) {
+      console.error('Failed to refresh crew', error);
+    }
+  }, [runCrewId, athleteId]);
+
+  const handleMessageSubmit = async (event) => {
+    event.preventDefault();
+    if (!crew || !runCrewId || !athleteId) return;
+    const trimmed = messageContent.trim();
+    if (!trimmed) return;
+
+    const optimisticMessage = {
+      id: `local-msg-${Date.now()}`,
+      content: trimmed,
+      createdAt: new Date().toISOString(),
+      athlete: athlete
+        ? {
+            id: athleteId,
+            firstName: athlete.firstName,
+            lastName: athlete.lastName,
+            photoURL: athlete.photoURL
+          }
+        : null
+    };
+
+    persistCrew((prevCrew) => {
+      if (!prevCrew) return prevCrew;
+      const existingMessages = Array.isArray(prevCrew.messages) ? prevCrew.messages : [];
+      return {
+        ...prevCrew,
+        messages: [...existingMessages, optimisticMessage]
+      };
+    });
+
+    setMessageContent('');
+    setIsSendingMessage(true);
+
+    try {
+      await api.post('/runcrew/messages', {
+        runCrewId,
+        message: trimmed
+      });
+      await refreshCrew();
+    } catch (error) {
+      console.error('Failed to send message', error);
+    } finally {
+      setIsSendingMessage(false);
+    }
+  };
+
+  const handleCopyInvite = async () => {
+    if (!joinCode) return;
+    const inviteText = `Join ${crew?.name || 'our crew'} on GoFast:\nhttps://athlete.gofastcrushgoals.com/runcrew/join\nCode: ${joinCode}`;
+    try {
+      if (navigator?.clipboard?.writeText) {
+        await navigator.clipboard.writeText(inviteText);
+      } else {
+        const temp = document.createElement('textarea');
+        temp.value = inviteText;
+        document.body.appendChild(temp);
+        temp.select();
+        document.execCommand('copy');
+        document.body.removeChild(temp);
+      }
+      setCopyState('copied');
+    } catch (error) {
+      console.error('Clipboard copy failed', error);
+      setCopyState('error');
+    } finally {
+      setTimeout(() => setCopyState('idle'), 2000);
+    }
+  };
+
+  const nextRunId = nextRun?.id;
+  const isGoing = useMemo(() => {
+    if (!nextRun || !athleteId) return false;
+    return (nextRun.rsvps || []).some((rsvp) => rsvp.athleteId === athleteId && rsvp.status === 'going');
+  }, [nextRun, athleteId]);
+
+  const handleRsvpToggle = async () => {
+    if (!nextRun || !nextRunId || !runCrewId || !athleteId) return;
+
+    const status = isGoing ? 'not-going' : 'going';
+    const optimisticRsvps = () => {
+      const existing = Array.isArray(nextRun.rsvps) ? nextRun.rsvps : [];
+      if (isGoing) {
+        return existing.filter((rsvp) => rsvp.athleteId !== athleteId);
+      }
+      const newEntry = {
+        id: `local-rsvp-${Date.now()}`,
+        athleteId,
+        status: 'going',
+        athlete: athlete
+          ? {
+              id: athleteId,
+              firstName: athlete.firstName,
+              lastName: athlete.lastName,
+              photoURL: athlete.photoURL
+            }
+          : null
+      };
+      return [...existing.filter((rsvp) => rsvp.athleteId !== athleteId), newEntry];
+    };
+
+    persistCrew((prevCrew) => {
+      if (!prevCrew) return prevCrew;
+      const updatedRuns = (Array.isArray(prevCrew.runs) ? prevCrew.runs : []).map((run) =>
+        run.id === nextRunId
+          ? {
+              ...run,
+              rsvps: optimisticRsvps()
+            }
+          : run
+      );
+      return {
+        ...prevCrew,
+        runs: updatedRuns
+      };
+    });
+
+    setIsRsvpUpdating(true);
+    try {
+      await api.post(`/runcrew/runs/${nextRunId}/rsvp`, { status });
+      await refreshCrew();
+    } catch (error) {
+      console.error('Failed to update RSVP', error);
+      await refreshCrew();
+    } finally {
+      setIsRsvpUpdating(false);
+    }
+  };
 
   if (!crew) {
     return (
@@ -151,9 +306,17 @@ export default function RunCrewCentral() {
                 )}
                 {messages.map((message) => (
                   <div key={message.id || message.createdAt} className="flex gap-3">
-                    <div className="w-10 h-10 rounded-full bg-gradient-to-br from-orange-400 to-pink-500 flex items-center justify-center text-white font-semibold text-sm flex-shrink-0">
-                      {message.athlete?.firstName?.[0] || message.author?.name?.[0] || 'A'}
-                    </div>
+                    {message.athlete?.photoURL || message.author?.photoURL ? (
+                      <img
+                        src={message.athlete?.photoURL || message.author?.photoURL}
+                        alt={message.athlete?.firstName || message.author?.name || 'Crew member'}
+                        className="w-10 h-10 rounded-full object-cover flex-shrink-0"
+                      />
+                    ) : (
+                      <div className="w-10 h-10 rounded-full bg-gradient-to-br from-orange-400 to-pink-500 flex items-center justify-center text-white font-semibold text-sm flex-shrink-0">
+                        {message.athlete?.firstName?.[0] || message.author?.name?.[0] || 'A'}
+                      </div>
+                    )}
                     <div className="flex-1">
                       <div className="flex items-baseline gap-2">
                         <span className="text-sm font-semibold text-gray-900">
@@ -165,7 +328,7 @@ export default function RunCrewCentral() {
                             : 'now'}
                         </span>
                       </div>
-                      <p className="text-sm text-gray-800 mt-1">{message.content || message.text}</p>
+                      <p className="text-sm text-gray-800 mt-1 whitespace-pre-line">{message.content || message.text}</p>
                       {message.reactions && (
                         <div className="flex gap-2 mt-2">
                           <span className="text-xs text-gray-400">Reactions coming soon</span>
@@ -177,19 +340,24 @@ export default function RunCrewCentral() {
               </div>
 
               {/* Message Input */}
-              <div className="border-t border-gray-200 px-6 py-4">
+              <form onSubmit={handleMessageSubmit} className="border-t border-gray-200 px-6 py-4">
                 <div className="flex gap-3">
                   <input
                     type="text"
-                    placeholder="Messaging coming soon — reach out to your captain in Slack for now"
-                    disabled
-                    className="flex-1 border border-dashed border-gray-300 rounded-lg px-4 py-2 text-sm text-gray-400 bg-gray-50"
+                    value={messageContent}
+                    onChange={(event) => setMessageContent(event.target.value)}
+                    placeholder="Drop a note for the crew…"
+                    className="flex-1 border border-gray-300 rounded-lg px-4 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-orange-500 focus:border-orange-500"
                   />
-                  <button className="bg-orange-200 text-white px-4 py-2 rounded-lg text-sm font-semibold opacity-60 cursor-not-allowed">
-                    Send
+                  <button
+                    type="submit"
+                    disabled={!messageContent.trim() || isSendingMessage}
+                    className="bg-orange-500 hover:bg-orange-600 disabled:opacity-50 disabled:cursor-not-allowed text-white px-4 py-2 rounded-lg text-sm font-semibold transition"
+                  >
+                    {isSendingMessage ? 'Sending…' : 'Send'}
                   </button>
                 </div>
-              </div>
+              </form>
             </section>
           </div>
 
@@ -224,8 +392,16 @@ export default function RunCrewCentral() {
                       ))}
                     </div>
                   </div>
-                  <button className="w-full bg-orange-500 hover:bg-orange-600 text-white py-3 rounded-lg font-semibold mt-4 transition">
-                    I'm Going
+                  <button
+                    onClick={handleRsvpToggle}
+                    disabled={isRsvpUpdating}
+                    className={`w-full py-3 rounded-lg font-semibold mt-4 transition ${
+                      isGoing
+                        ? 'bg-emerald-500 hover:bg-emerald-600 text-white'
+                        : 'bg-orange-500 hover:bg-orange-600 text-white'
+                    } disabled:opacity-50 disabled:cursor-not-allowed`}
+                  >
+                    {isRsvpUpdating ? 'Updating…' : isGoing ? "I'm Going" : 'Count Me In'}
                   </button>
                 </div>
               ) : (
@@ -240,15 +416,23 @@ export default function RunCrewCentral() {
               <h2 className="text-lg font-bold text-gray-900 mb-4">Who's Here</h2>
               <div className="space-y-3">
                 {memberships.slice(0, 6).map((membership) => {
-                  const athlete = membership.athlete || membership;
+                  const memberAthlete = membership.athlete || membership;
                   return (
-                    <div key={membership.id || athlete.id} className="flex items-center gap-3">
-                      <div className="w-10 h-10 rounded-full bg-gradient-to-br from-sky-400 to-blue-500 flex items-center justify-center text-white font-semibold text-sm relative">
-                        {athlete.firstName?.[0] || 'A'}
-                        <div className="absolute bottom-0 right-0 w-3 h-3 bg-green-500 rounded-full border-2 border-white"></div>
-                      </div>
+                    <div key={membership.id || memberAthlete.id} className="flex items-center gap-3">
+                      {memberAthlete.photoURL ? (
+                        <img
+                          src={memberAthlete.photoURL}
+                          alt={memberAthlete.firstName || 'Crew member'}
+                          className="w-10 h-10 rounded-full object-cover"
+                        />
+                      ) : (
+                        <div className="w-10 h-10 rounded-full bg-gradient-to-br from-sky-400 to-blue-500 flex items-center justify-center text-white font-semibold text-sm relative">
+                          {memberAthlete.firstName?.[0] || 'A'}
+                          <div className="absolute bottom-0 right-0 w-3 h-3 bg-green-500 rounded-full border-2 border-white"></div>
+                        </div>
+                      )}
                       <div className="flex-1">
-                        <p className="text-sm font-semibold text-gray-900">{athlete.firstName || 'Athlete'} {athlete.lastName || ''}</p>
+                        <p className="text-sm font-semibold text-gray-900">{memberAthlete.firstName || 'Athlete'} {memberAthlete.lastName || ''}</p>
                         <p className="text-xs text-gray-500">Active</p>
                       </div>
                     </div>
@@ -270,6 +454,19 @@ export default function RunCrewCentral() {
                     Join link: athlete.gofastcrushgoals.com/runcrew/join<br />
                     Code: {joinCode}
                   </code>
+                  <div className="mt-3 flex items-center gap-2">
+                    <button
+                      onClick={handleCopyInvite}
+                      className="text-xs bg-orange-500 hover:bg-orange-600 text-white px-3 py-1 rounded-lg font-semibold"
+                    >
+                      Copy Invite
+                    </button>
+                    <span className="text-xs text-gray-500">
+                      {copyState === 'copied' && 'Copied!'}
+                      {copyState === 'error' && 'Copy failed'}
+                      {copyState === 'idle' && 'Share with your crew'}
+                    </span>
+                  </div>
                 </div>
               )}
             </section>

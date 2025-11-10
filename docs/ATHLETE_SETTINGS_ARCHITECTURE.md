@@ -15,23 +15,44 @@ The Settings page (`/settings`) is the central hub for athletes to manage their 
 
 ## Current Structure
 
-### Settings Page Sections
+### Athlete Home (`/athlete-home`) - Main Hub with Sidebar
 
-1. **Event Management** (Top Priority)
-   - Create and manage events
-   - View volunteer rosters
-   - Edit volunteer details
+**Left Sidebar Navigation:**
+1. **Track** - Activity tracking and viewing
+   - Route: `/my-activities`
+   - Shows weekly activity summary
+   - Links to full activity history
+
+2. **Run Crew** - Crew management
+   - Route: `/crew/crewadmin` (if in crew) or `/runcrew/join-or-start`
+   - Manage crew, coordinate runs
+
+3. **Events** - Event management
    - Route: `/settings/events`
+   - Create events, manage volunteers
+   - **Note**: Temporarily here until full refactor
 
-2. **Device Connections** (Secondary)
-   - Garmin Connect integration
-   - Strava integration (future)
+**Top Right:**
+- Settings button (opens Settings page)
+- Profile button
+- Sign Out
+
+### Settings Page (`/settings`) - Account & Device Settings
+
+**Purpose**: Account configuration and device connections only
+
+**Sections:**
+1. **Device Connections**
+   - Garmin Connect integration (compact)
+   - Strava integration (future, compact)
    - Connection status and management
 
-3. **Account Settings** (Future)
+2. **Account Settings** (Future)
    - Profile management
    - Privacy settings
    - Notification preferences
+
+**Note**: Event Management moved to Athlete Home sidebar (temporary until full refactor)
 
 ---
 
@@ -55,26 +76,43 @@ The Settings page (`/settings`) is the central hub for athletes to manage their 
 
 ## Refactored Structure
 
-### Settings Page Layout
+### Athlete Home Layout (Main Hub)
+
+```
+Athlete Home (/athlete-home)
+├── Left Sidebar (Persistent Navigation)
+│   ├── Track → /my-activities
+│   ├── Run Crew → /crew/crewadmin or /runcrew/join-or-start
+│   └── Events → /settings/events (temporary)
+├── Top Header
+│   ├── Section Title (Track/Run Crew/Events)
+│   └── Settings button, Profile, Sign Out
+└── Main Content Area
+    └── Section-specific content (Track summary, Run Crew card, Events card)
+```
+
+### Settings Page Layout (Account & Devices Only)
 
 ```
 Settings (/settings)
-├── Header: "Settings" (not "Device Connections")
-├── Quick Actions (if needed)
-├── Event Management Section
-│   └── Card → Navigate to /settings/events
+├── Header: "Settings" - Account & Device Settings
 ├── Device Connections Section
 │   ├── Garmin Connect (compact card)
 │   └── Strava Connect (compact card)
 └── Account Section (future)
-    └── Profile, Privacy, etc.
+    └── Profile, Privacy, Notifications
 ```
 
 ### Visual Hierarchy
 
-1. **Event Management** - Most prominent (organizers need this)
-2. **Device Connections** - Secondary (compact cards, less visual weight)
-3. **Account Settings** - Future expansion
+**Athlete Home:**
+1. **Sidebar Navigation** - Primary navigation (Track, Run Crew, Events)
+2. **Main Content** - Section-specific content
+3. **Settings Button** - Top right (secondary)
+
+**Settings:**
+1. **Device Connections** - Primary (compact cards)
+2. **Account Settings** - Future expansion
 
 ---
 

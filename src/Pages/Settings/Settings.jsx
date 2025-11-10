@@ -161,7 +161,7 @@ const Settings = () => {
           <div className="flex justify-between items-center">
             <div>
               <h1 className="text-2xl font-bold">Settings</h1>
-              <p className="text-gray-600">Manage your account, events, and device connections</p>
+              <p className="text-gray-600">Manage your account and device connections</p>
             </div>
             <button
               onClick={() => navigate("/athlete-home")}
@@ -174,29 +174,7 @@ const Settings = () => {
       </div>
 
       <div className="max-w-4xl mx-auto px-4 py-6">
-        {/* Event Management Card - Primary */}
-        <div className="mb-8">
-          <h2 className="text-xl font-semibold text-gray-900 mb-4">Event Management</h2>
-          <div className="bg-white rounded-xl shadow-lg p-6 hover:shadow-xl transition-all duration-200 border-2 border-orange-200">
-            <div className="flex items-center gap-4">
-              <div className="text-4xl">🎯</div>
-              <div className="flex-1">
-                <h3 className="text-xl font-semibold mb-2">Manage Events & Volunteers</h3>
-                <p className="text-gray-600 mb-4">
-                  Create events, manage volunteer signups, and view volunteer rosters
-                </p>
-                <button
-                  onClick={() => navigate("/settings/events")}
-                  className="px-6 py-2 rounded-lg font-semibold text-white bg-orange-500 hover:bg-orange-600 transition-colors"
-                >
-                  Open Event Management
-                </button>
-              </div>
-            </div>
-          </div>
-        </div>
-
-        {/* Device Connections - Secondary */}
+        {/* Device Connections */}
         <div className="mb-8">
           <h2 className="text-xl font-semibold text-gray-900 mb-4">Device Connections</h2>
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
