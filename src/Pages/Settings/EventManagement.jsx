@@ -18,6 +18,13 @@ const VOLUNTEER_ROLES = [
   'Setup & Teardown',
 ];
 
+// Time options for time picker (matching RunCrewCentralAdmin pattern)
+const timeOptions = [
+  '5:00 AM','5:30 AM','6:00 AM','6:30 AM','7:00 AM','7:30 AM','7:55 AM','8:00 AM','8:30 AM','9:00 AM','9:30 AM',
+  '10:00 AM','10:30 AM','11:00 AM','11:30 AM','12:00 PM','12:30 PM','1:00 PM','1:30 PM','2:00 PM','2:30 PM',
+  '3:00 PM','3:30 PM','4:00 PM','4:30 PM','5:00 PM','5:30 PM','6:00 PM','6:30 PM','7:00 PM','7:30 PM','8:00 PM'
+];
+
 const EventManagement = () => {
   const navigate = useNavigate();
   const [events, setEvents] = useState([]);
@@ -27,13 +34,12 @@ const EventManagement = () => {
   const [editingVolunteer, setEditingVolunteer] = useState(null);
   const [selectedEventId, setSelectedEventId] = useState(null);
 
-  // Form state for creating event
+  // Form state for creating event - LOCKED IN MODEL
   const [eventForm, setEventForm] = useState({
-    eventSlug: '',
     title: '',
     description: '',
-    date: '',
-    startTime: '',
+    date: '', // YYYY-MM-DD format for date input
+    startTime: '', // Time from timeOptions dropdown (e.g., "7:55 AM")
     location: '',
     address: '',
     stravaRouteUrl: '',
@@ -42,17 +48,17 @@ const EventManagement = () => {
     eventType: 'race',
   });
 
-  // Pre-fill form with Boys on Run 5K data
+  // Pre-fill form with Boys on Run 5K data - ACTUALLY FILLS THE FORM
   const prefillBoysOnRun5K = () => {
-    const eventDate = new Date('2025-11-12T07:55:00'); // Wednesday, November 12, 2025 – 7:55 AM
-    const formattedDate = eventDate.toISOString().slice(0, 16); // Format for datetime-local input
+    // Wednesday, November 12, 2025 – 7:55 AM
+    const eventDate = new Date('2025-11-12');
+    const formattedDate = eventDate.toISOString().split('T')[0]; // YYYY-MM-DD format
     
     setEventForm({
-      eventSlug: 'boys-on-run-5k-2025',
       title: 'Boys on Run 5K',
       description: 'Final week of our Boys Gotta Run season. We\'re keeping it low-key, warm, and all about the kids.',
-      date: formattedDate,
-      startTime: '7:55 AM',
+      date: formattedDate, // "2025-11-12"
+      startTime: '7:55 AM', // From timeOptions
       location: 'Discovery Elementary School',
       address: '5275 N 36th St, Arlington, VA 22207',
       stravaRouteUrl: 'https://www.strava.com/routes/3420808564668746102',
@@ -96,12 +102,9 @@ const EventManagement = () => {
 
   const fetchVolunteers = async (eventId) => {
     try {
-      const event = events.find((e) => e.id === eventId);
-      const eventSlug = event?.eventSlug;
-      
-      if (!eventSlug) return;
+      if (!eventId) return;
 
-      const response = await fetch(`${API_BASE}/event-volunteer?eventSlug=${eventSlug}`);
+      const response = await fetch(`${API_BASE}/event-volunteer?eventId=${eventId}`);
       const data = await response.json();
       
       if (data.success) {
@@ -115,18 +118,49 @@ const EventManagement = () => {
     }
   };
 
+  // Helper function to convert time from "7:55 AM" to "07:55" (24-hour format)
+  const convertTimeTo24Hour = (timeStr) => {
+    if (!timeStr) return '00:00';
+    const [time, period] = timeStr.split(' ');
+    const [hours, minutes] = time.split(':');
+    let hour24 = parseInt(hours, 10);
+    if (period === 'PM' && hour24 !== 12) hour24 += 12;
+    if (period === 'AM' && hour24 === 12) hour24 = 0;
+    return `${hour24.toString().padStart(2, '0')}:${minutes || '00'}`;
+  };
+
   const handleCreateEvent = async (e) => {
     e.preventDefault();
     
+    if (!eventForm.title?.trim() || !eventForm.date) {
+      alert('Please fill in title and date');
+      return;
+    }
+
     try {
+      // Build ISO date string from date + startTime (matching RunCrewCentralAdmin pattern)
+      const isoDate = eventForm.date && eventForm.startTime
+        ? `${eventForm.date}T${convertTimeTo24Hour(eventForm.startTime)}:00`
+        : eventForm.date
+        ? `${eventForm.date}T00:00:00`
+        : null;
+
       const response = await fetch(`${API_BASE}/event`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
         },
         body: JSON.stringify({
-          ...eventForm,
-          date: new Date(eventForm.date).toISOString(),
+          title: eventForm.title.trim(),
+          description: eventForm.description?.trim() || null,
+          date: isoDate ? new Date(isoDate).toISOString() : new Date().toISOString(),
+          startTime: eventForm.startTime?.trim() || null,
+          location: eventForm.location?.trim() || null,
+          address: eventForm.address?.trim() || null,
+          stravaRouteUrl: eventForm.stravaRouteUrl?.trim() || null,
+          stravaRouteId: eventForm.stravaRouteId?.trim() || null,
+          distance: eventForm.distance?.trim() || null,
+          eventType: eventForm.eventType?.trim() || null,
         }),
       });
 
@@ -135,7 +169,6 @@ const EventManagement = () => {
       if (data.success) {
         setShowCreateModal(false);
         setEventForm({
-          eventSlug: '',
           title: '',
           description: '',
           date: '',
@@ -173,10 +206,7 @@ const EventManagement = () => {
     if (!editingVolunteer || !selectedEventId) return;
 
     try {
-      const event = events.find((e) => e.id === selectedEventId);
-      const eventSlug = event?.eventSlug;
-
-      if (!eventSlug) {
+      if (!selectedEventId) {
         alert('Event not found');
         return;
       }
@@ -189,7 +219,7 @@ const EventManagement = () => {
           'Content-Type': 'application/json',
         },
         body: JSON.stringify({
-          eventSlug,
+          eventId: selectedEventId,
           name: volunteerForm.name,
           email: volunteerForm.email,
           role: volunteerForm.role,
@@ -424,21 +454,6 @@ const EventManagement = () => {
             <form onSubmit={handleCreateEvent} className="p-6 space-y-4">
               <div>
                 <label className="block text-sm font-semibold text-gray-700 mb-2">
-                  Event Slug <span className="text-red-500">*</span>
-                </label>
-                <input
-                  type="text"
-                  value={eventForm.eventSlug}
-                  onChange={(e) => setEventForm({ ...eventForm, eventSlug: e.target.value })}
-                  placeholder="boys-gotta-run-2025"
-                  className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-orange-500 focus:border-transparent"
-                  required
-                />
-                <p className="mt-1 text-xs text-gray-500">URL-friendly identifier (no spaces, lowercase)</p>
-              </div>
-
-              <div>
-                <label className="block text-sm font-semibold text-gray-700 mb-2">
                   Event Title <span className="text-red-500">*</span>
                 </label>
                 <input
@@ -462,13 +477,13 @@ const EventManagement = () => {
                 />
               </div>
 
-              <div className="grid grid-cols-2 gap-4">
-                <div>
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                <div className="space-y-2">
                   <label className="block text-sm font-semibold text-gray-700 mb-2">
                     Date <span className="text-red-500">*</span>
                   </label>
                   <input
-                    type="datetime-local"
+                    type="date"
                     value={eventForm.date}
                     onChange={(e) => setEventForm({ ...eventForm, date: e.target.value })}
                     className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-orange-500 focus:border-transparent"
@@ -476,15 +491,20 @@ const EventManagement = () => {
                   />
                 </div>
 
-                <div>
+                <div className="space-y-2">
                   <label className="block text-sm font-semibold text-gray-700 mb-2">Start Time</label>
-                  <input
-                    type="text"
+                  <select
                     value={eventForm.startTime}
                     onChange={(e) => setEventForm({ ...eventForm, startTime: e.target.value })}
-                    placeholder="7:55 AM"
                     className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-orange-500 focus:border-transparent"
-                  />
+                  >
+                    <option value="">Select time...</option>
+                    {timeOptions.map((time) => (
+                      <option key={time} value={time}>
+                        {time}
+                      </option>
+                    ))}
+                  </select>
                 </div>
               </div>
 

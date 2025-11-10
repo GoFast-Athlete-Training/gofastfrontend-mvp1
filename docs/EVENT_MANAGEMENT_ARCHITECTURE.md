@@ -39,7 +39,6 @@ Event Management enables GoFast to organize 5K fun runs and community events. Th
 ```prisma
 model Event {
   id          String   @id @default(cuid())
-  eventSlug   String   @unique // URL-friendly identifier (e.g., "boys-gotta-run-2025")
   title       String   // "Boys Gotta Run – Discovery 5K (Final Run)"
   description String?
   
@@ -52,6 +51,10 @@ model Event {
   // Route Information
   stravaRouteUrl String? // Strava route URL
   stravaRouteId  String? // Strava route ID
+  distance       String? // Distance (e.g., "5K", "3.1 miles", "10K")
+  
+  // Future State: Registration
+  registrantId   String? // Future: Links to athleteId for main UX registration (optional)
   
   // Metadata
   eventType   String?  // "race", "community-run", "training", etc.
@@ -62,17 +65,21 @@ model Event {
   updatedAt   DateTime @updatedAt
   
   // Relations
-  volunteers  EventVolunteer[]
+  volunteers  EventVolunteer[] // Volunteers linked via eventId
 }
 ```
+
+**Key Points**:
+- `id` = **Primary identifier** - Used throughout the system (no eventSlug)
+- Events are identified by their database ID (`eventId`)
+- For public-facing pages (GoFast-Events repo), `eventId` is stored in localStorage or environment variable
 
 ### EventVolunteer Model (Backend)
 
 ```prisma
 model EventVolunteer {
   id        String   @id @default(cuid())
-  eventId   String   // Links to Event.id
-  eventSlug String?  // Kept for backward compatibility
+  eventId   String   // Links to Event.id (primary identifier)
   name      String   // Volunteer name (public - displayed on roster)
   email     String   // Volunteer email (private - only organizers see)
   role      String   // Volunteer role (e.g., "Course Marshals", "Pacers – Fast")
@@ -129,9 +136,9 @@ model EventVolunteer {
 ### Event Routes (`/api/event`)
 
 ```
-GET    /api/event                    → List all events (filter by isActive, eventSlug)
+GET    /api/event                    → List all events (filter by isActive)
 GET    /api/event/:id                → Get single event with volunteers
-POST   /api/event                    → Create new event
+POST   /api/event                    → Create new event (eventId auto-generated)
 PUT    /api/event/:id                → Update event
 DELETE /api/event/:id                → Soft delete (set isActive=false)
 ```
@@ -140,16 +147,20 @@ DELETE /api/event/:id                → Soft delete (set isActive=false)
 
 ```
 POST   /api/event-volunteer          → Create volunteer signup (public - no auth)
-       Body: { eventId or eventSlug, name, email, role, notes? }
+       Body: { eventId, name, email, role, notes? }
+       Required: eventId (primary identifier)
        
 GET    /api/event-volunteer          → List volunteers for event (public or protected)
-       Query: ?eventId=xxx OR ?eventSlug=xxx
+       Query: ?eventId=xxx (required)
        
        Public response: { name, role } (no email)
        Protected response: { name, email, role, notes } (full details)
 ```
 
-**Note**: Backend should check for `athleteId` in request to determine if response should include email.
+**Key Points**:
+- `eventId` is the **primary identifier** - no eventSlug
+- For public pages (GoFast-Events repo), `eventId` is hardcoded in localStorage or env variable
+- Backend should check for `athleteId` in request to determine if response should include email
 
 ---
 
@@ -172,14 +183,16 @@ Current hardcoded roles:
 
 ### Flow 1: Volunteer Signs Up (Public)
 
-1. Volunteer visits `/volunteer` (public page)
-2. Clicks "Sign Up to Help"
-3. Fills form: name, email, role, notes (optional)
-4. Submits → `POST /api/event-volunteer`
-5. Success message shown
-6. Volunteer appears on public roster (name + role only)
+1. Volunteer visits `/volunteer` (public page - GoFast-Events repo)
+2. Page loads with `eventId` from localStorage or env variable
+3. Clicks "Sign Up to Help"
+4. Fills form: name, email, role, notes (optional)
+5. Submits → `POST /api/event-volunteer` with `eventId`
+6. Success message shown
+7. Volunteer appears on public roster (name + role only)
 
-**No account creation required** ✅
+**No account creation required** ✅  
+**eventId is hardcoded in GoFast-Events repo** (localStorage or env variable)
 
 ### Flow 2: Organizer Manages Events (Protected)
 
@@ -221,9 +234,9 @@ Current hardcoded roles:
 
 **API Calls**:
 - `GET /api/event?isActive=true` - Fetch events
-- `POST /api/event` - Create event
-- `GET /api/event-volunteer?eventSlug=xxx` - Fetch volunteers
-- `POST /api/event-volunteer` - Create/update volunteer (for now, creates new entry)
+- `POST /api/event` - Create event (eventId auto-generated, no eventSlug required)
+- `GET /api/event-volunteer?eventId=xxx` - Fetch volunteers by eventId
+- `POST /api/event-volunteer` - Create/update volunteer (requires eventId)
 
 **Authentication**: Uses `athleteId` from localStorage (same pattern as rest of app)
 
@@ -242,7 +255,7 @@ Current hardcoded roles:
 
 **Features**:
 - Public signup (no auth required)
-- Accepts `eventId` or `eventSlug` (backward compatible)
+- Requires `eventId` (primary identifier - no eventSlug)
 - Returns full details (name, email, role, notes)
 - **TODO**: Add PUT endpoint for updating volunteers
 - **TODO**: Filter email from public responses
@@ -252,8 +265,8 @@ Current hardcoded roles:
 ## Security Considerations
 
 ### Public Endpoints
-- `POST /api/event-volunteer` - No auth required (anyone can sign up)
-- `GET /api/event-volunteer?eventSlug=xxx` - Should filter email for public requests
+- `POST /api/event-volunteer` - No auth required (anyone can sign up, requires eventId)
+- `GET /api/event-volunteer?eventId=xxx` - Should filter email for public requests
 
 ### Protected Endpoints
 - `GET /api/event` - Should require auth (or at least filter sensitive data)
@@ -300,8 +313,10 @@ Current hardcoded roles:
 3. ✅ **Organizers see full details** - Name + email for hydration
 4. ✅ **Event Management in Settings** - Protected route for authenticated athletes
 5. ✅ **Hardcoded roles for now** - Future: configurable per event
-6. ✅ **Backend uses Event model** - Volunteers linked via eventId
+6. ✅ **Backend uses Event model** - Volunteers linked via eventId (primary identifier)
 7. ✅ **Public pages in GoFast-Events repo** - Protected pages in main frontend
+8. ✅ **eventId is primary identifier** - No eventSlug, eventId is hardcoded in GoFast-Events repo (localStorage or env variable)
+9. ✅ **Prefill button actually fills form** - MVP1 just for organizer, prefill populates all fields
 
 ---
 
