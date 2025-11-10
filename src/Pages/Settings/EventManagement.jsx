@@ -42,8 +42,7 @@ const EventManagement = () => {
     startTime: '', // Time from timeOptions dropdown (e.g., "7:55 AM")
     location: '',
     address: '',
-    stravaRouteUrl: '',
-    stravaRouteId: '',
+    stravaRouteUrl: '', // Just the URL - users paste it directly
     distance: '',
     eventType: 'race',
   });
@@ -64,7 +63,6 @@ const EventManagement = () => {
       location: 'Discovery Elementary School',
       address: '5275 N 36th St, Arlington, VA 22207',
       stravaRouteUrl: 'https://www.strava.com/routes/3420808564668746102',
-      stravaRouteId: '3420808564668746102',
       distance: '5K',
       eventType: 'race',
     });
@@ -168,7 +166,6 @@ const EventManagement = () => {
           location: eventForm.location?.trim() || null,
           address: eventForm.address?.trim() || null,
           stravaRouteUrl: eventForm.stravaRouteUrl?.trim() || null,
-          stravaRouteId: eventForm.stravaRouteId?.trim() || null,
           distance: eventForm.distance?.trim() || null,
           eventType: eventForm.eventType?.trim() || null,
         }),
@@ -186,7 +183,6 @@ const EventManagement = () => {
           location: '',
           address: '',
           stravaRouteUrl: '',
-          stravaRouteId: '',
           distance: '',
           eventType: 'race',
         });
@@ -561,28 +557,16 @@ const EventManagement = () => {
                 />
               </div>
 
-              <div className="grid grid-cols-2 gap-4">
-                <div>
-                  <label className="block text-sm font-semibold text-gray-700 mb-2">Strava Route URL</label>
-                  <input
-                    type="url"
-                    value={eventForm.stravaRouteUrl}
-                    onChange={(e) => setEventForm({ ...eventForm, stravaRouteUrl: e.target.value })}
-                    placeholder="https://www.strava.com/routes/..."
-                    className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-orange-500 focus:border-transparent"
-                  />
-                </div>
-
-                <div>
-                  <label className="block text-sm font-semibold text-gray-700 mb-2">Strava Route ID</label>
-                  <input
-                    type="text"
-                    value={eventForm.stravaRouteId}
-                    onChange={(e) => setEventForm({ ...eventForm, stravaRouteId: e.target.value })}
-                    placeholder="3420808564668746102"
-                    className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-orange-500 focus:border-transparent"
-                  />
-                </div>
+              <div>
+                <label className="block text-sm font-semibold text-gray-700 mb-2">Strava Route URL</label>
+                <input
+                  type="url"
+                  value={eventForm.stravaRouteUrl}
+                  onChange={(e) => setEventForm({ ...eventForm, stravaRouteUrl: e.target.value })}
+                  placeholder="https://www.strava.com/routes/..."
+                  className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-orange-500 focus:border-transparent"
+                />
+                <p className="mt-1 text-xs text-gray-500">Just paste the Strava route URL - no need to extract the ID</p>
               </div>
 
               <div className="flex justify-end gap-3 pt-4">
