@@ -19,7 +19,9 @@ import GarminOAuthCallback from './Pages/Settings/GarminOAuthCallback';
 import GarminConnectSuccess from './Pages/Settings/GarminConnectSuccess';
 import JoinOrStartCrew from './Pages/RunCrew/JoinOrStartCrew';
 import JoinCrew from './Pages/RunCrew/JoinCrew';
-import JoinCodeWelcome from './Pages/RunCrew/JoinCodeWelcome';
+import JoinCrewWelcome from './Pages/RunCrew/JoinCrewWelcome';
+import JoinRunCrewWelcome from './Pages/RunCrew/JoinRunCrewWelcome';
+import PreCrewPage from './Pages/RunCrew/PreCrewPage';
 import CreateCrew from './Pages/RunCrew/CreateCrew';
 import RunCrewCentral from './Pages/RunCrew/RunCrewCentral';
 import RunCrewCentralAdmin from './Pages/RunCrew/RunCrewCentralAdmin';
@@ -74,9 +76,13 @@ const App = () => {
         {/* Smart Onboarding Routes */}
         <Route path="/settings/devices" element={<div className="min-h-screen bg-gray-50 flex items-center justify-center"><h1 className="text-4xl font-bold text-gray-900">Device Settings - Coming Soon!</h1></div>} />
         <Route path="/crew-explainer" element={<CrewExplainer />} />
-        <Route path="/runcrew/join" element={<JoinCodeWelcome />} />
+        {/* Existing Join or Start Flow (PRESERVED) */}
+        <Route path="/runcrew/join" element={<JoinCrewWelcome />} />
         <Route path="/runcrew/join-or-start" element={<JoinOrStartCrew />} />
         <Route path="/run-crew-join" element={<JoinCrew />} />
+        {/* New Direct-Invite Join Flow */}
+        <Route path="/joinruncrewwelcome" element={<JoinRunCrewWelcome />} />
+        <Route path="/precrewpage" element={<PreCrewPage />} />
         <Route path="/form-run-crew" element={<CreateCrew />} />
         <Route path="/run-crew-success" element={<RunCrewSuccess />} />
         {/* RunCrew Routes - Per RunCrewArchitecture.md */}
