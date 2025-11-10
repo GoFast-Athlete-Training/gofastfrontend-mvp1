@@ -174,6 +174,26 @@ const Settings = () => {
       </div>
 
       <div className="max-w-4xl mx-auto px-4 py-6">
+        {/* Event Management Card */}
+        <div className="mb-8">
+          <h2 className="text-xl font-semibold text-gray-900 mb-6">Event Management</h2>
+          <div className="bg-white rounded-xl shadow-lg p-8 hover:shadow-xl transition-all duration-200 border-2 border-gray-200">
+            <div className="text-center">
+              <div className="text-5xl mb-4">🎯</div>
+              <h3 className="text-2xl font-semibold mb-3">Manage Events & Volunteers</h3>
+              <p className="text-gray-600 text-lg mb-4">
+                Create events, manage volunteer signups, and view volunteer rosters
+              </p>
+              <button
+                onClick={() => navigate("/settings/events")}
+                className="w-full py-3 px-6 rounded-lg font-semibold text-white bg-orange-500 hover:bg-orange-600 transition-colors"
+              >
+                Open Event Management
+              </button>
+            </div>
+          </div>
+        </div>
+
         {/* Connection Cards */}
         <div className="mb-8">
           <h2 className="text-xl font-semibold text-gray-900 mb-6">Connect Your Devices</h2>
