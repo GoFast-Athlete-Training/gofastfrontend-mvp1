@@ -54,8 +54,8 @@ export default function Signin() {
       // If gofastHandle exists, athlete has completed profile setup → route to home
       // If gofastHandle is null, athlete needs profile setup → route to profile setup
       if (athlete.data?.gofastHandle) {
-        console.log("✅ SUCCESS: Existing athlete with profile → Athlete Home");
-        navigate("/athlete-home");
+        console.log("✅ SUCCESS: Existing athlete with profile → Athlete Welcome Hydrator");
+        navigate("/athlete-welcome");
       } else {
         console.log("✅ SUCCESS: New athlete or incomplete profile → Profile setup");
         navigate("/athlete-create-profile");
