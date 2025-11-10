@@ -68,7 +68,7 @@ const SignupPage = () => {
   };
 
   const handleSignIn = () => {
-    navigate('/athlete-signin');
+    navigate('/athletesignin');
   };
 
   return (

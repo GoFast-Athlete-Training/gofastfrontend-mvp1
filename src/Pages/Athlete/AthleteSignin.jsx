@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react";
+import { useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { signInWithGoogle, auth } from "../../firebase";
 import api from "../../api/axiosConfig";
@@ -218,7 +218,7 @@ export default function Signin() {
         <p className="text-gray-600 text-sm">
           Don't have an account?{" "}
           <button
-            onClick={() => navigate("/signup")}
+            onClick={() => navigate("/athletesignup")}
             className="text-orange-600 font-semibold hover:underline"
           >
             Sign Up
