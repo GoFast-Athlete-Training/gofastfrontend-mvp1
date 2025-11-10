@@ -1,8 +1,9 @@
 import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { Plus, Edit2, Trash2, Users, Calendar, MapPin, ExternalLink, X, Save } from 'lucide-react';
+import { Plus, Edit2, Trash2, Users, Calendar, MapPin, ExternalLink, X, Save, AlertCircle, CheckCircle2 } from 'lucide-react';
 import api from '../../api/axiosConfig';
 import { LocalStorageAPI } from '../../config/LocalStorageConfig';
+import { getCategoryFromRole, getCategoryDisplayName, calculateVolunteerStats, groupVolunteersByCategory } from '../../utils/volunteerCategoryMapper';
 
 const API_BASE = import.meta.env.PROD 
   ? 'https://gofastbackendv2-fall2025.onrender.com/api' 
@@ -390,10 +391,35 @@ const EventManagement = () => {
                 {/* Volunteers Section */}
                 <div className="mt-6 border-t pt-6">
                   <div className="flex justify-between items-center mb-4">
-                    <h3 className="text-lg font-semibold text-gray-900 flex items-center gap-2">
-                      <Users className="h-5 w-5" />
-                      Volunteers
-                    </h3>
+                    <div className="flex items-center gap-4">
+                      <h3 className="text-lg font-semibold text-gray-900 flex items-center gap-2">
+                        <Users className="h-5 w-5" />
+                        Volunteers
+                      </h3>
+                      {(() => {
+                        const stats = calculateVolunteerStats(volunteers[event.id] || []);
+                        return (
+                          <div className="flex items-center gap-4 text-sm">
+                            <span className="flex items-center gap-1 text-green-600">
+                              <CheckCircle2 className="h-4 w-4" />
+                              <span className="font-semibold">{stats.totalFilled}</span> Filled
+                            </span>
+                            <span className="flex items-center gap-1 text-orange-600">
+                              <AlertCircle className="h-4 w-4" />
+                              <span className="font-semibold">{stats.totalVacant}</span> Vacant
+                            </span>
+                            {stats.totalVacant > 0 && (
+                              <button
+                                onClick={() => navigate(`/volunteer-management/vacant?eventId=${event.id}`)}
+                                className="text-orange-600 hover:text-orange-700 font-medium underline"
+                              >
+                                View Vacant Roles
+                              </button>
+                            )}
+                          </div>
+                        );
+                      })()}
+                    </div>
                     <button
                       onClick={() => fetchVolunteers(event.id)}
                       className="text-sm text-orange-600 hover:text-orange-700 font-medium"
@@ -408,13 +434,16 @@ const EventManagement = () => {
                         <thead className="bg-gray-50">
                           <tr>
                             <th className="px-4 py-3 text-left text-xs font-semibold text-gray-600 uppercase tracking-wider">
+                              Category
+                            </th>
+                            <th className="px-4 py-3 text-left text-xs font-semibold text-gray-600 uppercase tracking-wider">
+                              Role
+                            </th>
+                            <th className="px-4 py-3 text-left text-xs font-semibold text-gray-600 uppercase tracking-wider">
                               Name
                             </th>
                             <th className="px-4 py-3 text-left text-xs font-semibold text-gray-600 uppercase tracking-wider">
                               Email
-                            </th>
-                            <th className="px-4 py-3 text-left text-xs font-semibold text-gray-600 uppercase tracking-wider">
-                              Role
                             </th>
                             <th className="px-4 py-3 text-left text-xs font-semibold text-gray-600 uppercase tracking-wider">
                               Notes
@@ -425,30 +454,51 @@ const EventManagement = () => {
                           </tr>
                         </thead>
                         <tbody className="bg-white divide-y divide-gray-200">
-                          {volunteers[event.id].map((volunteer) => (
-                            <tr key={volunteer.id} className="hover:bg-gray-50">
-                              <td className="px-4 py-3 whitespace-nowrap text-sm font-medium text-gray-900">
-                                {volunteer.name}
-                              </td>
-                              <td className="px-4 py-3 whitespace-nowrap text-sm text-gray-600">
-                                {volunteer.email}
-                              </td>
-                              <td className="px-4 py-3 whitespace-nowrap text-sm text-gray-600">
-                                {volunteer.role}
-                              </td>
-                              <td className="px-4 py-3 text-sm text-gray-600">
-                                {volunteer.notes || '—'}
-                              </td>
-                              <td className="px-4 py-3 whitespace-nowrap text-sm">
-                                <button
-                                  onClick={() => handleEditVolunteer(volunteer)}
-                                  className="text-orange-600 hover:text-orange-700 font-medium"
-                                >
-                                  Edit
-                                </button>
-                              </td>
-                            </tr>
-                          ))}
+                          {volunteers[event.id]
+                            .sort((a, b) => {
+                              // Sort by category first, then by role name
+                              const catA = getCategoryFromRole(a.role);
+                              const catB = getCategoryFromRole(b.role);
+                              if (catA !== catB) {
+                                const order = ['marshal', 'pacer', 'water', 'finish', 'other'];
+                                return order.indexOf(catA) - order.indexOf(catB);
+                              }
+                              return a.role.localeCompare(b.role);
+                            })
+                            .map((volunteer) => {
+                              const category = getCategoryFromRole(volunteer.role);
+                              const categoryDisplay = getCategoryDisplayName(category);
+                              
+                              return (
+                                <tr key={volunteer.id} className="hover:bg-gray-50">
+                                  <td className="px-4 py-3 whitespace-nowrap">
+                                    <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-blue-100 text-blue-800">
+                                      {categoryDisplay}
+                                    </span>
+                                  </td>
+                                  <td className="px-4 py-3 whitespace-nowrap text-sm font-medium text-gray-900">
+                                    {volunteer.role}
+                                  </td>
+                                  <td className="px-4 py-3 whitespace-nowrap text-sm text-gray-600">
+                                    {volunteer.name}
+                                  </td>
+                                  <td className="px-4 py-3 whitespace-nowrap text-sm text-gray-600">
+                                    {volunteer.email}
+                                  </td>
+                                  <td className="px-4 py-3 text-sm text-gray-600">
+                                    {volunteer.notes || '—'}
+                                  </td>
+                                  <td className="px-4 py-3 whitespace-nowrap text-sm">
+                                    <button
+                                      onClick={() => handleEditVolunteer(volunteer)}
+                                      className="text-orange-600 hover:text-orange-700 font-medium"
+                                    >
+                                      Edit
+                                    </button>
+                                  </td>
+                                </tr>
+                              );
+                            })}
                         </tbody>
                       </table>
                     </div>
