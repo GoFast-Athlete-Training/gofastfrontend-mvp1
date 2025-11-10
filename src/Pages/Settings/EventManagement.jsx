@@ -48,17 +48,19 @@ const EventManagement = () => {
     eventType: 'race',
   });
 
-  // Pre-fill form with Boys on Run 5K data - ACTUALLY FILLS THE FORM
+  // Pre-fill form with Boys on Run 5K data - HARDCODED, NO TYPING REQUIRED!
   const prefillBoysOnRun5K = () => {
+    // HARDCODED VALUES - NO TYPING REQUIRED!
     // Wednesday, November 12, 2025 – 7:55 AM
-    const eventDate = new Date('2025-11-12');
-    const formattedDate = eventDate.toISOString().split('T')[0]; // YYYY-MM-DD format
+    const eventDate = new Date('2025-11-12T00:00:00');
+    const formattedDate = eventDate.toISOString().split('T')[0]; // "2025-11-12"
     
+    // Set ALL fields immediately - form will be 100% filled
     setEventForm({
       title: 'Boys on Run 5K',
       description: 'Final week of our Boys Gotta Run season. We\'re keeping it low-key, warm, and all about the kids.',
       date: formattedDate, // "2025-11-12"
-      startTime: '7:55 AM', // From timeOptions
+      startTime: '7:55 AM', // Must be in timeOptions array
       location: 'Discovery Elementary School',
       address: '5275 N 36th St, Arlington, VA 22207',
       stravaRouteUrl: 'https://www.strava.com/routes/3420808564668746102',
@@ -66,6 +68,14 @@ const EventManagement = () => {
       distance: '5K',
       eventType: 'race',
     });
+    
+    // Scroll to top of form to see the filled fields
+    setTimeout(() => {
+      const formElement = document.querySelector('form');
+      if (formElement) {
+        formElement.scrollIntoView({ behavior: 'smooth', block: 'start' });
+      }
+    }, 100);
   };
 
   // Form state for editing volunteer
@@ -432,15 +442,16 @@ const EventManagement = () => {
       {showCreateModal && (
         <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
           <div className="bg-white rounded-xl shadow-2xl max-w-2xl w-full max-h-[90vh] overflow-y-auto">
-            <div className="sticky top-0 bg-white border-b px-6 py-4 flex justify-between items-center">
+              <div className="sticky top-0 bg-white border-b px-6 py-4 flex justify-between items-center">
               <h2 className="text-2xl font-bold text-gray-900">Create New Event</h2>
               <div className="flex items-center gap-3">
                 <button
                   type="button"
                   onClick={prefillBoysOnRun5K}
-                  className="px-4 py-2 text-sm font-semibold text-orange-600 bg-orange-50 rounded-lg hover:bg-orange-100 transition"
+                  className="px-5 py-2.5 text-sm font-bold text-white bg-orange-500 rounded-lg hover:bg-orange-600 transition shadow-md hover:shadow-lg"
+                  title="Click to fill ALL fields automatically - no typing required!"
                 >
-                  Pre-fill: Boys on Run 5K
+                  🚀 Pre-fill: Boys on Run 5K
                 </button>
                 <button
                   onClick={() => setShowCreateModal(false)}
@@ -452,6 +463,15 @@ const EventManagement = () => {
             </div>
 
             <form onSubmit={handleCreateEvent} className="p-6 space-y-4">
+              {/* Pre-fill Notice */}
+              {!eventForm.title && (
+                <div className="bg-orange-50 border border-orange-200 rounded-lg p-4 mb-4">
+                  <p className="text-sm text-orange-700 font-medium">
+                    💡 Click the "🚀 Pre-fill: Boys on Run 5K" button above to automatically fill ALL fields - no typing required!
+                  </p>
+                </div>
+              )}
+
               <div>
                 <label className="block text-sm font-semibold text-gray-700 mb-2">
                   Event Title <span className="text-red-500">*</span>
