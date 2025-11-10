@@ -2,6 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { Plus, Edit2, Trash2, Users, Calendar, MapPin, ExternalLink, X, Save } from 'lucide-react';
 import api from '../../api/axiosConfig';
+import { LocalStorageAPI } from '../../config/LocalStorageConfig';
 
 const API_BASE = import.meta.env.PROD 
   ? 'https://gofastbackendv2-fall2025.onrender.com/api' 
@@ -89,20 +90,27 @@ const EventManagement = () => {
   }, []);
 
   const fetchEvents = async () => {
+    setLoading(true);
     try {
-      setLoading(true);
-      const response = await fetch(`${API_BASE}/event?isActive=true`);
-      const data = await response.json();
-      
-      if (data.success) {
-        setEvents(data.data || []);
+      // Use axios with auth token
+      const response = await api.get('/event', {
+        params: { isActive: 'true' }
+      });
+      if (response.data.success) {
+        setEvents(response.data.data || []);
         // Fetch volunteers for each event
-        data.data?.forEach((event) => {
+        response.data.data?.forEach((event) => {
           fetchVolunteers(event.id);
         });
+      } else {
+        console.error('❌ Error fetching events:', response.data.error);
       }
     } catch (error) {
       console.error('❌ Error fetching events:', error);
+      if (error.response?.status === 401) {
+        alert('Authentication required. Please sign in again.');
+        navigate('/signin');
+      }
     } finally {
       setLoading(false);
     }
@@ -153,25 +161,29 @@ const EventManagement = () => {
         ? `${eventForm.date}T00:00:00`
         : null;
 
-      const response = await fetch(`${API_BASE}/event`, {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({
-          title: eventForm.title.trim(),
-          description: eventForm.description?.trim() || null,
-          date: isoDate ? new Date(isoDate).toISOString() : new Date().toISOString(),
-          startTime: eventForm.startTime?.trim() || null,
-          location: eventForm.location?.trim() || null,
-          address: eventForm.address?.trim() || null,
-          stravaRouteUrl: eventForm.stravaRouteUrl?.trim() || null,
-          distance: eventForm.distance?.trim() || null,
-          eventType: eventForm.eventType?.trim() || null,
-        }),
+      // Get athleteId from localStorage
+      const athleteId = LocalStorageAPI.getAthleteId();
+      if (!athleteId) {
+        alert('Athlete ID not found. Please sign in again.');
+        navigate('/signin');
+        return;
+      }
+
+      // Use axios with auth token
+      const response = await api.post('/event', {
+        title: eventForm.title.trim(),
+        description: eventForm.description?.trim() || null,
+        date: isoDate ? new Date(isoDate).toISOString() : new Date().toISOString(),
+        startTime: eventForm.startTime?.trim() || null,
+        location: eventForm.location?.trim() || null,
+        address: eventForm.address?.trim() || null,
+        stravaRouteUrl: eventForm.stravaRouteUrl?.trim() || null,
+        distance: eventForm.distance?.trim() || null,
+        eventType: eventForm.eventType?.trim() || null,
+        athleteId: athleteId, // Send athleteId for verification
       });
 
-      const data = await response.json();
+      const data = response.data;
       
       if (data.success) {
         setShowCreateModal(false);
@@ -187,13 +199,18 @@ const EventManagement = () => {
           eventType: 'race',
         });
         fetchEvents();
-        alert('Event created successfully!');
+        alert(data.wasUpdated ? 'Event updated successfully!' : 'Event created successfully!');
       } else {
         alert('Failed to create event: ' + (data.error || 'Unknown error'));
       }
     } catch (error) {
       console.error('❌ Error creating event:', error);
-      alert('Failed to create event: ' + error.message);
+      if (error.response?.status === 401) {
+        alert('Authentication required. Please sign in again.');
+        navigate('/signin');
+      } else {
+        alert('Failed to create event: ' + (error.response?.data?.error || error.message));
+      }
     }
   };
 

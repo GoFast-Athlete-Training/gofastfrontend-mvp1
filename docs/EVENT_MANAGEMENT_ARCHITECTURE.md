@@ -52,6 +52,9 @@ model Event {
   stravaRouteUrl String? // Strava route URL (users just paste the URL)
   distance       String? // Distance (e.g., "5K", "3.1 miles", "10K")
   
+  // Athlete Relationship - Events are created by athletes
+  athleteId   String   // Links to Athlete.id (creator of the event)
+  
   // Future State: Registration
   registrantId   String? // Future: Links to athleteId for main UX registration (optional)
   
@@ -64,14 +67,21 @@ model Event {
   updatedAt   DateTime @updatedAt
   
   // Relations
+  athlete     Athlete  @relation("EventCreator", fields: [athleteId], references: [id], onDelete: Cascade)
   volunteers  EventVolunteer[] // Volunteers linked via eventId
+  
+  @@index([athleteId])
+  @@index([athleteId, title, date]) // For upsert lookup
 }
 ```
 
 **Key Points**:
 - `id` = **Primary identifier** - Used throughout the system (no eventSlug)
+- `athleteId` = **Required** - Events are scoped to the athlete who created them
 - Events are identified by their database ID (`eventId`)
 - For public-facing pages (GoFast-Events repo), `eventId` is stored in localStorage or environment variable
+- **Upsert Logic**: Events are upserted by `athleteId + title + date` (same athlete, same title, same date = update existing)
+- **Database Migration**: Prisma migrations are handled automatically by backend deploy (Render runs `npx prisma db push` on deploy)
 
 ### EventVolunteer Model (Backend)
 
@@ -109,8 +119,14 @@ model EventVolunteer {
 - **Full volunteer details** - Name, email, role, notes
 - **Edit volunteers** - Update name, email, role, notes
 - **Create/edit events** - Full CRUD on events
+- **Event scoping** - Athletes can only see/edit events they created (filtered by `athleteId`)
 
-**Authentication**: Uses Firebase auth via `athleteId` in localStorage (same as rest of GoFast app)
+**Authentication**: 
+- Uses Firebase auth via `verifyFirebaseToken` middleware
+- Backend verifies Firebase token and looks up athlete by `firebaseId`
+- All event routes require authentication
+- Events are automatically scoped to the authenticated athlete's `athleteId`
+- Frontend sends `athleteId` from localStorage for verification
 
 ---
 
@@ -134,13 +150,38 @@ model EventVolunteer {
 
 ### Event Routes (`/api/event`)
 
+**All routes require Firebase authentication** (`verifyFirebaseToken` middleware)
+
 ```
-GET    /api/event                    → List all events (filter by isActive)
+GET    /api/event                    → List events for authenticated athlete (filter by isActive)
+       - Automatically filtered by athleteId (only shows events created by authenticated athlete)
+       - Query params: ?isActive=true (optional)
+       - Requires: Firebase token in Authorization header
+       
 GET    /api/event/:id                → Get single event with volunteers
-POST   /api/event                    → Create new event (eventId auto-generated)
+       - Verifies event belongs to authenticated athlete
+       - Returns 403 if event belongs to another athlete
+       - Requires: Firebase token in Authorization header
+       
+POST   /api/event                    → Create new event (with upsert support)
+       - Body: { title, date, athleteId?, ... }
+       - Upsert logic: If event exists with same athleteId + title + date, updates existing
+       - Returns: { success, data, wasUpdated: true/false }
+       - Automatically sets athleteId from authenticated athlete
+       - Requires: Firebase token in Authorization header
+       
 PUT    /api/event/:id                → Update event
+       - Verifies event belongs to authenticated athlete
+       - Returns 403 if event belongs to another athlete
+       - Requires: Firebase token in Authorization header
+       
 DELETE /api/event/:id                → Soft delete (set isActive=false)
+       - Verifies event belongs to authenticated athlete
+       - Returns 403 if event belongs to another athlete
+       - Requires: Firebase token in Authorization header
 ```
+
+**CORS**: Routes include explicit CORS preflight handling for cross-origin requests
 
 ### Event Volunteer Routes (`/api/event-volunteer`)
 
@@ -232,12 +273,16 @@ Current hardcoded roles:
 - Refresh volunteers button
 
 **API Calls**:
-- `GET /api/event?isActive=true` - Fetch events
-- `POST /api/event` - Create event (eventId auto-generated, no eventSlug required)
+- `GET /api/event?isActive=true` - Fetch events (uses axios with auth token)
+- `POST /api/event` - Create/upsert event (uses axios with auth token, sends athleteId for verification)
 - `GET /api/event-volunteer?eventId=xxx` - Fetch volunteers by eventId
 - `POST /api/event-volunteer` - Create/update volunteer (requires eventId)
 
-**Authentication**: Uses `athleteId` from localStorage (same pattern as rest of app)
+**Authentication**: 
+- Uses `api` from `axiosConfig.js` which automatically adds Firebase token to requests
+- Gets `athleteId` from `LocalStorageAPI.getAthleteId()`
+- Sends `athleteId` in POST body for verification (backend also verifies from Firebase token)
+- Handles 401 errors by redirecting to signin
 
 ### Backend: Event Routes
 
@@ -245,8 +290,26 @@ Current hardcoded roles:
 
 **Features**:
 - Full CRUD for events
+- **Authentication required** - All routes use `verifyFirebaseToken` middleware
+- **Athlete scoping** - Events are automatically filtered by `athleteId` (only show events created by authenticated athlete)
+- **Upsert support** - POST route checks for existing event with same `athleteId + title + date`, updates if exists, creates if not
+- **Authorization checks** - GET/PUT/DELETE verify event belongs to authenticated athlete (403 if not)
+- **CORS preflight handling** - Explicit OPTIONS handler for cross-origin requests
 - Includes volunteer count in list response
 - Soft delete (isActive flag)
+
+**Upsert Logic**:
+1. POST request comes in with `title`, `date`, and other fields
+2. Backend gets authenticated athlete from Firebase token
+3. Checks if event exists with same `athleteId + title + date` (same day)
+4. If exists: Updates existing event with new data
+5. If not exists: Creates new event with `athleteId` from authenticated athlete
+6. Returns `wasUpdated: true/false` to indicate if event was updated or created
+
+**Database Migration**:
+- Prisma schema changes are automatically applied on backend deploy
+- Render runs `npx prisma db push --accept-data-loss && npx prisma generate` on deploy
+- No manual migration steps required
 
 ### Backend: Event Volunteer Routes
 
@@ -267,11 +330,23 @@ Current hardcoded roles:
 - `POST /api/event-volunteer` - No auth required (anyone can sign up, requires eventId)
 - `GET /api/event-volunteer?eventId=xxx` - Should filter email for public requests
 
-### Protected Endpoints
-- `GET /api/event` - Should require auth (or at least filter sensitive data)
-- `GET /api/event-volunteer` - Should return email only if authenticated
+### Protected Endpoints (All require Firebase authentication)
+- `GET /api/event` - **Requires auth** - Returns only events created by authenticated athlete
+- `POST /api/event` - **Requires auth** - Automatically sets athleteId from authenticated athlete
+- `GET /api/event/:id` - **Requires auth** - Verifies event belongs to authenticated athlete (403 if not)
+- `PUT /api/event/:id` - **Requires auth** - Verifies event belongs to authenticated athlete (403 if not)
+- `DELETE /api/event/:id` - **Requires auth** - Verifies event belongs to authenticated athlete (403 if not)
 
-**Recommendation**: Add middleware to check for `athleteId` in request headers/localStorage and filter email accordingly.
+**Security Features**:
+- All event routes use `verifyFirebaseToken` middleware
+- Backend verifies Firebase token and looks up athlete by `firebaseId`
+- Events are automatically scoped to authenticated athlete's `athleteId`
+- Authorization checks prevent athletes from accessing/modifying other athletes' events
+- CORS preflight handling ensures proper cross-origin request handling
+
+**Recommendation**: 
+- Backend should filter email from public volunteer roster responses (not yet implemented)
+- Consider adding rate limiting for volunteer signups
 
 ---
 
@@ -316,6 +391,11 @@ Current hardcoded roles:
 7. ✅ **Public pages in GoFast-Events repo** - Protected pages in main frontend
 8. ✅ **eventId is primary identifier** - No eventSlug, eventId is hardcoded in GoFast-Events repo (localStorage or env variable)
 9. ✅ **Prefill button actually fills form** - MVP1 just for organizer, prefill populates all fields
+10. ✅ **Athlete-scoped events** - Events are linked to athleteId, athletes can only see/edit their own events
+11. ✅ **Upsert functionality** - POST route upserts by athleteId + title + date (updates if exists, creates if not)
+12. ✅ **Authentication required** - All event routes require Firebase authentication
+13. ✅ **CORS handling** - Explicit CORS preflight handling for cross-origin requests
+14. ✅ **Database migrations** - Prisma migrations run automatically on backend deploy (Render)
 
 ---
 
