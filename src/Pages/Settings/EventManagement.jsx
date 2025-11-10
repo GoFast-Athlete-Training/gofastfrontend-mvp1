@@ -92,9 +92,21 @@ const EventManagement = () => {
   const fetchEvents = async () => {
     setLoading(true);
     try {
-      // Use axios with auth token
+      // Get athleteId from localStorage (axios automatically sends Firebase token)
+      const athleteId = LocalStorageAPI.getAthleteId();
+      if (!athleteId) {
+        alert('Athlete ID not found. Please sign in again.');
+        navigate('/signin');
+        return;
+      }
+
+      // Use axios with auth token (automatically added by interceptor)
+      // Send athleteId as query param for filtering
       const response = await api.get('/event', {
-        params: { isActive: 'true' }
+        params: { 
+          isActive: 'true',
+          athleteId: athleteId // Send athleteId from localStorage
+        }
       });
       if (response.data.success) {
         setEvents(response.data.data || []);
