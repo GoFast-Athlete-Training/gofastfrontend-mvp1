@@ -92,11 +92,20 @@ const EventManagement = () => {
   const fetchEvents = async () => {
     setLoading(true);
     try {
+      // Get athleteId from localStorage (hydrated from welcome screen)
+      const athleteId = LocalStorageAPI.getAthleteId();
+      if (!athleteId) {
+        alert('Athlete ID not found. Please sign in again.');
+        navigate('/signin');
+        return;
+      }
+
       // Axios automatically sends Firebase token via interceptor
-      // Backend gets athleteId from Firebase token (no query params needed)
+      // Send athleteId from localStorage as query param
       const response = await api.get('/event', {
         params: { 
-          isActive: 'true'
+          isActive: 'true',
+          athleteId: athleteId // From localStorage (welcome screen hydration)
         }
       });
       if (response.data.success) {
@@ -164,8 +173,16 @@ const EventManagement = () => {
         ? `${eventForm.date}T00:00:00`
         : null;
 
+      // Get athleteId from localStorage (hydrated from welcome screen)
+      const athleteId = LocalStorageAPI.getAthleteId();
+      if (!athleteId) {
+        alert('Athlete ID not found. Please sign in again.');
+        navigate('/signin');
+        return;
+      }
+
       // Axios automatically sends Firebase token via interceptor
-      // Backend gets athleteId from Firebase token (middleware) - no need to send it in body
+      // Send athleteId from localStorage in request body
       const response = await api.post('/event', {
         title: eventForm.title.trim(),
         description: eventForm.description?.trim() || null,
@@ -176,6 +193,7 @@ const EventManagement = () => {
         stravaRouteUrl: eventForm.stravaRouteUrl?.trim() || null,
         distance: eventForm.distance?.trim() || null,
         eventType: eventForm.eventType?.trim() || null,
+        athleteId: athleteId, // From localStorage (welcome screen hydration)
       });
 
       const data = response.data;
