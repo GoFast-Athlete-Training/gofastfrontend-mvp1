@@ -55,13 +55,12 @@ api.interceptors.response.use(
     // Handle 401 (Unauthorized) - try to refresh token if expired
     if (error.response?.status === 401) {
       const errorData = error.response?.data;
+      const firebaseAuth = getAuth();
+      const user = firebaseAuth.currentUser;
       
       // If token expired, try to refresh it
       if (errorData?.code === 'TOKEN_EXPIRED' || errorData?.shouldRefresh) {
         console.log('🔄 Token expired, attempting refresh...');
-        
-        const firebaseAuth = getAuth();
-        const user = firebaseAuth.currentUser;
         
         if (user) {
           try {
@@ -75,15 +74,15 @@ api.interceptors.response.use(
             return api.request(config);
           } catch (refreshError) {
             console.error('❌ Token refresh failed:', refreshError);
-            // Fall through to redirect
+            // Fall through - let component handle the error
           }
         }
       }
       
-      // If refresh failed or not expired, redirect to signup
-      console.error('🚫 Unauthorized - redirecting to signup');
-      localStorage.clear();
-      window.location.href = '/athletesignup';
+      // DON'T automatically redirect - let components handle it
+      // Components should check Firebase auth state and localStorage
+      // This prevents issues with page refresh where auth is still initializing
+      console.warn('🚫 401 Unauthorized - Component should handle navigation');
     }
     
     return Promise.reject(error);

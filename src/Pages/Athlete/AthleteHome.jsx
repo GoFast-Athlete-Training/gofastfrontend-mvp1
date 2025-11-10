@@ -430,7 +430,7 @@ const AthleteHome = () => {
                       Get Started
                     </button>
                   </div>
-                )}
+                      )}
                     </div>
             )}
 
@@ -471,9 +471,9 @@ const AthleteHome = () => {
                       Manage Volunteers
                     </button>
                   </div>
-                </div>
-              </div>
-            )}
+            </div>
+          </div>
+        )}
           </div>
         </div>
       </div>
