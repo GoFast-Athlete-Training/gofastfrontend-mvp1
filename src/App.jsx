@@ -19,6 +19,7 @@ import GarminOAuthCallback from './Pages/Settings/GarminOAuthCallback';
 import GarminConnectSuccess from './Pages/Settings/GarminConnectSuccess';
 import JoinOrStartCrew from './Pages/RunCrew/JoinOrStartCrew';
 import JoinCrew from './Pages/RunCrew/JoinCrew';
+import JoinCodeWelcome from './Pages/RunCrew/JoinCodeWelcome';
 import JoinCrewWelcome from './Pages/RunCrew/JoinCrewWelcome';
 import JoinRunCrewWelcome from './Pages/RunCrew/JoinRunCrewWelcome';
 import PreCrewPage from './Pages/RunCrew/PreCrewPage';
@@ -76,8 +77,9 @@ const App = () => {
         {/* Smart Onboarding Routes */}
         <Route path="/settings/devices" element={<div className="min-h-screen bg-gray-50 flex items-center justify-center"><h1 className="text-4xl font-bold text-gray-900">Device Settings - Coming Soon!</h1></div>} />
         <Route path="/crew-explainer" element={<CrewExplainer />} />
+        {/* Join Code Welcome Flow - New join-first onboarding */}
+        <Route path="/runcrew/join" element={<JoinCodeWelcome />} />
         {/* Existing Join or Start Flow (PRESERVED) */}
-        <Route path="/runcrew/join" element={<JoinCrewWelcome />} />
         <Route path="/runcrew/join-or-start" element={<JoinOrStartCrew />} />
         <Route path="/run-crew-join" element={<JoinCrew />} />
         {/* New Direct-Invite Join Flow */}
