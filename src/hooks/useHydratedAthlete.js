@@ -4,9 +4,10 @@ import { LocalStorageAPI } from '../config/LocalStorageConfig';
  * useHydratedAthlete - Local-only context reader (HYDRATION V2)
  * Reads athlete and crew context from LocalStorageAPI
  * Uses V2 keys (MyCrew, MyCrewManagerId) with legacy fallback
- * No derivation, no fallbacks - just reads what's there
+ * Reads directly from localStorage on every render (always fresh)
  */
 export default function useHydratedAthlete() {
+  // Read from localStorage (always reads latest value on every render)
   const athlete = LocalStorageAPI.getAthleteProfile();
   const athleteId = LocalStorageAPI.getAthleteId();
   
@@ -17,8 +18,8 @@ export default function useHydratedAthlete() {
   const legacyRunCrewManagerId = LocalStorageAPI.getRunCrewManagerId();
   
   // Use V2 keys if available, otherwise fall back to legacy
-  const runCrewId = myCrew || legacyRunCrewId;
-  const runCrewManagerId = myCrewManagerId || legacyRunCrewManagerId;
+  const runCrewId = myCrew || legacyRunCrewId || null;
+  const runCrewManagerId = myCrewManagerId || legacyRunCrewManagerId || null;
   
   const runCrew = LocalStorageAPI.getRunCrewData();
 
