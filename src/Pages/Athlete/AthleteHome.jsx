@@ -217,9 +217,9 @@ const AthleteHome = () => {
       <div className="w-64 bg-white border-r border-gray-200 flex flex-col">
         <div className="p-6 border-b border-gray-200">
           <div className="flex items-center space-x-3">
-            <img src="/logo.jpg" alt="GoFast" className="w-8 h-8 rounded-full" />
-            <span className="text-xl font-bold text-gray-900">GoFast</span>
-          </div>
+              <img src="/logo.jpg" alt="GoFast" className="w-8 h-8 rounded-full" />
+              <span className="text-xl font-bold text-gray-900">GoFast</span>
+            </div>
         </div>
 
         <nav className="flex-1 p-4 space-y-2">
@@ -249,21 +249,21 @@ const AthleteHome = () => {
         </nav>
 
         <div className="p-4 border-t border-gray-200">
-          <button
-            onClick={() => navigate('/athlete-profile')}
+              <button
+                onClick={() => navigate('/athlete-profile')}
             className="w-full flex items-center gap-3 px-4 py-3 rounded-lg hover:bg-gray-50 transition"
-          >
-            {athleteProfile?.photoURL ? (
-              <img
-                src={athleteProfile.photoURL}
-                alt="Profile"
+              >
+                {athleteProfile?.photoURL ? (
+                  <img
+                    src={athleteProfile.photoURL}
+                    alt="Profile"
                 className="w-8 h-8 rounded-full object-cover"
-              />
-            ) : (
+                  />
+                ) : (
               <span className="w-8 h-8 bg-orange-500 rounded-full flex items-center justify-center text-white font-bold text-sm">
-                {athleteProfile?.firstName ? athleteProfile.firstName[0].toUpperCase() : 'A'}
-              </span>
-            )}
+                    {athleteProfile?.firstName ? athleteProfile.firstName[0].toUpperCase() : 'A'}
+                  </span>
+                )}
             <span className="font-medium text-gray-700">{athleteProfile?.firstName || 'Profile'}</span>
           </button>
         </div>
@@ -300,9 +300,9 @@ const AthleteHome = () => {
               >
                 Sign Out
               </button>
-            </div>
           </div>
         </div>
+      </div>
 
         {/* Content */}
         <div className="flex-1 overflow-y-auto bg-gray-50">
@@ -310,21 +310,21 @@ const AthleteHome = () => {
             {/* Activity Section */}
             {activeSection === 'activity' && (
               <div className="space-y-6">
-                {!isProfileComplete && (
+          {!isProfileComplete && (
                   <div className="bg-orange-500 border-2 border-orange-600 rounded-lg p-6 shadow-lg">
-                    <div className="flex flex-col items-center space-y-3">
-                      <p className="text-white font-semibold text-lg">
-                        Complete your profile to unlock all features!
-                      </p>
-                      <button
-                        onClick={() => navigate('/athlete-create-profile')}
-                        className="bg-white text-orange-600 px-6 py-3 rounded-lg font-bold hover:bg-orange-50 transition-colors shadow-md"
-                      >
-                        Complete Profile →
-                      </button>
-                    </div>
-                  </div>
-                )}
+              <div className="flex flex-col items-center space-y-3">
+                <p className="text-white font-semibold text-lg">
+                  Complete your profile to unlock all features!
+                </p>
+                <button
+                  onClick={() => navigate('/athlete-create-profile')}
+                  className="bg-white text-orange-600 px-6 py-3 rounded-lg font-bold hover:bg-orange-50 transition-colors shadow-md"
+                >
+                  Complete Profile →
+                </button>
+              </div>
+            </div>
+          )}
 
                 {/* Connection Prompt - Show if not connected */}
                 {!checkingConnection && !garminConnected && (
@@ -334,50 +334,50 @@ const AthleteHome = () => {
                       <h3 className="text-2xl font-semibold text-gray-900 mb-2">Connect Garmin to Start Tracking</h3>
                       <p className="text-gray-600 mb-6 max-w-md mx-auto">
                         Connect your Garmin device to automatically sync activities and track your runs.
-                      </p>
-                      <button
+              </p>
+              <button
                         onClick={() => navigate('/settings')}
                         className="px-6 py-3 bg-orange-500 text-white rounded-lg font-semibold hover:bg-orange-600 transition shadow-md"
-                      >
+              >
                         Connect Device →
-                      </button>
-                    </div>
-                  </div>
-                )}
+              </button>
+            </div>
+          </div>
+        )}
 
                 {/* Weekly Summary - Show if connected and has activities */}
                 {!checkingConnection && garminConnected && (weeklyTotals || (weeklyActivities && weeklyActivities.length > 0)) && (
                   <div className="bg-white rounded-xl shadow-lg p-6">
-                    <div className="flex justify-between items-center mb-4">
-                      <h2 className="text-2xl font-bold text-gray-900">This Week's Activities</h2>
-                      <button
-                        onClick={() => navigate('/my-activities')}
-                        className="text-orange-600 hover:text-orange-700 font-semibold hover:underline"
-                      >
-                        View All →
-                      </button>
-                    </div>
-                    <div className="grid grid-cols-3 gap-4">
-                      <div className="text-center">
-                        <p className="text-2xl font-bold text-orange-600">{weeklyTotals?.totalDistanceMiles ?? '0'}</p>
-                        <p className="text-sm text-gray-600">Miles</p>
-                      </div>
-                      <div className="text-center">
-                        <p className="text-2xl font-bold text-orange-600">{weeklyTotals?.activityCount ?? weeklyActivities.length}</p>
-                        <p className="text-sm text-gray-600">Activities</p>
-                      </div>
-                      <div className="text-center">
-                        <p className="text-2xl font-bold text-orange-600">{weeklyTotals?.totalCalories ?? '0'}</p>
-                        <p className="text-sm text-gray-600">Calories</p>
-                      </div>
-                    </div>
-                    <div className="mt-4 pt-4 border-t border-gray-200">
-                      <p className="text-sm text-gray-500 text-center">
-                        💡 Activities sync automatically from Garmin Connect. Click "View All" to see detailed activity history.
-                      </p>
-                    </div>
-                  </div>
-                )}
+            <div className="flex justify-between items-center mb-4">
+              <h2 className="text-2xl font-bold text-gray-900">This Week's Activities</h2>
+              <button
+                onClick={() => navigate('/my-activities')}
+                className="text-orange-600 hover:text-orange-700 font-semibold hover:underline"
+              >
+                View All →
+              </button>
+            </div>
+            <div className="grid grid-cols-3 gap-4">
+              <div className="text-center">
+                <p className="text-2xl font-bold text-orange-600">{weeklyTotals?.totalDistanceMiles ?? '0'}</p>
+                <p className="text-sm text-gray-600">Miles</p>
+              </div>
+              <div className="text-center">
+                <p className="text-2xl font-bold text-orange-600">{weeklyTotals?.activityCount ?? weeklyActivities.length}</p>
+                <p className="text-sm text-gray-600">Activities</p>
+              </div>
+              <div className="text-center">
+                <p className="text-2xl font-bold text-orange-600">{weeklyTotals?.totalCalories ?? '0'}</p>
+                <p className="text-sm text-gray-600">Calories</p>
+              </div>
+            </div>
+            <div className="mt-4 pt-4 border-t border-gray-200">
+              <p className="text-sm text-gray-500 text-center">
+                💡 Activities sync automatically from Garmin Connect. Click "View All" to see detailed activity history.
+              </p>
+            </div>
+          </div>
+        )}
 
                 {/* Empty State - Connected but no activities */}
                 {!checkingConnection && garminConnected && (!weeklyTotals && (!weeklyActivities || weeklyActivities.length === 0)) && (
@@ -418,7 +418,7 @@ const AthleteHome = () => {
                       {isCrewHydrating ? 'Loading Crew…' : 'Go to RunCrew →'}
                     </button>
                   </div>
-                ) : (
+                      ) : (
                   <div className="bg-white rounded-xl shadow-lg p-12 text-center">
                     <Users className="h-16 w-16 text-gray-400 mx-auto mb-4" />
                     <h3 className="text-xl font-semibold text-gray-900 mb-2">Join or Create a Run Crew</h3>
@@ -431,26 +431,46 @@ const AthleteHome = () => {
                     </button>
                   </div>
                 )}
-              </div>
+                    </div>
             )}
 
             {/* Events Section */}
             {activeSection === 'events' && (
               <div className="space-y-6">
-                <div className="bg-white rounded-xl shadow-lg p-8">
-                  <div className="text-center mb-6">
-                    <Calendar className="h-16 w-16 text-orange-500 mx-auto mb-4" />
-                    <h3 className="text-2xl font-semibold text-gray-900 mb-2">Event Management</h3>
-                    <p className="text-gray-600">
-                      Create events, manage volunteer signups, and view volunteer rosters
-                    </p>
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                  {/* Event Management Card */}
+                  <div className="bg-white rounded-xl shadow-lg p-8">
+                    <div className="text-center mb-6">
+                      <Calendar className="h-16 w-16 text-orange-500 mx-auto mb-4" />
+                      <h3 className="text-2xl font-semibold text-gray-900 mb-2">Event Management</h3>
+                      <p className="text-gray-600">
+                        Create and manage events, set up volunteer roles, and configure event details
+                      </p>
+                    </div>
+                    <button
+                      onClick={() => navigate('/settings/events')}
+                      className="w-full px-6 py-3 bg-orange-500 text-white rounded-lg font-semibold hover:bg-orange-600 transition"
+                    >
+                      Manage Events
+                    </button>
                   </div>
-                  <button
-                    onClick={() => navigate('/settings/events')}
-                    className="w-full px-6 py-3 bg-orange-500 text-white rounded-lg font-semibold hover:bg-orange-600 transition"
-                  >
-                    Open Event Management
-                  </button>
+
+                  {/* Volunteer Management Card */}
+                  <div className="bg-white rounded-xl shadow-lg p-8">
+                    <div className="text-center mb-6">
+                      <Users className="h-16 w-16 text-blue-500 mx-auto mb-4" />
+                      <h3 className="text-2xl font-semibold text-gray-900 mb-2">Volunteer Management</h3>
+                      <p className="text-gray-600">
+                        View volunteers, manage signups, export rosters, and remove volunteers
+                      </p>
+                    </div>
+                    <button
+                      onClick={() => navigate('/volunteer-management')}
+                      className="w-full px-6 py-3 bg-blue-500 text-white rounded-lg font-semibold hover:bg-blue-600 transition"
+                    >
+                      Manage Volunteers
+                    </button>
+                  </div>
                 </div>
               </div>
             )}

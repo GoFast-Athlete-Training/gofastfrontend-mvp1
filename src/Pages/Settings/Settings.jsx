@@ -194,26 +194,26 @@ const Settings = () => {
                   </div>
                 </div>
                 <div className="flex items-center gap-3">
-                  {loading ? (
+                {loading ? (
                     <span className="text-sm text-gray-400">Checking...</span>
-                  ) : connections.garmin ? (
+                ) : connections.garmin ? (
                     <>
                       <span className="text-sm text-green-600 font-medium">Connected</span>
-                      <button
-                        onClick={disconnectGarmin}
+                  <button
+                    onClick={disconnectGarmin}
                         className="px-4 py-1.5 text-sm font-medium text-red-600 hover:bg-red-50 rounded-lg transition"
-                      >
+                  >
                         Disconnect
-                      </button>
+                  </button>
                     </>
-                  ) : (
-                    <button
-                      onClick={connectGarmin}
+                ) : (
+                  <button
+                    onClick={connectGarmin}
                       className="px-4 py-1.5 text-sm font-medium text-white bg-orange-500 hover:bg-orange-600 rounded-lg transition"
-                    >
+                  >
                       Connect
-                    </button>
-                  )}
+                  </button>
+                )}
                 </div>
               </div>
             </div>
@@ -237,13 +237,13 @@ const Settings = () => {
                     {connections.strava ? 'Connected' : 'Not Connected'}
                   </span>
                   {!connections.strava && (
-                    <button
-                      onClick={() => navigate("/settings/devices")}
+                  <button
+                    onClick={() => navigate("/settings/devices")}
                       className="px-4 py-1.5 text-sm font-medium text-white bg-orange-500 hover:bg-orange-600 rounded-lg transition"
-                    >
+                  >
                       Connect
-                    </button>
-                  )}
+                  </button>
+                )}
                 </div>
               </div>
             </div>

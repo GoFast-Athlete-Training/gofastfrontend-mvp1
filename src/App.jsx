@@ -13,6 +13,7 @@ import AthleteHome from './Pages/Athlete/AthleteHome';
 import AthleteProfile from './Pages/Athlete/AthleteProfile';
 import Settings from './Pages/Settings/Settings';
 import EventManagement from './Pages/Settings/EventManagement';
+import VolunteerManagement from './Pages/Athlete/VolunteerManagement';
 import GarminOAuthCallback from './Pages/Settings/GarminOAuthCallback';
 import GarminConnectSuccess from './Pages/Settings/GarminConnectSuccess';
 import JoinOrStartCrew from './Pages/RunCrew/JoinOrStartCrew';
@@ -55,6 +56,7 @@ const App = () => {
         <Route path="/athlete-profile" element={<AthleteProfile />} />
         <Route path="/settings" element={<Settings />} />
         <Route path="/settings/events" element={<EventManagement />} />
+        <Route path="/volunteer-management" element={<VolunteerManagement />} />
         
         {/* Activity Routes */}
         <Route path="/my-activities" element={<MyActivities />} />

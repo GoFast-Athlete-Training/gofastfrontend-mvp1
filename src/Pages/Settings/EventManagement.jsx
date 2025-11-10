@@ -132,7 +132,8 @@ const EventManagement = () => {
     try {
       if (!eventId) return;
 
-      const response = await fetch(`${API_BASE}/event-volunteer?eventId=${eventId}`);
+      // Use admin-hydrate endpoint to get volunteers WITH emails (for admin management)
+      const response = await fetch(`${API_BASE}/event-volunteer/admin-hydrate?eventId=${eventId}`);
       const data = await response.json();
       
       if (data.success) {
