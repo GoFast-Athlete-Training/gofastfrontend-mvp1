@@ -20,7 +20,6 @@ import GarminConnectSuccess from './Pages/Settings/GarminConnectSuccess';
 import JoinOrStartCrew from './Pages/RunCrew/JoinOrStartCrew';
 import JoinCrew from './Pages/RunCrew/JoinCrew';
 import JoinCodeWelcome from './Pages/RunCrew/JoinCodeWelcome';
-import JoinCrewWelcome from './Pages/RunCrew/JoinCrewWelcome';
 import JoinRunCrewWelcome from './Pages/RunCrew/JoinRunCrewWelcome';
 import PreCrewPage from './Pages/RunCrew/PreCrewPage';
 import CreateCrew from './Pages/RunCrew/CreateCrew';
