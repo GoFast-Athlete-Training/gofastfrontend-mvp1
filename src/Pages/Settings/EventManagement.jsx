@@ -240,6 +240,28 @@ const EventManagement = () => {
     setSelectedEventId(volunteer.eventId || volunteer.event?.id);
   };
 
+  const handleDeleteVolunteer = async (volunteer) => {
+    if (!confirm(`Are you sure you want to delete ${volunteer.name} from ${volunteer.role}?`)) {
+      return;
+    }
+
+    try {
+      const response = await api.delete(`/event-volunteer/${volunteer.id}`);
+      
+      if (response.data.success) {
+        alert(`✅ Volunteer deleted successfully`);
+        // Refresh volunteers for this event
+        const eventId = volunteer.eventId || volunteer.event?.id;
+        if (eventId) {
+          fetchVolunteers(eventId);
+        }
+      }
+    } catch (error) {
+      console.error('Error deleting volunteer:', error);
+      alert('❌ Failed to delete volunteer: ' + (error.response?.data?.error || error.message));
+    }
+  };
+
   const handleSaveVolunteer = async () => {
     if (!editingVolunteer || !selectedEventId) return;
 
@@ -489,12 +511,20 @@ const EventManagement = () => {
                                     {volunteer.notes || '—'}
                                   </td>
                                   <td className="px-4 py-3 whitespace-nowrap text-sm">
-                                    <button
-                                      onClick={() => handleEditVolunteer(volunteer)}
-                                      className="text-orange-600 hover:text-orange-700 font-medium"
-                                    >
-                                      Edit
-                                    </button>
+                                    <div className="flex items-center gap-3">
+                                      <button
+                                        onClick={() => handleEditVolunteer(volunteer)}
+                                        className="text-orange-600 hover:text-orange-700 font-medium"
+                                      >
+                                        Edit
+                                      </button>
+                                      <button
+                                        onClick={() => handleDeleteVolunteer(volunteer)}
+                                        className="text-red-600 hover:text-red-700 font-medium"
+                                      >
+                                        Delete
+                                      </button>
+                                    </div>
                                   </td>
                                 </tr>
                               );

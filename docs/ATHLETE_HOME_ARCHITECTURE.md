@@ -1,7 +1,76 @@
 # Athlete Home Architecture
 
-**Last Updated**: January 2025  
+**Last Updated**: November 2025  
 **Purpose**: Architecture documentation for the Athlete Home hub - the main navigation and content hub for athletes
+
+---
+
+## 🔥 CRITICAL: Firebase Authentication Pattern
+
+**⚠️ ALWAYS use `onAuthStateChanged` - NEVER check `auth.currentUser` immediately!**
+
+### The Problem
+Firebase auth takes time to initialize on page load/refresh. If you check `auth.currentUser` immediately in a `useEffect`, it will be `null` even if the user is authenticated, causing incorrect redirects to signin.
+
+### The Solution
+**ALWAYS** use `onAuthStateChanged` to wait for Firebase to initialize:
+
+```javascript
+import { useEffect, useState } from 'react';
+import { getAuth, onAuthStateChanged } from 'firebase/auth';
+import { useNavigate } from 'react-router-dom';
+
+const MyComponent = () => {
+  const navigate = useNavigate();
+  const [authInitialized, setAuthInitialized] = useState(false);
+  const [user, setUser] = useState(null);
+
+  useEffect(() => {
+    const auth = getAuth();
+    
+    // ✅ CORRECT: Wait for Firebase to initialize
+    const unsubscribe = onAuthStateChanged(auth, (firebaseUser) => {
+      setUser(firebaseUser);
+      setAuthInitialized(true);
+      
+      if (!firebaseUser) {
+        console.log('❌ No authenticated user → redirect to signup');
+        navigate('/athletesignup');
+      } else {
+        console.log('✅ User authenticated:', firebaseUser.email);
+        // Proceed with hydration, etc.
+      }
+    });
+
+    return () => unsubscribe();
+  }, [navigate]);
+
+  if (!authInitialized) {
+    return <div>Loading auth...</div>;
+  }
+
+  // ... rest of component
+};
+```
+
+### ❌ WRONG Pattern (DO NOT USE)
+```javascript
+// ❌ BAD: Checking currentUser immediately
+useEffect(() => {
+  const auth = getAuth();
+  const user = auth.currentUser; // Will be null on page refresh!
+  
+  if (!user) {
+    navigate('/athletesignup'); // WRONG: Redirects even if user is logged in
+  }
+}, []);
+```
+
+### Where to Apply This
+- **AthleteWelcome.jsx** - Hydration entry point
+- **AthleteHome.jsx** - Main hub (if checking auth)
+- **Any protected route** - Components that require authentication
+- **Splash.jsx** - Initial route decision (already implemented correctly)
 
 ---
 
