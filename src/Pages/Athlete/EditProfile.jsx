@@ -33,8 +33,8 @@ const EditProfile = () => {
         const storedAthleteId = LocalStorageAPI.getAthleteId();
 
         if (!storedProfile || !storedAthleteId) {
-          console.warn('⚠️ EDIT PROFILE: Missing profile or athleteId, routing to welcome');
-          navigate('/welcome');
+          console.warn('⚠️ EDIT PROFILE: Missing profile or athleteId, routing to welcome hydrator');
+          navigate('/athlete-welcome', { replace: true });
           return;
         }
 

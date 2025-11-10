@@ -31,8 +31,8 @@ const AthleteHome = () => {
         const { athlete: storedProfile, weeklyActivities: cachedActivities, weeklyTotals: cachedTotals } = model;
 
         if (!storedProfile) {
-          console.log('⚠️ ATHLETE HOME: No profile data found, redirecting to welcome');
-          navigate('/welcome');
+          console.log('⚠️ ATHLETE HOME: No profile data found, redirecting to welcome hydrator');
+          navigate('/athlete-welcome', { replace: true });
           return;
         }
 
@@ -60,7 +60,7 @@ const AthleteHome = () => {
         setDisplayCards(UserOnboardingCalculationService.getCardsForUser(storedProfile, onboarding));
       } catch (error) {
         console.error('❌ ATHLETE HOME: Error loading athlete data:', error);
-        navigate('/welcome');
+        navigate('/athlete-welcome', { replace: true });
       } finally {
         setIsLoading(false);
       }
