@@ -5,6 +5,7 @@ import { signOut } from 'firebase/auth';
 import { auth } from '../../firebase';
 import UserOnboardingCalculationService from '../../utils/UserOnboardingCalculationService';
 import { LocalStorageAPI } from '../../config/LocalStorageConfig';
+import useHydratedAthlete from '../../hooks/useHydratedAthlete';
 import { Activity, Users, Calendar, Settings } from 'lucide-react';
 
 const API_BASE = 'https://gofastbackendv2-fall2025.onrender.com/api';
@@ -12,15 +13,14 @@ const API_BASE = 'https://gofastbackendv2-fall2025.onrender.com/api';
 const AthleteHome = () => {
   const navigate = useNavigate();
   const location = useLocation();
-  const [athleteProfile, setAthleteProfile] = useState(null);
-  const [isLoading, setIsLoading] = useState(true);
+  
+  // Use the hook to get all hydrated data from localStorage
+  const { athlete: athleteProfile, athleteId, runCrewId, runCrewManagerId, runCrew } = useHydratedAthlete();
+  
   const [onboardingState, setOnboardingState] = useState(null);
   const [displayCards, setDisplayCards] = useState([]);
   const [weeklyActivities, setWeeklyActivities] = useState([]);
   const [weeklyTotals, setWeeklyTotals] = useState(null);
-  const [runCrewId, setRunCrewId] = useState(null);
-  const [runCrewManagerId, setRunCrewManagerId] = useState(null);
-  const [athleteId, setAthleteId] = useState(null);
   const [isCrewHydrating, setIsCrewHydrating] = useState(false);
   const [activeSection, setActiveSection] = useState('activity'); // 'activity', 'crew', 'events'
   const [garminConnected, setGarminConnected] = useState(false);
@@ -29,13 +29,12 @@ const AthleteHome = () => {
   // Check Garmin connection status
   useEffect(() => {
     const checkGarminConnection = async () => {
-      try {
-        const athleteId = LocalStorageAPI.getAthleteId();
-        if (!athleteId) {
-          setCheckingConnection(false);
-          return;
-        }
+      if (!athleteId) {
+        setCheckingConnection(false);
+        return;
+      }
 
+      try {
         const response = await fetch(`${API_BASE}/garmin/status?athleteId=${athleteId}`);
         if (response.ok) {
           const data = await response.json();
@@ -49,7 +48,7 @@ const AthleteHome = () => {
     };
 
     checkGarminConnection();
-  }, []);
+  }, [athleteId]);
 
   // Update active section based on current route
   useEffect(() => {
@@ -63,53 +62,39 @@ const AthleteHome = () => {
     }
   }, [location.pathname]);
 
+  // Load weekly activities and totals from localStorage, calculate onboarding
   useEffect(() => {
-    const loadAthleteData = () => {
-      setIsLoading(true);
+    if (!athleteProfile) {
+      // No athlete data - redirect to welcome to hydrate
+      console.log('⚠️ ATHLETE HOME: No athlete data, redirecting to welcome');
+      navigate('/athlete-welcome', { replace: true });
+      return;
+    }
 
-      try {
-        // Load the full hydration model
-        const model = LocalStorageAPI.getFullHydrationModel();
-        const { athlete: storedProfile, weeklyActivities: cachedActivities, weeklyTotals: cachedTotals } = model;
+    try {
+      // Load activities and totals from full hydration model
+      const model = LocalStorageAPI.getFullHydrationModel();
+      const { weeklyActivities: cachedActivities, weeklyTotals: cachedTotals } = model || {};
 
-        if (!storedProfile) {
-          console.log('⚠️ ATHLETE HOME: No profile data found, redirecting to welcome hydrator');
-          navigate('/athlete-welcome', { replace: true });
-          return;
-        }
+      setWeeklyActivities(Array.isArray(cachedActivities) ? cachedActivities : []);
+      setWeeklyTotals(cachedTotals || null);
 
-        // Set athlete context from model
-        setAthleteProfile(storedProfile);
-        setAthleteId(LocalStorageAPI.getAthleteId());
-        setRunCrewId(LocalStorageAPI.getRunCrewId());
-        setRunCrewManagerId(LocalStorageAPI.getRunCrewManagerId());
-
-        // Set activities from full model
-        setWeeklyActivities(Array.isArray(cachedActivities) ? cachedActivities : []);
-        setWeeklyTotals(cachedTotals || null);
-
-        // Calculate onboarding state
-        const storedOnboarding = localStorage.getItem('onboardingState');
-        let onboarding;
-        if (storedOnboarding) {
-          onboarding = JSON.parse(storedOnboarding);
-        } else {
-          onboarding = UserOnboardingCalculationService.calculateOnboardingState(storedProfile.createdAt);
-          localStorage.setItem('onboardingState', JSON.stringify(onboarding));
-        }
-
-        setOnboardingState(onboarding);
-        setDisplayCards(UserOnboardingCalculationService.getCardsForUser(storedProfile, onboarding));
-      } catch (error) {
-        console.error('❌ ATHLETE HOME: Error loading athlete data:', error);
-        navigate('/athlete-welcome', { replace: true });
-      } finally {
-        setIsLoading(false);
+      // Calculate onboarding state
+      const storedOnboarding = localStorage.getItem('onboardingState');
+      let onboarding;
+      if (storedOnboarding) {
+        onboarding = JSON.parse(storedOnboarding);
+      } else {
+        onboarding = UserOnboardingCalculationService.calculateOnboardingState(athleteProfile.createdAt);
+        localStorage.setItem('onboardingState', JSON.stringify(onboarding));
       }
-    };
 
-    loadAthleteData();
-  }, [navigate]);
+      setOnboardingState(onboarding);
+      setDisplayCards(UserOnboardingCalculationService.getCardsForUser(athleteProfile, onboarding));
+    } catch (error) {
+      console.error('❌ ATHLETE HOME: Error loading athlete data:', error);
+    }
+  }, [athleteProfile, navigate]);
 
   const handleSignOut = async () => {
     try {
@@ -122,56 +107,56 @@ const AthleteHome = () => {
   };
 
   const handleGoToRunCrew = async () => {
+    // Use hook data directly - no need to read from localStorage again
+    if (!runCrewId) {
+      console.warn('⚠️ ATHLETE HOME: No crew context - join or create a crew first');
+      navigate('/runcrew/join-or-start');
+      return;
+    }
+
+    // If we have crew data from hook, use it directly
+    if (runCrew) {
+      console.log('✅ ATHLETE HOME: Using crew data from hook, navigating to central');
+      navigate('/runcrew/central');
+      return;
+    }
+
+    // Otherwise, hydrate from backend (shouldn't happen if hydration worked)
+    if (!athleteId) {
+      console.warn('⚠️ ATHLETE HOME: Missing athleteId, routing to welcome');
+      navigate('/athlete-welcome');
+      return;
+    }
+
+    const user = auth.currentUser;
+    if (!user) {
+      console.warn('⚠️ ATHLETE HOME: No Firebase user');
+      navigate('/athletesignin');
+      return;
+    }
+
     try {
-      const storedRunCrewId = LocalStorageAPI.getRunCrewId();
-      const storedAthleteId = LocalStorageAPI.getAthleteId();
-
-      if (!storedAthleteId) {
-        console.warn('⚠️ ATHLETE HOME: Missing athleteId, routing to welcome');
-        navigate('/athlete-welcome');
-        return;
-      }
-
-      if (!storedRunCrewId) {
-        console.warn('⚠️ ATHLETE HOME: No crew context - join or create a crew first');
-        alert('Join or create a crew first!');
-        return;
-      }
-
-      const user = auth.currentUser;
-      const token = await user?.getIdToken();
-
+      const token = await user.getIdToken();
       setIsCrewHydrating(true);
 
       const { data } = await axios.post(
         `${API_BASE}/runcrew/hydrate`,
-        { runCrewId: storedRunCrewId, athleteId: storedAthleteId },
+        { runCrewId, athleteId },
         {
-          headers: token
-            ? { Authorization: `Bearer ${token}` }
-            : undefined
+          headers: { Authorization: `Bearer ${token}` }
         }
       );
 
-      if (!data?.success || !data.runCrew) {
+      if (data?.success && data.runCrew) {
+        LocalStorageAPI.setRunCrewData(data.runCrew);
+        navigate('/runcrew/central');
+      } else {
         throw new Error(data?.error || data?.message || 'Failed to hydrate crew');
       }
-
-      const managerRecord = Array.isArray(data.runCrew?.managers)
-        ? data.runCrew.managers.find((manager) => manager.athleteId === storedAthleteId && manager.role === 'admin')
-        : null;
-
-      LocalStorageAPI.setRunCrewData(data.runCrew);
-      LocalStorageAPI.setRunCrewId(data.runCrew.id);
-      LocalStorageAPI.setRunCrewManagerId(managerRecord?.id || null);
-
-      setRunCrewId(data.runCrew.id);
-      setRunCrewManagerId(managerRecord?.id || null);
-
-      navigate('/crew/crewadmin');
     } catch (error) {
       console.error('❌ ATHLETE HOME: Unable to load crew', error);
-      alert('Unable to load your crew. Please try again.');
+      // If hydration fails, still try to navigate - RunCrewCentral will handle it
+      navigate('/runcrew/central');
     } finally {
       setIsCrewHydrating(false);
     }
@@ -188,8 +173,8 @@ const AthleteHome = () => {
     navigate(card.path);
   };
 
-  // Render guard: prevent white screen if data is missing or loading
-  if (isLoading || !athleteProfile) {
+  // Render guard: redirect if no athlete data (hook will be empty)
+  if (!athleteProfile) {
     return (
       <div className="min-h-screen bg-white flex items-center justify-center">
         <div className="text-center">
@@ -205,9 +190,16 @@ const AthleteHome = () => {
     ? UserOnboardingCalculationService.getOnboardingMessage(onboardingState, athleteProfile)
     : `Welcome, ${athleteProfile?.firstName || 'Athlete'}!`;
 
+  // Dynamic sidebar items - updates when runCrewId changes
   const sidebarItems = [
     { id: 'activity', label: 'Activity', icon: Activity, path: '/my-activities' },
-    { id: 'crew', label: 'Crew', icon: Users, path: runCrewId ? '/crew/crewadmin' : '/runcrew/join-or-start' },
+    { 
+      id: 'crew', 
+      label: 'Crew', 
+      icon: Users, 
+      path: runCrewId ? '/runcrew/central' : '/runcrew/join-or-start',
+      onClick: runCrewId ? handleGoToRunCrew : undefined
+    },
     { id: 'events', label: 'Events', icon: Calendar, path: '/settings/events' },
   ];
 
@@ -231,7 +223,10 @@ const AthleteHome = () => {
                 key={item.id}
                 onClick={() => {
                   setActiveSection(item.id);
-                  if (item.path) {
+                  // Use custom onClick if provided, otherwise use path
+                  if (item.onClick) {
+                    item.onClick();
+                  } else if (item.path) {
                     navigate(item.path);
                   }
                 }}

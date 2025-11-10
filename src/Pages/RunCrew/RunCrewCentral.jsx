@@ -1,4 +1,4 @@
-import React, { useCallback, useMemo, useState } from 'react';
+import React, { useCallback, useMemo, useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import useHydratedAthlete from '../../hooks/useHydratedAthlete';
 import { LocalStorageAPI } from '../../config/LocalStorageConfig';
@@ -82,6 +82,14 @@ export default function RunCrewCentral() {
       console.error('Failed to refresh crew', error);
     }
   }, [runCrewId, athleteId]);
+
+  // Auto-hydrate crew if not in localStorage
+  useEffect(() => {
+    if (!crew && runCrewId && athleteId) {
+      console.log('⚠️ RUNCREW CENTRAL: No crew data, hydrating...');
+      refreshCrew();
+    }
+  }, [crew, runCrewId, athleteId, refreshCrew]);
 
   const handleMessageSubmit = async (event) => {
     event.preventDefault();
@@ -210,6 +218,25 @@ export default function RunCrewCentral() {
     }
   };
 
+  // Loading state - show while hydrating
+  if (!crew && runCrewId) {
+    return (
+      <div className="min-h-screen bg-gray-50 flex items-center justify-center">
+        <div className="text-center">
+          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-orange-500 mx-auto mb-4"></div>
+          <p className="text-gray-600">Loading your crew...</p>
+        </div>
+      </div>
+    );
+  }
+
+  // No crew and no crewId - redirect to join/create
+  if (!crew && !runCrewId) {
+    navigate('/runcrew/join-or-start', { replace: true });
+    return null;
+  }
+
+  // Fallback guard (should not reach here if above checks work)
   if (!crew) {
     return (
       <div className="min-h-screen bg-gray-50 flex items-center justify-center">
