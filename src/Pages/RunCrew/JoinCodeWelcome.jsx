@@ -16,17 +16,9 @@ export default function JoinCodeWelcome() {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState(null);
 
-  // Auto-fill join code from URL
-  useEffect(() => {
-    const codeToUse = code || codeFromQuery;
-    if (codeToUse) {
-      setJoinCode(codeToUse.toUpperCase().trim());
-    }
-  }, [code, codeFromQuery]);
-
-  const handleLookup = async () => {
-    if (!joinCode.trim()) {
-      setError('Please enter a join code');
+  // Separate lookup function that can be called with a code
+  const handleLookupWithCode = async (codeToLookup) => {
+    if (!codeToLookup || !codeToLookup.trim()) {
       return;
     }
 
@@ -35,7 +27,7 @@ export default function JoinCodeWelcome() {
 
     try {
       const response = await axios.post(`${API_BASE}/runcrew/lookup`, {
-        joinCode: joinCode.trim().toUpperCase()
+        joinCode: codeToLookup.trim().toUpperCase()
       });
 
       if (response.data.success) {
@@ -51,6 +43,28 @@ export default function JoinCodeWelcome() {
     } finally {
       setLoading(false);
     }
+  };
+
+  // Auto-fill join code from URL and auto-lookup
+  useEffect(() => {
+    const codeToUse = code || codeFromQuery;
+    if (codeToUse) {
+      const normalizedCode = codeToUse.toUpperCase().trim();
+      setJoinCode(normalizedCode);
+      // Auto-trigger lookup when code is detected from URL
+      if (normalizedCode) {
+        handleLookupWithCode(normalizedCode);
+      }
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [code, codeFromQuery]);
+
+  const handleLookup = async () => {
+    if (!joinCode.trim()) {
+      setError('Please enter a join code');
+      return;
+    }
+    await handleLookupWithCode(joinCode);
   };
 
   const handleJoinCrew = async () => {
