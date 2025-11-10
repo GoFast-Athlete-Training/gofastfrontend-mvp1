@@ -21,6 +21,32 @@ const initialRunForm = {
   stravaMapUrl: ''
 };
 
+const paceOptions = [
+  '6:00-6:30',
+  '6:30-7:00',
+  '7:00-7:30',
+  '7:30-8:00',
+  '8:00-8:30',
+  '8:30-9:00',
+  '9:00-9:30',
+  '9:30-10:00',
+  '10:00-10:30',
+  '10:30-11:00',
+  '11:00+'
+];
+
+const timeOptions = [
+  '5:00 AM','5:30 AM','6:00 AM','6:30 AM','7:00 AM','7:30 AM','8:00 AM','8:30 AM','9:00 AM','9:30 AM',
+  '10:00 AM','10:30 AM','11:00 AM','11:30 AM','12:00 PM','12:30 PM','1:00 PM','1:30 PM','2:00 PM','2:30 PM',
+  '3:00 PM','3:30 PM','4:00 PM','4:30 PM','5:00 PM','5:30 PM','6:00 PM','6:30 PM','7:00 PM','7:30 PM','8:00 PM'
+];
+
+const metricFormatters = {
+  miles: (entry) => `${(entry.totalDistanceMiles ?? 0).toFixed(1)} mi`,
+  runs: (entry) => `${entry.activityCount ?? 0} runs`,
+  calories: (entry) => `${Math.round(entry.totalCalories ?? 0)} cal`
+};
+
 export default function RunCrewCentralAdmin() {
   const navigate = useNavigate();
   const {
@@ -36,11 +62,13 @@ export default function RunCrewCentralAdmin() {
   const [toast, setToast] = useState(null);
 
   const [announcementContent, setAnnouncementContent] = useState('');
+  const [messageContent, setMessageContent] = useState('');
   const [runForm, setRunForm] = useState(initialRunForm);
-  const [editingRunId, setEditingRunId] = useState(null); // Track which run is being edited
-  const [expandedRunId, setExpandedRunId] = useState(null); // Track which run details are expanded
-  const [placeData, setPlaceData] = useState(null); // Google Places data (lat/lng/placeId)
-  const [showEditModal, setShowEditModal] = useState(false); // Control edit modal visibility
+  const [editingRunId, setEditingRunId] = useState(null);
+  const [expandedRunId, setExpandedRunId] = useState(null);
+  const [placeData, setPlaceData] = useState(null);
+  const [showRunModal, setShowRunModal] = useState(false);
+  const [activeMetric, setActiveMetric] = useState('miles');
 
   const isAdmin = useMemo(() => {
     if (!crew || !athleteId) {
@@ -67,6 +95,8 @@ export default function RunCrewCentralAdmin() {
   const announcements = crew?.announcements || [];
   const messages = crew?.messages || [];
   const memberships = crew?.memberships || crew?.members || [];
+  const joinCode = crew?.joinCode || crew?.inviteCode || null;
+  const leaderboard = crew?.leaderboardDynamic || [];
 
   const showToast = (message) => {
     setToast(message);
@@ -169,14 +199,67 @@ export default function RunCrewCentralAdmin() {
         : null
     };
 
-    const updatedCrew = {
+    const optimistic = {
       ...crew,
       announcements: [newAnnouncement, ...announcements]
     };
 
     setAnnouncementContent('');
-    persistCrew(updatedCrew);
-    showToast('Announcement added');
+    persistCrew(optimistic);
+    showToast('Announcement added (syncing...)');
+
+    // Fire-and-forget until backend is wired
+  };
+
+  const handleMessageSubmit = async (event) => {
+    event.preventDefault();
+    if (!crew) {
+      showToast('Sync your crew before posting');
+      return;
+    }
+
+    const trimmed = messageContent.trim();
+    if (!trimmed) return;
+
+    const optimisticMessage = {
+      id: `local-msg-${Date.now()}`,
+      content: trimmed,
+      createdAt: new Date().toISOString(),
+      athlete: hydratedAthlete
+        ? {
+            id: athleteId,
+            firstName: hydratedAthlete.firstName,
+            lastName: hydratedAthlete.lastName,
+            photoURL: hydratedAthlete.photoURL
+          }
+        : null
+    };
+
+    persistCrew({ ...crew, messages: [...messages, optimisticMessage] });
+    setMessageContent('');
+
+    try {
+      const user = auth.currentUser;
+      const token = await user?.getIdToken();
+      if (!token) return;
+
+      await axios.post(
+        `${API_BASE}/runcrew/messages`,
+        {
+          runCrewId: crew.id || runCrewId,
+          message: trimmed
+        },
+        {
+          headers: { Authorization: `Bearer ${token}` }
+        }
+      );
+
+      showToast('Message sent');
+      handleResync();
+    } catch (error) {
+      console.error('Failed to send message:', error);
+      showToast('Message saved locally (sync later)');
+    }
   };
 
   const handleRunSubmit = async (event) => {
@@ -242,7 +325,7 @@ export default function RunCrewCentralAdmin() {
           setEditingRunId(null);
           setRunForm(initialRunForm);
           setPlaceData(null);
-          setShowEditModal(false);
+          setShowRunModal(false);
         } else {
           throw new Error(data?.error || 'Failed to update run');
         }
@@ -276,15 +359,19 @@ export default function RunCrewCentralAdmin() {
       rsvps: []
     };
 
-    const updatedCrew = {
-      ...crew,
-      runs: [newRun, ...runs]
-    };
-
+    const optimisticRuns = [newRun, ...runs];
+    persistCrew({ ...crew, runs: optimisticRuns });
     setRunForm(initialRunForm);
     setPlaceData(null);
-    persistCrew(updatedCrew);
-    showToast('Run created successfully!');
+    setShowRunModal(false);
+    showToast('Run created (sync later)');
+  };
+
+  const openCreateRun = () => {
+    setEditingRunId(null);
+    setRunForm(initialRunForm);
+    setPlaceData(null);
+    setShowRunModal(true);
   };
 
   const formatRunDate = (run) => {
@@ -355,14 +442,24 @@ export default function RunCrewCentralAdmin() {
     });
     
     // Open modal instead of scrolling
-    setShowEditModal(true);
+    setShowRunModal(true);
   };
 
   const handleCancelEdit = () => {
     setEditingRunId(null);
     setRunForm(initialRunForm);
     setPlaceData(null);
-    setShowEditModal(false);
+    setShowRunModal(false);
+  };
+
+  const getLeaderboardDisplay = (entries) => {
+    if (!Array.isArray(entries) || entries.length === 0) return [];
+    return entries
+      .map((entry) => ({
+        ...entry,
+        display: metricFormatters[activeMetric](entry)
+      }))
+      .slice(0, 5);
   };
 
   const toggleRunDetails = (runId) => {
@@ -420,8 +517,8 @@ export default function RunCrewCentralAdmin() {
       )}
 
       <header className="bg-white shadow-sm">
-        <div className="max-w-6xl mx-auto px-6 py-5 flex flex-wrap items-center justify-between gap-4">
-          <div className="flex items-start space-x-4">
+        <div className="max-w-6xl mx-auto px-4 lg:px-6 py-6 flex flex-wrap items-center justify-between gap-6">
+          <div className="flex items-start gap-4">
             <button
               onClick={() => navigate('/athlete-home')}
               className="text-gray-600 hover:text-gray-900"
@@ -436,10 +533,10 @@ export default function RunCrewCentralAdmin() {
               <p className="mt-2 text-base text-gray-700">
                 Welcome back{hydratedAthlete?.firstName ? `, ${hydratedAthlete.firstName}` : ''}! You’re managing everything for this crew.
               </p>
-              <div className="mt-2 bg-sky-100 border border-sky-200 rounded px-3 py-2 text-xs text-sky-900 space-y-1">
-                <p>athleteId: {athleteId || '—'}</p>
-                <p>runCrewId: {runCrewId || crew.id || '—'}</p>
-                <p>managerId: {runCrewManagerId || '—'}</p>
+              <div className="mt-3 flex flex-wrap gap-3 text-xs text-sky-900">
+                <span className="bg-sky-100 border border-sky-200 rounded px-3 py-1">athleteId: {athleteId || '—'}</span>
+                <span className="bg-sky-100 border border-sky-200 rounded px-3 py-1">runCrewId: {runCrewId || crew.id || '—'}</span>
+                <span className="bg-sky-100 border border-sky-200 rounded px-3 py-1">managerId: {runCrewManagerId || '—'}</span>
               </div>
             </div>
           </div>
@@ -467,279 +564,115 @@ export default function RunCrewCentralAdmin() {
         </div>
       </header>
 
-      <main className="max-w-6xl mx-auto px-6 py-10 space-y-8">
+      <main className="max-w-6xl mx-auto px-4 lg:px-6 py-10 space-y-8">
         {syncError && (
           <div className="bg-red-50 border border-red-200 text-red-700 px-4 py-3 rounded-lg text-sm">
             {syncError}
           </div>
         )}
 
-        {/* Announcement Composer */}
-        <section className="bg-white rounded-2xl border border-gray-200 shadow-sm p-6 space-y-6">
-          <div className="flex items-center justify-between">
-            <div>
-              <h2 className="text-xl font-bold text-gray-900">Announcements</h2>
-              <p className="text-sm text-gray-500">Share updates with your crew. Posts stay local until we wire the backend.</p>
-            </div>
-          </div>
-
-          <form onSubmit={handleAnnouncementSubmit} className="space-y-4">
-            <textarea
-              value={announcementContent}
-              onChange={handleAnnouncementChange}
-              placeholder="What’s happening next?"
-              className="w-full border border-gray-300 rounded-lg px-4 py-3 text-sm focus:outline-none focus:ring-2 focus:ring-sky-500 focus:border-sky-500 min-h-[100px]"
-            />
-            <div className="flex justify-end">
-              <button
-                type="submit"
-                className="bg-orange-500 hover:bg-orange-600 text-white px-5 py-2 rounded-lg text-sm font-semibold transition"
-              >
-                Post Announcement
-              </button>
-            </div>
-          </form>
-
-          <div className="space-y-4">
-            {announcements.length === 0 && (
-              <p className="text-sm text-gray-500">No announcements yet. Be the first to post one.</p>
-            )}
-            {announcements.map((announcement) => (
-              <div key={announcement.id} className="border border-gray-200 rounded-xl px-4 py-3 bg-gray-50">
-                <div className="flex items-center justify-between text-xs text-gray-500 mb-2">
-                  <span>
-                    {announcement.author?.firstName
-                      ? `${announcement.author.firstName}${announcement.author.lastName ? ` ${announcement.author.lastName}` : ''}`
-                      : 'Admin'}
-                  </span>
-                  <span>
-                    {announcement.createdAt
-                      ? new Date(announcement.createdAt).toLocaleString('en-US', {
-                          month: 'short',
-                          day: 'numeric',
-                          hour: 'numeric',
-                          minute: '2-digit'
-                        })
-                      : 'Just now'}
-                  </span>
-                </div>
-                <p className="text-sm text-gray-800 whitespace-pre-line">{announcement.content || announcement.text}</p>
-              </div>
-            ))}
-          </div>
-        </section>
-
-        {/* Run Creator */}
-        <section className="bg-white rounded-2xl border border-gray-200 shadow-sm p-6 space-y-6">
-          <div className="flex items-center justify-between">
-            <div>
-              <h2 className="text-xl font-bold text-gray-900">
-                {editingRunId ? 'Edit Run' : 'Create a Run'}
-              </h2>
-              <p className="text-sm text-gray-500">
-                {editingRunId ? 'Update the details below and save changes.' : 'Schedule meetups and keep your crew moving.'}
-              </p>
-            </div>
-            {editingRunId && (
-              <button
-                type="button"
-                onClick={handleCancelEdit}
-                className="text-sm text-gray-600 hover:text-gray-900 border border-gray-300 rounded-lg px-4 py-2"
-              >
-                Cancel Edit
-              </button>
-            )}
-          </div>
-
-          <form onSubmit={handleRunSubmit} className="space-y-6">
-            {/* Row 1: Title & Date */}
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-              <div className="space-y-2">
-                <label className="text-xs font-semibold text-gray-600 uppercase tracking-wide">Title *</label>
-                <input
-                  type="text"
-                  value={runForm.title}
-                  onChange={handleRunFormChange('title')}
-                  placeholder="Saturday Sunrise Run"
-                  className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-sky-500 focus:border-sky-500"
-                  required
-                />
-              </div>
-              <div className="space-y-2">
-                <label className="text-xs font-semibold text-gray-600 uppercase tracking-wide">Date *</label>
-                <input
-                  type="date"
-                  value={runForm.date}
-                  onChange={handleRunFormChange('date')}
-                  className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-sky-500 focus:border-sky-500"
-                  required
-                />
+        {/* Top Row Cards */}
+        <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+          <section className="bg-white rounded-2xl border border-gray-200 shadow-sm p-6 space-y-6 lg:col-span-2">
+            <div className="flex items-center justify-between">
+              <div>
+                <h2 className="text-xl font-bold text-gray-900">Announcements</h2>
+                <p className="text-sm text-gray-500">Share updates with your crew. Posts stay local until we wire the backend.</p>
               </div>
             </div>
 
-            {/* Row 2: Time & Meet-Up Point */}
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-              <div className="space-y-2">
-                <label className="text-xs font-semibold text-gray-600 uppercase tracking-wide">Start Time *</label>
-                <select
-                  value={runForm.time}
-                  onChange={handleRunFormChange('time')}
-                  className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-sky-500 focus:border-sky-500"
-                  required
-                >
-                  <option value="">Select time...</option>
-                  <option value="5:00 AM">5:00 AM</option>
-                  <option value="5:30 AM">5:30 AM</option>
-                  <option value="6:00 AM">6:00 AM</option>
-                  <option value="6:30 AM">6:30 AM</option>
-                  <option value="7:00 AM">7:00 AM</option>
-                  <option value="7:30 AM">7:30 AM</option>
-                  <option value="8:00 AM">8:00 AM</option>
-                  <option value="8:30 AM">8:30 AM</option>
-                  <option value="9:00 AM">9:00 AM</option>
-                  <option value="9:30 AM">9:30 AM</option>
-                  <option value="10:00 AM">10:00 AM</option>
-                  <option value="10:30 AM">10:30 AM</option>
-                  <option value="11:00 AM">11:00 AM</option>
-                  <option value="11:30 AM">11:30 AM</option>
-                  <option value="12:00 PM">12:00 PM</option>
-                  <option value="12:30 PM">12:30 PM</option>
-                  <option value="1:00 PM">1:00 PM</option>
-                  <option value="1:30 PM">1:30 PM</option>
-                  <option value="2:00 PM">2:00 PM</option>
-                  <option value="2:30 PM">2:30 PM</option>
-                  <option value="3:00 PM">3:00 PM</option>
-                  <option value="3:30 PM">3:30 PM</option>
-                  <option value="4:00 PM">4:00 PM</option>
-                  <option value="4:30 PM">4:30 PM</option>
-                  <option value="5:00 PM">5:00 PM</option>
-                  <option value="5:30 PM">5:30 PM</option>
-                  <option value="6:00 PM">6:00 PM</option>
-                  <option value="6:30 PM">6:30 PM</option>
-                  <option value="7:00 PM">7:00 PM</option>
-                  <option value="7:30 PM">7:30 PM</option>
-                  <option value="8:00 PM">8:00 PM</option>
-                </select>
-              </div>
-              <div className="space-y-2">
-                <label className="text-xs font-semibold text-gray-600 uppercase tracking-wide">Meet-Up Point *</label>
-                <input
-                  type="text"
-                  value={runForm.meetUpPoint}
-                  onChange={handleRunFormChange('meetUpPoint')}
-                  placeholder="Central Park – Bethesda Terrace"
-                  className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-sky-500 focus:border-sky-500"
-                  required
-                />
-              </div>
-            </div>
-
-            {/* Row 3: Address (full width) with Google Places Autocomplete */}
-            <div className="space-y-2">
-              <label className="text-xs font-semibold text-gray-600 uppercase tracking-wide">Meetup Address</label>
-              <GooglePlacesAutocomplete
-                value={runForm.meetUpAddress}
-                onChange={handleRunFormChange('meetUpAddress')}
-                onPlaceSelected={handlePlaceSelected}
-                placeholder="Start typing address..."
-                className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-sky-500 focus:border-sky-500"
-              />
-            </div>
-
-            {/* Row 4: Distance & Pace */}
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-              <div className="space-y-2">
-                <label className="text-xs font-semibold text-gray-600 uppercase tracking-wide">Total Miles</label>
-                <input
-                  type="number"
-                  step="0.1"
-                  value={runForm.totalMiles}
-                  onChange={handleRunFormChange('totalMiles')}
-                  placeholder="5.0"
-                  className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-sky-500 focus:border-sky-500"
-                />
-              </div>
-              <div className="space-y-2">
-                <label className="text-xs font-semibold text-gray-600 uppercase tracking-wide">Pace (min/mile)</label>
-                <select
-                  value={runForm.pace}
-                  onChange={handleRunFormChange('pace')}
-                  className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-sky-500 focus:border-sky-500"
-                >
-                  <option value="">Select pace...</option>
-                  <option value="6:00-6:30">6:00-6:30 (Fast)</option>
-                  <option value="6:30-7:00">6:30-7:00</option>
-                  <option value="7:00-7:30">7:00-7:30</option>
-                  <option value="7:30-8:00">7:30-8:00</option>
-                  <option value="8:00-8:30">8:00-8:30 (Moderate)</option>
-                  <option value="8:30-9:00">8:30-9:00</option>
-                  <option value="9:00-9:30">9:00-9:30</option>
-                  <option value="9:30-10:00">9:30-10:00</option>
-                  <option value="10:00-10:30">10:00-10:30 (Easy)</option>
-                  <option value="10:30-11:00">10:30-11:00</option>
-                  <option value="11:00+">11:00+ (Recovery)</option>
-                </select>
-              </div>
-            </div>
-
-            {/* Row 5: Strava Map URL with inline preview */}
-            <div className="space-y-2">
-              <label className="text-xs font-semibold text-gray-600 uppercase tracking-wide">Strava Route URL (Optional)</label>
-              <input
-                type="url"
-                value={runForm.stravaMapUrl}
-                onChange={handleRunFormChange('stravaMapUrl')}
-                placeholder="https://www.strava.com/routes/..."
-                className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-sky-500 focus:border-sky-500"
-              />
-              
-              {/* Inline Strava Preview */}
-              {runForm.stravaMapUrl && runForm.stravaMapUrl.includes('strava.com') && (
-                <div className="mt-3">
-                  <StravaRoutePreview 
-                    polylineString="ypweFnzbjVhAWnAc@bAa@dAe@fAi@hAm@jAq@lAs@nAw@pAy@rA{@tA}@vA_AvAaAxAcAzAeA|AgA~AiA`BiAaBkAdBmAfBoBhBoBlBqBnBsBpBuBrBwBtByB"
-                    stravaUrl={runForm.stravaMapUrl}
-                  />
-                </div>
-              )}
-            </div>
-
-            {/* Row 6: Description */}
-            <div className="space-y-2">
-              <label className="text-xs font-semibold text-gray-600 uppercase tracking-wide">Description</label>
+            <form onSubmit={handleAnnouncementSubmit} className="space-y-4">
               <textarea
-                value={runForm.description}
-                onChange={handleRunFormChange('description')}
-                placeholder="Tell your crew what to expect... route details, coffee after, etc."
-                rows={3}
-                className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-sky-500 focus:border-sky-500"
+                value={announcementContent}
+                onChange={handleAnnouncementChange}
+                placeholder="What’s happening next?"
+                className="w-full border border-gray-300 rounded-lg px-4 py-3 text-sm focus:outline-none focus:ring-2 focus:ring-sky-500 focus:border-sky-500 min-h-[100px]"
               />
-            </div>
-
-            {/* Submit Button */}
-            <div className="flex justify-end gap-3">
-              {editingRunId && (
+              <div className="flex justify-end">
                 <button
-                  type="button"
-                  onClick={handleCancelEdit}
-                  className="border border-gray-300 text-gray-700 px-5 py-2 rounded-lg text-sm font-semibold hover:bg-gray-50 transition"
+                  type="submit"
+                  className="bg-orange-500 hover:bg-orange-600 text-white px-5 py-2 rounded-lg text-sm font-semibold transition"
                 >
-                  Cancel
+                  Post Announcement
                 </button>
+              </div>
+            </form>
+
+            <div className="space-y-4">
+              {announcements.length === 0 && (
+                <p className="text-sm text-gray-500">No announcements yet. Be the first to post one.</p>
               )}
+              {announcements.map((announcement) => (
+                <div key={announcement.id} className="border border-gray-200 rounded-xl px-4 py-3 bg-gray-50">
+                  <div className="flex items-center justify-between text-xs text-gray-500 mb-2">
+                    <span>
+                      {announcement.author?.firstName
+                        ? `${announcement.author.firstName}${announcement.author.lastName ? ` ${announcement.author.lastName}` : ''}`
+                        : 'Admin'}
+                    </span>
+                    <span>
+                      {announcement.createdAt
+                        ? new Date(announcement.createdAt).toLocaleString('en-US', {
+                            month: 'short',
+                            day: 'numeric',
+                            hour: 'numeric',
+                            minute: '2-digit'
+                          })
+                        : 'Just now'}
+                    </span>
+                  </div>
+                  <p className="text-sm text-gray-800 whitespace-pre-line">{announcement.content || announcement.text}</p>
+                </div>
+              ))}
+            </div>
+          </section>
+
+          <section className="bg-white rounded-2xl border border-gray-200 shadow-sm p-6 space-y-6">
+            <div className="flex items-center justify-between">
+              <h2 className="text-xl font-bold text-gray-900">Crew Actions</h2>
               <button
-                type="submit"
-                className="bg-emerald-500 hover:bg-emerald-600 text-white px-5 py-2 rounded-lg text-sm font-semibold transition"
+                onClick={openCreateRun}
+                className="bg-emerald-500 hover:bg-emerald-600 text-white px-4 py-2 rounded-lg text-sm font-semibold transition"
               >
-                {editingRunId ? 'Save Changes' : 'Create Run'}
+                Schedule Run
               </button>
             </div>
-          </form>
+            <div className="space-y-4">
+              <div className="border border-gray-200 rounded-xl p-4 bg-gray-50 space-y-2">
+                <p className="text-xs uppercase tracking-wide text-gray-500">Crew Health</p>
+                <p className="text-lg font-semibold text-gray-900">{runs.length} upcoming runs</p>
+                <p className="text-sm text-gray-600">Keep the calendar full to keep members engaged.</p>
+              </div>
+              <div className="border border-gray-200 rounded-xl p-4 bg-gray-50 space-y-2">
+                <p className="text-xs uppercase tracking-wide text-gray-500">Messages</p>
+                <p className="text-lg font-semibold text-gray-900">{messages.length}</p>
+                <p className="text-sm text-gray-600">Announcements & chat keep the crew energized.</p>
+              </div>
+              <div className="border border-gray-200 rounded-xl p-4 bg-gray-50 space-y-2">
+                <p className="text-xs uppercase tracking-wide text-gray-500">Members</p>
+                <p className="text-lg font-semibold text-gray-900">{memberships.length}</p>
+                {memberships.length <= 1 && joinCode && (
+                  <div className="mt-2">
+                    <p className="text-xs text-gray-500">Invite teammates:</p>
+                    <code className="mt-1 block bg-white border border-gray-200 rounded px-3 py-2 text-xs text-gray-700">
+                      Join at athlete.gofastcrushgoals.com/runcrew/join<br />
+                      Code: <span className="font-semibold text-orange-600">{joinCode}</span>
+                    </code>
+                  </div>
+                )}
+              </div>
+            </div>
+          </section>
+        </div>
 
+        {/* Runs Module */}
+        <section className="bg-white rounded-2xl border border-gray-200 shadow-sm p-6 space-y-6">
           <div className="space-y-4">
             <h3 className="text-lg font-semibold text-gray-900">Upcoming Runs</h3>
             {runs.length === 0 && (
-              <p className="text-sm text-gray-500">No runs yet — create one above.</p>
+              <div className="border border-dashed border-gray-300 rounded-xl p-6 text-center text-sm text-gray-500">
+                No runs yet — click “Schedule Run” to add one.
+              </div>
             )}
             <div className="space-y-3">
               {runs.map((run) => {
@@ -880,7 +813,7 @@ export default function RunCrewCentralAdmin() {
           <div className="flex items-center justify-between">
             <div>
               <h2 className="text-xl font-bold text-gray-900">Messages</h2>
-              <p className="text-sm text-gray-500">Recent chatter from the crew.</p>
+              <p className="text-sm text-gray-500">Crew chatter and updates.</p>
             </div>
           </div>
           {messages.length === 0 && (
@@ -910,10 +843,29 @@ export default function RunCrewCentralAdmin() {
               </div>
             ))}
           </div>
+
+          <form onSubmit={handleMessageSubmit} className="pt-4 border-t border-gray-200">
+            <div className="flex gap-3">
+              <input
+                type="text"
+                value={messageContent}
+                onChange={(event) => setMessageContent(event.target.value)}
+                placeholder="Drop a note for the crew…"
+                className="flex-1 border border-gray-300 rounded-lg px-4 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-orange-500 focus:border-orange-500"
+              />
+              <button
+                type="submit"
+                disabled={!messageContent.trim()}
+                className="bg-orange-500 hover:bg-orange-600 disabled:opacity-50 text-white px-4 py-2 rounded-lg text-sm font-semibold transition"
+              >
+                Send
+              </button>
+            </div>
+          </form>
         </section>
 
-        {/* Members */}
-        <section className="bg-white rounded-2xl border border-gray-200 shadow-sm p-6 space-y-4">
+        {/* Members + Leaderboard */}
+        <section className="bg-white rounded-2xl border border-gray-200 shadow-sm p-6 space-y-6">
           <div className="flex items-center justify-between">
             <div>
               <h2 className="text-xl font-bold text-gray-900">Members</h2>
@@ -921,52 +873,83 @@ export default function RunCrewCentralAdmin() {
             </div>
           </div>
           {memberships.length === 0 && (
-            <p className="text-sm text-gray-500">No members yet. Share your join code to build the crew.</p>
+            <div className="border border-dashed border-gray-300 rounded-xl p-6 text-center text-sm text-gray-500">
+              No members yet. Share your join code to build the crew.
+            </div>
           )}
-          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
-            {memberships.map((membership) => {
-              const athlete = membership.athlete || membership;
-              const managerRecord = Array.isArray(crew.managers)
-                ? crew.managers.find((manager) => manager.athleteId === athlete?.id && manager.role === 'admin')
-                : null;
+          <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+            <div className="lg:col-span-2 space-y-3">
+              {memberships.map((membership) => {
+                const athlete = membership.athlete || membership;
+                const managerRecord = Array.isArray(crew.managers)
+                  ? crew.managers.find((manager) => manager.athleteId === athlete?.id && manager.role === 'admin')
+                  : null;
 
-              return (
-                <div key={athlete?.id || membership.id} className="border border-gray-200 rounded-xl px-4 py-3 bg-gray-50">
-                  <p className="text-sm font-semibold text-gray-900">
-                    {athlete?.firstName || 'Athlete'} {athlete?.lastName || ''}
-                    {managerRecord && <span className="text-orange-600 text-xs font-bold ml-2">(Admin)</span>}
-                  </p>
-                  {athlete?.email && (
-                    <p className="text-xs text-gray-500 mt-1">{athlete.email}</p>
-                  )}
-                  {membership.role && (
-                    <p className="text-xs text-gray-500 mt-2 uppercase tracking-wide">{membership.role}</p>
-                  )}
+                return (
+                  <div key={athlete?.id || membership.id} className="border border-gray-200 rounded-xl px-4 py-3 bg-gray-50 flex items-center justify-between">
+                    <div>
+                      <p className="text-sm font-semibold text-gray-900">
+                        {athlete?.firstName || 'Athlete'} {athlete?.lastName || ''}
+                        {managerRecord && <span className="text-orange-600 text-xs font-bold ml-2">Admin</span>}
+                      </p>
+                      {athlete?.email && (
+                        <p className="text-xs text-gray-500 mt-1">{athlete.email}</p>
+                      )}
+                    </div>
+                    <span className="text-xs text-gray-500">Joined {membership.joinedAt ? new Date(membership.joinedAt).toLocaleDateString() : 'recently'}</span>
+                  </div>
+                );
+              })}
+            </div>
+            <div className="border border-gray-200 rounded-xl p-4 bg-gray-50 space-y-3">
+              <div className="flex items-center justify-between">
+                <h3 className="text-sm font-semibold text-gray-900">Leaderboard</h3>
+                <div className="flex gap-1">
+                  {['miles','runs','calories'].map((metric) => (
+                    <button
+                      key={metric}
+                      type="button"
+                      onClick={() => setActiveMetric(metric)}
+                      className={`px-2 py-1 text-xs rounded-full font-semibold ${activeMetric === metric ? 'bg-orange-100 text-orange-700' : 'text-gray-600 hover:bg-gray-100'}`}
+                    >
+                      {metric === 'miles' ? 'Miles' : metric === 'runs' ? 'Runs' : 'Cals'}
+                    </button>
+                  ))}
                 </div>
-              );
-            })}
+              </div>
+              <div className="space-y-2">
+                {getLeaderboardDisplay(leaderboard).length === 0 && (
+                  <p className="text-xs text-gray-500">Stats will appear once your crew syncs activities.</p>
+                )}
+                {getLeaderboardDisplay(leaderboard).map((entry, index) => (
+                  <div key={entry.athleteId || index} className="flex items-center gap-3">
+                    <div className="w-6 h-6 rounded-full bg-gradient-to-br from-yellow-400 to-orange-500 flex items-center justify-center text-white font-bold text-xs">
+                      {index + 1}
+                    </div>
+                    <p className="flex-1 text-sm font-semibold text-gray-900">{entry.firstName || 'Athlete'}</p>
+                    <p className="text-sm font-bold text-orange-600">{entry.display}</p>
+                  </div>
+                ))}
+              </div>
+            </div>
           </div>
         </section>
       </main>
 
-      {/* Edit Run Modal */}
-      {showEditModal && editingRunId && (
-        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
+      {/* Run Modal */}
+      {showRunModal && (
+        <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
           <div className="bg-white rounded-2xl shadow-2xl max-w-3xl w-full max-h-[90vh] overflow-y-auto">
             <div className="sticky top-0 bg-white border-b border-gray-200 px-6 py-4 flex items-center justify-between">
-              <h2 className="text-xl font-bold text-gray-900">Edit Run</h2>
-              <button
-                onClick={handleCancelEdit}
-                className="text-gray-400 hover:text-gray-600 transition"
-              >
+              <h2 className="text-xl font-bold text-gray-900">{editingRunId ? 'Edit Run' : 'Create Run'}</h2>
+              <button onClick={handleCancelEdit} className="text-gray-400 hover:text-gray-600 transition">
                 <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
                 </svg>
               </button>
             </div>
-            
+
             <form onSubmit={handleRunSubmit} className="p-6 space-y-6">
-              {/* Row 1: Title & Date */}
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                 <div className="space-y-2">
                   <label className="text-xs font-semibold text-gray-600 uppercase tracking-wide">Title *</label>
@@ -991,7 +974,6 @@ export default function RunCrewCentralAdmin() {
                 </div>
               </div>
 
-              {/* Row 2: Time & Meet-Up Point */}
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                 <div className="space-y-2">
                   <label className="text-xs font-semibold text-gray-600 uppercase tracking-wide">Start Time *</label>
@@ -1002,37 +984,9 @@ export default function RunCrewCentralAdmin() {
                     required
                   >
                     <option value="">Select time...</option>
-                    <option value="5:00 AM">5:00 AM</option>
-                    <option value="5:30 AM">5:30 AM</option>
-                    <option value="6:00 AM">6:00 AM</option>
-                    <option value="6:30 AM">6:30 AM</option>
-                    <option value="7:00 AM">7:00 AM</option>
-                    <option value="7:30 AM">7:30 AM</option>
-                    <option value="8:00 AM">8:00 AM</option>
-                    <option value="8:30 AM">8:30 AM</option>
-                    <option value="9:00 AM">9:00 AM</option>
-                    <option value="9:30 AM">9:30 AM</option>
-                    <option value="10:00 AM">10:00 AM</option>
-                    <option value="10:30 AM">10:30 AM</option>
-                    <option value="11:00 AM">11:00 AM</option>
-                    <option value="11:30 AM">11:30 AM</option>
-                    <option value="12:00 PM">12:00 PM</option>
-                    <option value="12:30 PM">12:30 PM</option>
-                    <option value="1:00 PM">1:00 PM</option>
-                    <option value="1:30 PM">1:30 PM</option>
-                    <option value="2:00 PM">2:00 PM</option>
-                    <option value="2:30 PM">2:30 PM</option>
-                    <option value="3:00 PM">3:00 PM</option>
-                    <option value="3:30 PM">3:30 PM</option>
-                    <option value="4:00 PM">4:00 PM</option>
-                    <option value="4:30 PM">4:30 PM</option>
-                    <option value="5:00 PM">5:00 PM</option>
-                    <option value="5:30 PM">5:30 PM</option>
-                    <option value="6:00 PM">6:00 PM</option>
-                    <option value="6:30 PM">6:30 PM</option>
-                    <option value="7:00 PM">7:00 PM</option>
-                    <option value="7:30 PM">7:30 PM</option>
-                    <option value="8:00 PM">8:00 PM</option>
+                    {timeOptions.map((time) => (
+                      <option key={time} value={time}>{time}</option>
+                    ))}
                   </select>
                 </div>
                 <div className="space-y-2">
@@ -1048,7 +1002,6 @@ export default function RunCrewCentralAdmin() {
                 </div>
               </div>
 
-              {/* Row 3: Address */}
               <div className="space-y-2">
                 <label className="text-xs font-semibold text-gray-600 uppercase tracking-wide">Meetup Address</label>
                 <GooglePlacesAutocomplete
@@ -1060,7 +1013,6 @@ export default function RunCrewCentralAdmin() {
                 />
               </div>
 
-              {/* Row 4: Distance & Pace */}
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                 <div className="space-y-2">
                   <label className="text-xs font-semibold text-gray-600 uppercase tracking-wide">Total Miles</label>
@@ -1081,22 +1033,13 @@ export default function RunCrewCentralAdmin() {
                     className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-sky-500 focus:border-sky-500"
                   >
                     <option value="">Select pace...</option>
-                    <option value="6:00-6:30">6:00-6:30 (Fast)</option>
-                    <option value="6:30-7:00">6:30-7:00</option>
-                    <option value="7:00-7:30">7:00-7:30</option>
-                    <option value="7:30-8:00">7:30-8:00</option>
-                    <option value="8:00-8:30">8:00-8:30 (Moderate)</option>
-                    <option value="8:30-9:00">8:30-9:00</option>
-                    <option value="9:00-9:30">9:00-9:30</option>
-                    <option value="9:30-10:00">9:30-10:00</option>
-                    <option value="10:00-10:30">10:00-10:30 (Easy)</option>
-                    <option value="10:30-11:00">10:30-11:00</option>
-                    <option value="11:00+">11:00+ (Recovery)</option>
+                    {paceOptions.map((pace) => (
+                      <option key={pace} value={pace}>{pace}</option>
+                    ))}
                   </select>
                 </div>
               </div>
 
-              {/* Row 5: Strava URL */}
               <div className="space-y-2">
                 <label className="text-xs font-semibold text-gray-600 uppercase tracking-wide">Strava Route URL (Optional)</label>
                 <input
@@ -1106,9 +1049,16 @@ export default function RunCrewCentralAdmin() {
                   placeholder="https://www.strava.com/routes/..."
                   className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-sky-500 focus:border-sky-500"
                 />
+                {runForm.stravaMapUrl && runForm.stravaMapUrl.includes('strava.com') && (
+                  <div className="mt-3">
+                    <StravaRoutePreview
+                      polylineString="ypweFnzbjVhAWnAc@bAa@dAe@fAi@hAm@jAq@lAs@nAw@pAy@rA{@tA}@vA_AvAaAxAcAzAeA|AgA~AiA`BiAaBkAdBmAfBoBhBoBlBqBnBsBpBuBrBwBtByB"
+                      stravaUrl={runForm.stravaMapUrl}
+                    />
+                  </div>
+                )}
               </div>
 
-              {/* Row 6: Description */}
               <div className="space-y-2">
                 <label className="text-xs font-semibold text-gray-600 uppercase tracking-wide">Description</label>
                 <textarea
@@ -1120,7 +1070,6 @@ export default function RunCrewCentralAdmin() {
                 />
               </div>
 
-              {/* Modal Footer */}
               <div className="flex justify-end gap-3 pt-4 border-t border-gray-200">
                 <button
                   type="button"
@@ -1133,7 +1082,7 @@ export default function RunCrewCentralAdmin() {
                   type="submit"
                   className="bg-orange-500 text-white px-5 py-2 rounded-lg text-sm font-semibold hover:bg-orange-600 transition"
                 >
-                  Save Changes
+                  {editingRunId ? 'Save Changes' : 'Create Run'}
                 </button>
               </div>
             </form>
