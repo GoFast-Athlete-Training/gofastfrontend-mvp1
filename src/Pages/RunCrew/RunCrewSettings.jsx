@@ -1,13 +1,13 @@
 // RunCrewSettings.jsx
 // Admin-only settings page for RunCrew management
-// Features: Delegate admins, broadcast messages, crew configuration, delete crew
+// Features: Delegate admins, crew configuration, delete crew
 
 import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { LocalStorageAPI } from '../../config/LocalStorageConfig';
 import { auth } from '../../firebase';
 import api from '../../api/axiosConfig';
-import { UserX, Crown, Trash2, Users } from 'lucide-react';
+import { UserX, Crown, Trash2, Users, Image, Link } from 'lucide-react';
 
 const API_BASE = 'https://gofastbackendv2-fall2025.onrender.com/api';
 
@@ -22,6 +22,8 @@ export default function RunCrewSettings() {
   const [showAddManagerModal, setShowAddManagerModal] = useState(false);
   const [crewName, setCrewName] = useState('');
   const [crewDescription, setCrewDescription] = useState('');
+  const [crewLogo, setCrewLogo] = useState('');
+  const [crewIcon, setCrewIcon] = useState('');
   const [isSaving, setIsSaving] = useState(false);
 
   // Get crew data from localStorage or hydrate
@@ -40,6 +42,8 @@ export default function RunCrewSettings() {
           setCrew(storedCrew);
           setCrewName(storedCrew.name || '');
           setCrewDescription(storedCrew.description || '');
+          setCrewLogo(storedCrew.logo || '');
+          setCrewIcon(storedCrew.icon || '');
           setLoading(false);
         }
 
@@ -58,6 +62,8 @@ export default function RunCrewSettings() {
             setCrew(response.data.runCrew);
             setCrewName(response.data.runCrew.name || '');
             setCrewDescription(response.data.runCrew.description || '');
+            setCrewLogo(response.data.runCrew.logo || '');
+            setCrewIcon(response.data.runCrew.icon || '');
             LocalStorageAPI.setRunCrewData(response.data.runCrew);
           }
         }
@@ -86,14 +92,22 @@ export default function RunCrewSettings() {
       const token = await user.getIdToken();
       const response = await api.patch(`${API_BASE}/runcrew/${crew.id}`, {
         name: crewName.trim(),
-        description: crewDescription.trim() || null
+        description: crewDescription.trim() || null,
+        logo: crewLogo.trim() || null,
+        icon: crewIcon.trim() || null
       }, {
         headers: { Authorization: `Bearer ${token}` }
       });
 
       if (response.data.success) {
         // Update local state and localStorage
-        const updatedCrew = { ...crew, name: crewName.trim(), description: crewDescription.trim() || null };
+        const updatedCrew = { 
+          ...crew, 
+          name: crewName.trim(), 
+          description: crewDescription.trim() || null,
+          logo: crewLogo.trim() || null,
+          icon: crewIcon.trim() || null
+        };
         setCrew(updatedCrew);
         LocalStorageAPI.setRunCrewData(updatedCrew);
         setError(null);
@@ -339,14 +353,33 @@ export default function RunCrewSettings() {
                         placeholder="Enter crew description (optional)"
                       />
                     </div>
-                    <div className="flex justify-end">
-                      <button
-                        onClick={handleSaveCrewInfo}
-                        disabled={isSaving}
-                        className="bg-orange-500 hover:bg-orange-600 text-white font-semibold px-6 py-2 rounded-lg transition disabled:opacity-60"
-                      >
-                        {isSaving ? 'Saving...' : 'Save Changes'}
-                      </button>
+                    <div>
+                      <label className="block text-sm font-medium text-gray-700 mb-2">Logo URL</label>
+                      <div className="flex items-center space-x-2">
+                        <input
+                          type="text"
+                          value={crewLogo}
+                          onChange={(e) => setCrewLogo(e.target.value)}
+                          className="flex-1 p-3 border border-gray-300 rounded-lg"
+                          placeholder="https://example.com/logo.png"
+                        />
+                        {crewLogo && (
+                          <img src={crewLogo} alt="Logo preview" className="w-12 h-12 rounded object-cover border border-gray-300" onError={(e) => e.target.style.display = 'none'} />
+                        )}
+                      </div>
+                      <p className="text-xs text-gray-500 mt-1">Enter a URL to an image for your crew logo</p>
+                    </div>
+                    <div>
+                      <label className="block text-sm font-medium text-gray-700 mb-2">Icon (Emoji)</label>
+                      <input
+                        type="text"
+                        value={crewIcon}
+                        onChange={(e) => setCrewIcon(e.target.value)}
+                        className="w-full p-3 border border-gray-300 rounded-lg"
+                        placeholder="🏃 or 🏔️"
+                        maxLength={2}
+                      />
+                      <p className="text-xs text-gray-500 mt-1">Enter an emoji as an alternative to logo (1-2 characters)</p>
                     </div>
                     <div>
                       <label className="block text-sm font-medium text-gray-700 mb-2">Join Code</label>
@@ -357,25 +390,46 @@ export default function RunCrewSettings() {
                           readOnly
                           className="flex-1 p-3 border border-gray-300 rounded-lg bg-gray-50"
                         />
-                        <button className="px-4 py-3 bg-orange-500 text-white rounded-lg hover:bg-orange-600">
-                          Regenerate
+                        <button className="px-4 py-3 bg-gray-400 text-white rounded-lg cursor-not-allowed opacity-50" disabled>
+                          User Set
                         </button>
                       </div>
+                      <p className="text-xs text-gray-500 mt-1">Join code is set by the user when creating the crew</p>
                     </div>
-                  </div>
-                </div>
-
-                <div className="border-t border-gray-200 pt-6">
-                  <h3 className="text-lg font-bold text-gray-900 mb-4">Broadcast Messages</h3>
-                  <div className="space-y-4">
-                    <textarea
-                      placeholder="Send a message to all crew members..."
-                      rows={3}
-                      className="w-full p-3 border border-gray-300 rounded-lg"
-                    />
-                    <button className="bg-orange-500 text-white px-6 py-3 rounded-lg hover:bg-orange-600">
-                      Broadcast to Crew
-                    </button>
+                    <div>
+                      <label className="block text-sm font-medium text-gray-700 mb-2">Invite URL (System Generated)</label>
+                      <div className="flex items-center space-x-2">
+                        <input
+                          type="text"
+                          value={crewData.joinCode ? `${window.location.origin}/join/${crewData.joinCode}` : ''}
+                          readOnly
+                          className="flex-1 p-3 border border-gray-300 rounded-lg bg-gray-50 font-mono text-sm"
+                        />
+                        <button
+                          onClick={() => {
+                            const url = crewData.joinCode ? `${window.location.origin}/join/${crewData.joinCode}` : '';
+                            if (url) {
+                              navigator.clipboard.writeText(url);
+                              // Could add toast here
+                            }
+                          }}
+                          className="px-4 py-3 bg-sky-500 text-white rounded-lg hover:bg-sky-600 flex items-center gap-2"
+                        >
+                          <Link className="w-4 h-4" />
+                          Copy
+                        </button>
+                      </div>
+                      <p className="text-xs text-gray-500 mt-1">Share this URL to invite members. System-generated from join code.</p>
+                    </div>
+                    <div className="flex justify-end pt-4">
+                      <button
+                        onClick={handleSaveCrewInfo}
+                        disabled={isSaving}
+                        className="bg-orange-500 hover:bg-orange-600 text-white font-semibold px-6 py-2 rounded-lg transition disabled:opacity-60"
+                      >
+                        {isSaving ? 'Saving...' : 'Save Changes'}
+                      </button>
+                    </div>
                   </div>
                 </div>
               </div>
