@@ -132,7 +132,7 @@ const AthleteHome = () => {
 
     setIsNavigatingToCrew(true);
 
-    // Use hook data directly - no need to read from localStorage again
+    // First check: If no runCrewId, route to create/join
     if (!runCrewId) {
       console.warn('⚠️ ATHLETE HOME: No crew context - join or create a crew first');
       navigate('/runcrew/join-or-start', { replace: true });
@@ -140,9 +140,9 @@ const AthleteHome = () => {
       return;
     }
 
-    // If we have crew data from hook, use it directly
+    // Second check: If we have crew data from hook, route based on admin status
     if (runCrew) {
-      // Route to admin page if user is an admin, otherwise regular central
+      // Route to admin page if user is an admin (has runCrewManagerId), otherwise regular central
       const targetRoute = isCrewAdmin ? '/crew/crewadmin' : '/runcrew/central';
       console.log(`✅ ATHLETE HOME: Using crew data from hook, navigating to ${isCrewAdmin ? 'admin' : 'central'}`);
       navigate(targetRoute, { replace: true });
@@ -183,13 +183,19 @@ const AthleteHome = () => {
           ? data.runCrew.managers.find((manager) => manager.athleteId === athleteId && manager.role === 'admin')
           : null;
         const isAdmin = Boolean(managerRecord);
+        const managerId = managerRecord?.id || null;
         
         LocalStorageAPI.setRunCrewData({
           ...data.runCrew,
           isAdmin
         });
         
-        // Route to admin page if user is an admin, otherwise regular central
+        // Store managerId if admin
+        if (managerId) {
+          LocalStorageAPI.setRunCrewManagerId(managerId);
+        }
+        
+        // Route to admin page if user is an admin (has managerId), otherwise regular central
         const targetRoute = isAdmin ? '/crew/crewadmin' : '/runcrew/central';
         console.log(`✅ ATHLETE HOME: Crew hydrated, navigating to ${isAdmin ? 'admin' : 'central'}`);
         navigate(targetRoute, { replace: true });
@@ -198,9 +204,13 @@ const AthleteHome = () => {
       }
     } catch (error) {
       console.error('❌ ATHLETE HOME: Unable to load crew', error);
-      // If hydration fails, still try to navigate - RunCrewCentral will handle it
-      // Default to regular central if we can't determine admin status
-      navigate('/runcrew/central', { replace: true });
+      // If hydration fails and we have a runCrewId, try to navigate to central
+      // If no runCrewId, route to join/create
+      if (runCrewId) {
+        navigate('/runcrew/central', { replace: true });
+      } else {
+        navigate('/runcrew/join-or-start', { replace: true });
+      }
     } finally {
       setIsCrewHydrating(false);
       setTimeout(() => setIsNavigatingToCrew(false), 1000);
