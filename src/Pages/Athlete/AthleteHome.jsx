@@ -22,6 +22,7 @@ const AthleteHome = () => {
   const [weeklyActivities, setWeeklyActivities] = useState([]);
   const [weeklyTotals, setWeeklyTotals] = useState(null);
   const [isCrewHydrating, setIsCrewHydrating] = useState(false);
+  const [isNavigatingToCrew, setIsNavigatingToCrew] = useState(false);
   const [activeSection, setActiveSection] = useState('activity'); // 'activity', 'crew', 'events'
   const [garminConnected, setGarminConnected] = useState(false);
   const [checkingConnection, setCheckingConnection] = useState(true);
@@ -71,6 +72,11 @@ const AthleteHome = () => {
       return;
     }
 
+    // Only run once when athleteProfile is first loaded
+    if (onboardingState !== null) {
+      return; // Already loaded
+    }
+
     try {
       // Load activities and totals from full hydration model
       const model = LocalStorageAPI.getFullHydrationModel();
@@ -94,7 +100,7 @@ const AthleteHome = () => {
     } catch (error) {
       console.error('❌ ATHLETE HOME: Error loading athlete data:', error);
     }
-  }, [athleteProfile, navigate]);
+  }, [athleteProfile, navigate, onboardingState]);
 
   const handleSignOut = async () => {
     try {
@@ -106,18 +112,35 @@ const AthleteHome = () => {
     }
   };
 
-  const handleGoToRunCrew = async () => {
+  const handleGoToRunCrew = async (e) => {
+    // Prevent default if event provided
+    if (e) {
+      e.preventDefault();
+      e.stopPropagation();
+    }
+
+    // Guard against multiple rapid calls
+    if (isNavigatingToCrew) {
+      console.log('⚠️ ATHLETE HOME: Already navigating to crew, ignoring duplicate call');
+      return;
+    }
+
+    setIsNavigatingToCrew(true);
+
     // Use hook data directly - no need to read from localStorage again
     if (!runCrewId) {
       console.warn('⚠️ ATHLETE HOME: No crew context - join or create a crew first');
-      navigate('/runcrew/join-or-start');
+      navigate('/runcrew/join-or-start', { replace: true });
+      setIsNavigatingToCrew(false);
       return;
     }
 
     // If we have crew data from hook, use it directly
     if (runCrew) {
       console.log('✅ ATHLETE HOME: Using crew data from hook, navigating to central');
-      navigate('/runcrew/central');
+      navigate('/runcrew/central', { replace: true });
+      // Don't reset flag here - let the navigation complete
+      setTimeout(() => setIsNavigatingToCrew(false), 1000);
       return;
     }
 
@@ -149,16 +172,17 @@ const AthleteHome = () => {
 
       if (data?.success && data.runCrew) {
         LocalStorageAPI.setRunCrewData(data.runCrew);
-        navigate('/runcrew/central');
+        navigate('/runcrew/central', { replace: true });
       } else {
         throw new Error(data?.error || data?.message || 'Failed to hydrate crew');
       }
     } catch (error) {
       console.error('❌ ATHLETE HOME: Unable to load crew', error);
       // If hydration fails, still try to navigate - RunCrewCentral will handle it
-      navigate('/runcrew/central');
+      navigate('/runcrew/central', { replace: true });
     } finally {
       setIsCrewHydrating(false);
+      setTimeout(() => setIsNavigatingToCrew(false), 1000);
     }
   };
 
@@ -221,11 +245,13 @@ const AthleteHome = () => {
             return (
               <button
                 key={item.id}
-                onClick={() => {
+                onClick={(e) => {
+                  e.preventDefault();
+                  e.stopPropagation();
                   setActiveSection(item.id);
                   // Use custom onClick if provided, otherwise use path
                   if (item.onClick) {
-                    item.onClick();
+                    item.onClick(e);
                   } else if (item.path) {
                     navigate(item.path);
                   }
