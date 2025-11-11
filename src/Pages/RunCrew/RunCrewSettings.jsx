@@ -25,6 +25,8 @@ export default function RunCrewSettings() {
   const [crewLogo, setCrewLogo] = useState('');
   const [crewIcon, setCrewIcon] = useState('');
   const [isSaving, setIsSaving] = useState(false);
+  const [isDeleting, setIsDeleting] = useState(false);
+  const [deleteSuccess, setDeleteSuccess] = useState(false);
 
   // Get crew data from localStorage or hydrate
   useEffect(() => {
@@ -124,10 +126,15 @@ export default function RunCrewSettings() {
   const handleDeleteCrew = async () => {
     if (!crew) return;
 
+    setIsDeleting(true);
+    setError(null);
+    setShowDeleteConfirm(false);
+
     try {
       const user = auth.currentUser;
       if (!user) {
         setError('You must be signed in to delete a crew');
+        setIsDeleting(false);
         return;
       }
 
@@ -137,26 +144,55 @@ export default function RunCrewSettings() {
       });
 
       if (response.data.success) {
+        // Show success message
+        setDeleteSuccess(true);
         // Clear localStorage
         LocalStorageAPI.clearRunCrewData();
-        // Redirect to home
-        navigate('/athlete-home');
+        
+        // Redirect to home after 2 seconds
+        setTimeout(() => {
+          navigate('/athlete-home');
+        }, 2000);
       }
     } catch (err) {
       console.error('Error deleting crew:', err);
       const errorMessage = err.response?.data?.message || 'Failed to delete crew';
       
-      // If crew is already archived, treat it as success and clear/redirect
+      // If crew is already deleted/archived, treat it as success
       if (err.response?.status === 400 && errorMessage.includes('already')) {
-        console.log('✅ Crew already archived, clearing localStorage and redirecting');
+        console.log('✅ Crew already deleted, clearing localStorage and redirecting');
+        setDeleteSuccess(true);
         LocalStorageAPI.clearRunCrewData();
-        navigate('/athlete-home');
+        setTimeout(() => {
+          navigate('/athlete-home');
+        }, 2000);
         return;
       }
       
       setError(errorMessage);
+      setIsDeleting(false);
     }
   };
+
+  // Show delete success message
+  if (deleteSuccess) {
+    return (
+      <div className="min-h-screen bg-gray-50 flex items-center justify-center">
+        <div className="max-w-md mx-auto px-6">
+          <div className="bg-white rounded-xl shadow-lg p-8 text-center">
+            <div className="w-16 h-16 bg-green-100 rounded-full flex items-center justify-center mx-auto mb-4">
+              <svg className="w-8 h-8 text-green-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
+              </svg>
+            </div>
+            <h2 className="text-2xl font-bold text-gray-900 mb-2">Crew Deleted Successfully</h2>
+            <p className="text-gray-600 mb-6">Your RunCrew has been permanently deleted.</p>
+            <p className="text-sm text-gray-500">Redirecting to home...</p>
+          </div>
+        </div>
+      </div>
+    );
+  }
 
   if (loading) {
     return (
@@ -279,20 +315,30 @@ export default function RunCrewSettings() {
             <div className="bg-white rounded-xl p-6 max-w-md w-full mx-4">
               <h3 className="text-xl font-bold text-gray-900 mb-4">Delete RunCrew?</h3>
               <p className="text-gray-600 mb-6">
-                Are you sure you want to delete <strong>{crewData.name}</strong>? This action cannot be undone and will remove all crew data, members, and history.
+                Are you sure you want to delete <strong>{crewData.name}</strong>? This action cannot be undone and will remove all crew data, members, runs, and history.
               </p>
+              {error && (
+                <div className="bg-red-50 border border-red-200 text-red-700 px-4 py-2 rounded text-sm mb-4">
+                  {error}
+                </div>
+              )}
               <div className="flex space-x-4">
                 <button
-                  onClick={() => setShowDeleteConfirm(false)}
-                  className="flex-1 bg-gray-200 hover:bg-gray-300 text-gray-800 font-semibold py-2 rounded-lg transition"
+                  onClick={() => {
+                    setShowDeleteConfirm(false);
+                    setError(null);
+                  }}
+                  disabled={isDeleting}
+                  className="flex-1 bg-gray-200 hover:bg-gray-300 text-gray-800 font-semibold py-2 rounded-lg transition disabled:opacity-50"
                 >
                   Cancel
                 </button>
                 <button
                   onClick={handleDeleteCrew}
-                  className="flex-1 bg-red-500 hover:bg-red-600 text-white font-semibold py-2 rounded-lg transition"
+                  disabled={isDeleting}
+                  className="flex-1 bg-red-500 hover:bg-red-600 text-white font-semibold py-2 rounded-lg transition disabled:opacity-50"
                 >
-                  Delete Forever
+                  {isDeleting ? 'Deleting...' : 'Delete Forever'}
                 </button>
               </div>
             </div>
