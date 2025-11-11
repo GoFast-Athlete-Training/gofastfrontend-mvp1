@@ -144,7 +144,10 @@ export default function RunCrewSettings() {
       });
 
       if (response.data.success) {
-        // Clear ALL crew-related localStorage data FIRST
+        // Show success message FIRST before clearing
+        setDeleteSuccess(true);
+        
+        // Clear ALL crew-related localStorage data
         LocalStorageAPI.clearRunCrewData();
         
         // Also clear the full hydration model's crew data
@@ -166,13 +169,10 @@ export default function RunCrewSettings() {
           });
         }
         
-        // Show success message
-        setDeleteSuccess(true);
-        
-        // Redirect to home after 2 seconds
+        // Redirect to home after 3 seconds (give user time to see success message)
         setTimeout(() => {
           navigate('/athlete-home', { replace: true });
-        }, 2000);
+        }, 3000);
       }
     } catch (err) {
       console.error('Error deleting crew:', err);
@@ -181,6 +181,9 @@ export default function RunCrewSettings() {
       // If crew is already deleted/archived, treat it as success
       if (err.response?.status === 400 && errorMessage.includes('already')) {
         console.log('✅ Crew already deleted, clearing localStorage and redirecting');
+        
+        // Show success message FIRST
+        setDeleteSuccess(true);
         
         // Clear ALL crew-related localStorage data
         LocalStorageAPI.clearRunCrewData();
@@ -202,10 +205,9 @@ export default function RunCrewSettings() {
           });
         }
         
-        setDeleteSuccess(true);
         setTimeout(() => {
           navigate('/athlete-home', { replace: true });
-        }, 2000);
+        }, 3000);
         return;
       }
       
