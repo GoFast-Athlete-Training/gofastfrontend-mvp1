@@ -144,7 +144,17 @@ export default function RunCrewSettings() {
       }
     } catch (err) {
       console.error('Error deleting crew:', err);
-      setError(err.response?.data?.message || 'Failed to delete crew');
+      const errorMessage = err.response?.data?.message || 'Failed to delete crew';
+      
+      // If crew is already archived, treat it as success and clear/redirect
+      if (err.response?.status === 400 && errorMessage.includes('already')) {
+        console.log('✅ Crew already archived, clearing localStorage and redirecting');
+        LocalStorageAPI.clearRunCrewData();
+        navigate('/athlete-home');
+        return;
+      }
+      
+      setError(errorMessage);
     }
   };
 
