@@ -7,6 +7,7 @@ export default function CreateCrew() {
   const [name, setName] = useState("");
   const [inviteCode, setInviteCode] = useState("");
   const [description, setDescription] = useState("");
+  const [icon, setIcon] = useState("");
   const [error, setError] = useState(null);
   const [loading, setLoading] = useState(false);
   const navigate = useNavigate();
@@ -83,6 +84,7 @@ export default function CreateCrew() {
           name: name.trim(), 
           joinCode: normalizedCode,
           description: description.trim() || null,
+          icon: icon.trim() || null,
           athleteId 
         })
       });
@@ -120,9 +122,15 @@ export default function CreateCrew() {
             <Users className="w-8 h-8 text-sky-600" />
           </div>
           <h1 className="text-3xl font-bold text-gray-900 mb-2">Create Your RunCrew</h1>
-          <p className="text-gray-600">
-            Start a running community. Invite friends, schedule runs, and stay accountable together.
+          <p className="text-gray-600 mb-3">
+            This is your crew — your friends, your accountability partners, your running family.
           </p>
+          <div className="bg-sky-50 border border-sky-200 rounded-lg p-4 text-left">
+            <p className="text-sm text-sky-800 font-medium mb-1">💡 Make it fun and memorable!</p>
+            <p className="text-xs text-sky-700">
+              Choose a name and icon that your crew will remember. This is how you'll recognize each other and build your running community.
+            </p>
+          </div>
         </div>
 
         {/* Error Message */}
@@ -146,10 +154,52 @@ export default function CreateCrew() {
                 setError(null);
               }}
               className="w-full p-4 border-2 border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-sky-500 focus:border-sky-500 transition"
-              placeholder="e.g. Morning Warriors, Trail Runners, etc."
+              placeholder="e.g. Morning Warriors, Trail Runners, Weekend Warriors"
               disabled={loading}
             />
-            <p className="text-xs text-gray-500 mt-1">Choose a name that represents your crew</p>
+            <p className="text-xs text-gray-500 mt-1">Pick something your crew will remember and get excited about</p>
+          </div>
+
+          <div>
+            <label className="block text-sm font-semibold text-gray-700 mb-2">
+              Icon (Emoji) <span className="text-gray-400 text-xs">(Optional)</span>
+            </label>
+            <div className="flex items-center space-x-3">
+              <div className="w-16 h-16 bg-gray-50 border-2 border-gray-300 rounded-lg flex items-center justify-center text-3xl">
+                {icon || '🏃'}
+              </div>
+              <input
+                type="text"
+                value={icon}
+                onChange={(e) => {
+                  setIcon(e.target.value);
+                  setError(null);
+                }}
+                className="flex-1 p-4 border-2 border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-sky-500 focus:border-sky-500 transition text-2xl"
+                placeholder="🏃 or 🏔️"
+                maxLength={2}
+                disabled={loading}
+              />
+            </div>
+            <p className="text-xs text-gray-500 mt-1">Add an emoji that represents your crew (1-2 characters)</p>
+          </div>
+
+          <div>
+            <label className="block text-sm font-semibold text-gray-700 mb-2">
+              Description <span className="text-gray-400 text-xs">(Optional)</span>
+            </label>
+            <textarea
+              value={description}
+              onChange={(e) => {
+                setDescription(e.target.value);
+                setError(null);
+              }}
+              rows={3}
+              className="w-full p-4 border-2 border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-sky-500 focus:border-sky-500 transition resize-none"
+              placeholder="What makes your crew special? What are your goals? (optional)"
+              disabled={loading}
+            />
+            <p className="text-xs text-gray-500 mt-1">Help your crew understand what you're all about</p>
           </div>
 
           <div>
@@ -168,27 +218,16 @@ export default function CreateCrew() {
               maxLength={20}
               disabled={loading}
             />
-            <p className="text-xs text-gray-500 mt-1">
-              Create a unique code (3-20 characters, letters/numbers only). Members will use this to join.
+            <div className="mt-2 bg-blue-50 border border-blue-200 rounded-lg p-3">
+              <p className="text-xs font-semibold text-blue-900 mb-1">🔑 What is a Join Code?</p>
+              <p className="text-xs text-blue-800">
+                This is how your friends will join your crew. Share this code with them, and they can enter it to join. 
+                Make it something easy to remember — like your crew name initials or a fun word!
+              </p>
+            </div>
+            <p className="text-xs text-gray-500 mt-2">
+              3-20 characters, letters and numbers only (no spaces)
             </p>
-          </div>
-
-          <div>
-            <label className="block text-sm font-semibold text-gray-700 mb-2">
-              Description <span className="text-gray-400 text-xs">(Optional)</span>
-            </label>
-            <textarea
-              value={description}
-              onChange={(e) => {
-                setDescription(e.target.value);
-                setError(null);
-              }}
-              rows={3}
-              className="w-full p-4 border-2 border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-sky-500 focus:border-sky-500 transition resize-none"
-              placeholder="Tell people what your crew is about... (optional)"
-              disabled={loading}
-            />
-            <p className="text-xs text-gray-500 mt-1">Add a brief description to help people understand your crew</p>
           </div>
 
           <button
