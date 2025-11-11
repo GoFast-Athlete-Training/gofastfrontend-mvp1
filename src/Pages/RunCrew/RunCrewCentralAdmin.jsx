@@ -6,6 +6,9 @@ import useHydratedAthlete from '../../hooks/useHydratedAthlete';
 import { LocalStorageAPI } from '../../config/LocalStorageConfig';
 import GooglePlacesAutocomplete from '../../Components/RunCrew/GooglePlacesAutocomplete';
 import StravaRoutePreview from '../../Components/RunCrew/StravaRoutePreview';
+import { generateShareOptions, generateDirectInviteLink, generateAuthenticatedInviteLink, copyInviteLink } from '../../utils/InviteLinkGenerator';
+import { generateUniversalInviteLink } from '../../utils/AuthDetectionService';
+import { Settings } from 'lucide-react';
 
 const API_BASE = 'https://gofastbackendv2-fall2025.onrender.com/api';
 
@@ -543,14 +546,15 @@ export default function RunCrewCentralAdmin() {
           <div className="flex items-center gap-3">
             <button
               onClick={goToMemberView}
-              className="text-sm text-gray-600 hover:text-gray-900 border border-gray-300 rounded-lg px-4 py-2"
+              className="text-sm text-gray-600 hover:text-gray-900 border border-gray-300 rounded-lg px-4 py-2 transition"
             >
               View Member Experience
             </button>
             <button
               onClick={goToSettings}
-              className="text-sm text-gray-600 hover:text-gray-900 border border-gray-300 rounded-lg px-4 py-2"
+              className="flex items-center gap-2 text-sm font-semibold text-white bg-orange-500 hover:bg-orange-600 border border-orange-600 rounded-lg px-4 py-2 transition shadow-sm"
             >
+              <Settings className="w-4 h-4" />
               Settings
             </button>
             <button
@@ -651,13 +655,67 @@ export default function RunCrewCentralAdmin() {
               <div className="border border-gray-200 rounded-xl p-4 bg-gray-50 space-y-2">
                 <p className="text-xs uppercase tracking-wide text-gray-500">Members</p>
                 <p className="text-lg font-semibold text-gray-900">{memberships.length}</p>
-                {memberships.length <= 1 && joinCode && (
-                  <div className="mt-2">
-                    <p className="text-xs text-gray-500">Invite teammates:</p>
-                    <code className="mt-1 block bg-white border border-gray-200 rounded px-3 py-2 text-xs text-gray-700">
-                      Join at athlete.gofastcrushgoals.com/runcrew/join<br />
-                      Code: <span className="font-semibold text-orange-600">{joinCode}</span>
-                    </code>
+                {joinCode && (
+                  <div className="mt-2 space-y-2">
+                    <p className="text-xs text-gray-500 font-semibold">Invite teammates:</p>
+                    
+                    {/* Universal Invite Link (Smart - Auto-detects auth state) */}
+                    <div className="bg-white border-2 border-green-200 rounded-lg p-3 space-y-2">
+                      <p className="text-xs font-semibold text-green-600">🌟 Universal Invite Link (Recommended)</p>
+                      <p className="text-xs text-gray-600">Works for both new and existing users - auto-detects auth state</p>
+                      <code className="block text-xs text-gray-700 break-all bg-gray-50 px-2 py-1 rounded">
+                        {generateUniversalInviteLink(joinCode)}
+                      </code>
+                      <button
+                        onClick={async () => {
+                          const success = await copyInviteLink(generateUniversalInviteLink(joinCode));
+                          showToast(success ? 'Universal invite link copied!' : 'Failed to copy');
+                        }}
+                        className="text-xs bg-green-500 hover:bg-green-600 text-white px-3 py-1 rounded font-semibold"
+                      >
+                        Copy Universal Link
+                      </button>
+                    </div>
+                    
+                    {/* Direct Invite Link (Join Code-First Flow) */}
+                    <div className="bg-white border border-orange-200 rounded-lg p-3 space-y-2">
+                      <p className="text-xs font-semibold text-orange-600">Direct Invite Link (New Users Only)</p>
+                      <code className="block text-xs text-gray-700 break-all bg-gray-50 px-2 py-1 rounded">
+                        {generateDirectInviteLink(joinCode)}
+                      </code>
+                      <button
+                        onClick={async () => {
+                          const success = await copyInviteLink(generateDirectInviteLink(joinCode));
+                          showToast(success ? 'Direct invite link copied!' : 'Failed to copy');
+                        }}
+                        className="text-xs bg-orange-500 hover:bg-orange-600 text-white px-3 py-1 rounded font-semibold"
+                      >
+                        Copy Direct Link
+                      </button>
+                    </div>
+                    
+                    {/* Authenticated Invite Link (Athlete-First Flow) */}
+                    <div className="bg-white border border-blue-200 rounded-lg p-3 space-y-2">
+                      <p className="text-xs font-semibold text-blue-600">Authenticated Link (Existing Users Only)</p>
+                      <code className="block text-xs text-gray-700 break-all bg-gray-50 px-2 py-1 rounded">
+                        {generateAuthenticatedInviteLink(joinCode)}
+                      </code>
+                      <button
+                        onClick={async () => {
+                          const success = await copyInviteLink(generateAuthenticatedInviteLink(joinCode));
+                          showToast(success ? 'Authenticated link copied!' : 'Failed to copy');
+                        }}
+                        className="text-xs bg-blue-500 hover:bg-blue-600 text-white px-3 py-1 rounded font-semibold"
+                      >
+                        Copy Auth Link
+                      </button>
+                    </div>
+                    
+                    {/* Join Code Display */}
+                    <div className="bg-gray-50 border border-gray-200 rounded px-3 py-2">
+                      <p className="text-xs text-gray-500">Join Code:</p>
+                      <code className="text-sm font-bold text-orange-600">{joinCode}</code>
+                    </div>
                   </div>
                 )}
               </div>
