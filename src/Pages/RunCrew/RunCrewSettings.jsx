@@ -126,6 +126,10 @@ export default function RunCrewSettings() {
     members: 0
   };
 
+  // Compute admins and members from crew data
+  const admins = crew?.managers?.filter(m => m.role === 'admin') || [];
+  const members = crew?.memberships || [];
+
   return (
     <div className="min-h-screen bg-gray-50">
       <div className="max-w-4xl mx-auto px-6 py-8">
@@ -251,7 +255,7 @@ export default function RunCrewSettings() {
                     : 'text-gray-600 hover:text-gray-900'
                 }`}
               >
-                Admins ({mockAdmins.length})
+                Admins ({admins.length})
               </button>
               <button
                 onClick={() => setActiveTab('members')}
@@ -261,7 +265,7 @@ export default function RunCrewSettings() {
                     : 'text-gray-600 hover:text-gray-900'
                 }`}
               >
-                Members ({mockMembers.length})
+                Members ({members.length})
               </button>
             </div>
           </div>
