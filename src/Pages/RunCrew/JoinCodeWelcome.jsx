@@ -150,21 +150,40 @@ export default function JoinCodeWelcome() {
   };
 
   return (
-    <div className="min-h-screen bg-gray-50 flex items-center justify-center px-6 py-12">
-      <div className="max-w-md w-full bg-white border border-gray-200 rounded-xl shadow-sm p-8 space-y-6">
-        <div className="text-center space-y-2">
-          <h1 className="text-3xl font-bold text-gray-900">
-            {crewPreview 
-              ? `Welcome to ${crewPreview.name}!` 
-              : loading 
-                ? 'Loading...' 
-                : 'Welcome to RunCrew!'}
-          </h1>
-          <p className="text-gray-600 text-sm">
-            {crewPreview 
-              ? 'Ready to join this crew? Click below to get started.' 
-              : 'Someone shared a crew code with you — awesome.'}
-          </p>
+    <div className="min-h-screen bg-gradient-to-br from-sky-50 to-sky-100 flex items-center justify-center px-6 py-12">
+      <div className="max-w-md w-full bg-white rounded-2xl shadow-xl p-8 space-y-6">
+        {/* GoFast Branding Header */}
+        <div className="text-center space-y-4">
+          <div className="flex items-center justify-center mb-2">
+            <img src="/logo.jpg" alt="GoFast" className="w-12 h-12 rounded-full shadow-md" />
+          </div>
+          <div>
+            <h1 className="text-3xl font-bold text-gray-900 mb-2">
+              {crewPreview 
+                ? `Welcome to ${crewPreview.name}!` 
+                : loading 
+                  ? 'Finding Your Crew...' 
+                  : 'Join a RunCrew on GoFast'}
+            </h1>
+            {crewPreview ? (
+              <p className="text-gray-600 text-sm">
+                You've been invited to join this running crew. Run together, stay accountable, and crush your goals!
+              </p>
+            ) : loading ? (
+              <p className="text-gray-600 text-sm">
+                Loading crew details...
+              </p>
+            ) : (
+              <div className="space-y-2">
+                <p className="text-gray-600 text-sm">
+                  RunCrews are your running community — friends who train together, schedule runs, and keep each other accountable.
+                </p>
+                <p className="text-gray-500 text-xs">
+                  Enter the join code you received to find your crew.
+                </p>
+              </div>
+            )}
+          </div>
         </div>
 
         {error && (
@@ -175,68 +194,100 @@ export default function JoinCodeWelcome() {
 
         {loading && !crewPreview && (
           <div className="text-center py-8">
-            <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-orange-500 mx-auto"></div>
-            <p className="text-gray-600 mt-4">Finding your crew...</p>
+            <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-sky-500 mx-auto"></div>
+            <p className="text-gray-600 mt-4 text-sm">Finding your crew...</p>
+            <p className="text-gray-500 mt-2 text-xs">This will just take a moment</p>
           </div>
         )}
 
         {crewPreview ? (
           <div className="space-y-4">
-            <div className="bg-gray-50 border border-gray-200 rounded-lg p-6 space-y-4">
-              <div className="space-y-2">
+            {/* Crew Preview Card */}
+            <div className="bg-gradient-to-br from-sky-50 to-blue-50 border-2 border-sky-200 rounded-xl p-6 space-y-4">
+              <div className="space-y-3">
                 {crewPreview.description && (
                   <div>
-                    <p className="text-sm text-gray-500">Description</p>
-                    <p className="text-base text-gray-700">{crewPreview.description}</p>
+                    <p className="text-xs font-semibold text-gray-500 uppercase tracking-wide mb-1">About This Crew</p>
+                    <p className="text-base text-gray-800 leading-relaxed">{crewPreview.description}</p>
                   </div>
                 )}
-                <div>
-                  <p className="text-sm text-gray-500">Members</p>
-                  <p className="text-base text-gray-700">{crewPreview.memberCount} member{crewPreview.memberCount !== 1 ? 's' : ''}</p>
+                <div className="pt-2 border-t border-sky-200">
+                  <p className="text-xs font-semibold text-gray-500 uppercase tracking-wide mb-1">Current Members</p>
+                  <p className="text-lg font-bold text-sky-700">{crewPreview.memberCount} member{crewPreview.memberCount !== 1 ? 's' : ''}</p>
                 </div>
               </div>
+            </div>
+
+            {/* Info Box */}
+            <div className="bg-blue-50 border border-blue-200 rounded-lg p-4">
+              <p className="text-xs text-blue-800">
+                <strong>What happens next?</strong> You'll join the crew, see upcoming runs, chat with members, and track your progress together.
+              </p>
             </div>
 
             <button
               onClick={handleJoinCrew}
               disabled={loading}
-              className="w-full bg-green-600 hover:bg-green-700 text-white font-semibold py-3 rounded-lg transition disabled:opacity-60 disabled:cursor-not-allowed"
+              className="w-full bg-gradient-to-r from-sky-600 to-sky-700 hover:from-sky-700 hover:to-sky-800 text-white font-bold py-4 rounded-xl transition shadow-lg hover:shadow-xl disabled:opacity-60 disabled:cursor-not-allowed text-lg"
             >
-              {loading ? 'Joining...' : 'Join Crew'}
+              {loading ? (
+                <span className="flex items-center justify-center">
+                  <svg className="animate-spin -ml-1 mr-3 h-5 w-5 text-white" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+                    <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
+                    <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+                  </svg>
+                  Joining Crew...
+                </span>
+              ) : (
+                'Join This Crew'
+              )}
             </button>
           </div>
         ) : !hasCodeInUrl ? (
           // Manual entry mode - only show if no code in URL
           <div className="space-y-4">
             <div>
-              <label className="block text-sm font-medium text-gray-700 mb-2">
-                Enter your join code
+              <label className="block text-sm font-semibold text-gray-700 mb-2">
+                Enter Your Join Code
               </label>
               <input
                 type="text"
                 value={joinCode}
                 onChange={handleCodeChange}
                 onKeyPress={handleKeyPress}
-                placeholder="Enter your join code"
-                className="w-full border border-gray-300 rounded-lg px-4 py-3 text-lg font-mono uppercase focus:outline-none focus:ring-2 focus:ring-orange-500 focus:border-orange-500"
+                placeholder="e.g. FAST123"
+                className="w-full border-2 border-gray-300 rounded-lg px-4 py-3 text-lg font-mono uppercase focus:outline-none focus:ring-2 focus:ring-sky-500 focus:border-sky-500 transition"
                 disabled={loading}
                 maxLength={20}
               />
+              <p className="text-xs text-gray-500 mt-2">
+                Got a join code from a friend? Enter it above to find their crew.
+              </p>
             </div>
 
             <button
               onClick={handleLookup}
               disabled={loading || !joinCode.trim()}
-              className="w-full bg-orange-500 hover:bg-orange-600 text-white font-semibold py-3 rounded-lg transition disabled:opacity-60 disabled:cursor-not-allowed"
+              className="w-full bg-gradient-to-r from-sky-600 to-sky-700 hover:from-sky-700 hover:to-sky-800 text-white font-semibold py-3 rounded-lg transition shadow-md hover:shadow-lg disabled:opacity-60 disabled:cursor-not-allowed"
             >
-              {loading ? 'Finding...' : 'Find My Crew'}
+              {loading ? (
+                <span className="flex items-center justify-center">
+                  <svg className="animate-spin -ml-1 mr-2 h-4 w-4 text-white" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+                    <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
+                    <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+                  </svg>
+                  Finding...
+                </span>
+              ) : (
+                'Find My Crew'
+              )}
             </button>
           </div>
         ) : null}
 
         <button
           onClick={() => navigate('/athlete-home')}
-          className="w-full text-gray-600 hover:text-gray-800 text-sm py-2"
+          className="w-full text-gray-600 hover:text-gray-800 text-sm py-2 font-medium"
         >
           ← Back to Home
         </button>
