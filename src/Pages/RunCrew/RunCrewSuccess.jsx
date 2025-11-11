@@ -1,16 +1,41 @@
-import React from 'react';
+import React, { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
+import { Copy, Check, Link as LinkIcon } from 'lucide-react';
+
+const BASE_URL = window.location.origin || 'https://athlete.gofastcrushgoals.com';
 
 const RunCrewSuccess = () => {
   const navigate = useNavigate();
+  const [copiedLink, setCopiedLink] = useState(false);
+  const [copiedCode, setCopiedCode] = useState(false);
   
   // Get crew data from localStorage
   const crewData = JSON.parse(localStorage.getItem('currentCrew') || '{}');
   const crewCode = crewData.joinCode || crewData.crewCode || 'CODE123';
+  const crewName = crewData.name || 'Your Crew';
 
-  const handleCopyCode = () => {
-    navigator.clipboard.writeText(crewCode);
-    alert('Crew code copied to clipboard!');
+  // Generate custom invite URL
+  const inviteUrl = `${BASE_URL}/join/${crewCode}`;
+  const inviteUrlAlt = `${BASE_URL}/join?code=${crewCode}`;
+
+  const handleCopyLink = async () => {
+    try {
+      await navigator.clipboard.writeText(inviteUrl);
+      setCopiedLink(true);
+      setTimeout(() => setCopiedLink(false), 2000);
+    } catch (err) {
+      alert('Failed to copy link');
+    }
+  };
+
+  const handleCopyCode = async () => {
+    try {
+      await navigator.clipboard.writeText(crewCode);
+      setCopiedCode(true);
+      setTimeout(() => setCopiedCode(false), 2000);
+    } catch (err) {
+      alert('Failed to copy code');
+    }
   };
 
   const handleGoToCentral = () => {
@@ -18,13 +43,17 @@ const RunCrewSuccess = () => {
   };
 
   const createShareMessage = () => {
-    return `Hi! I created a run crew on GoFast. Go to runcrewjoin.gofastcrushgoals.com, click "Join a Crew", and use this code: ${crewCode}`;
+    return `You've been invited to join ${crewName} on GoFast!\n\nJoin here: ${inviteUrl}`;
   };
 
-  const handleCopyMessage = () => {
-    const message = createShareMessage();
-    navigator.clipboard.writeText(message);
-    alert('Share message copied to clipboard!');
+  const handleCopyMessage = async () => {
+    try {
+      const message = createShareMessage();
+      await navigator.clipboard.writeText(message);
+      alert('Share message copied to clipboard!');
+    } catch (err) {
+      alert('Failed to copy message');
+    }
   };
 
   return (
@@ -53,55 +82,78 @@ const RunCrewSuccess = () => {
             </p>
           </div>
 
+          {/* Invite Link Section - PRIMARY */}
+          <div className="bg-gradient-to-br from-sky-50 to-sky-100 rounded-xl p-6 mb-6 border-2 border-sky-200">
+            <div className="flex items-center justify-center mb-4">
+              <LinkIcon className="w-6 h-6 text-sky-600 mr-2" />
+              <h2 className="text-xl font-bold text-gray-900">Your Invite Link</h2>
+            </div>
+            <div className="bg-white rounded-lg p-4 mb-4 border-2 border-sky-300">
+              <p className="text-sm font-mono text-sky-700 break-all text-center">
+                {inviteUrl}
+              </p>
+            </div>
+            <button
+              onClick={handleCopyLink}
+              className="w-full bg-sky-600 hover:bg-sky-700 text-white py-3 rounded-lg font-semibold transition-colors flex items-center justify-center space-x-2 shadow-md"
+            >
+              {copiedLink ? (
+                <>
+                  <Check className="w-5 h-5" />
+                  <span>Copied!</span>
+                </>
+              ) : (
+                <>
+                  <Copy className="w-5 h-5" />
+                  <span>Copy Invite Link</span>
+                </>
+              )}
+            </button>
+            <p className="text-xs text-gray-600 text-center mt-3">
+              Share this link — friends can join with one click!
+            </p>
+          </div>
+
           {/* Share Message Section */}
-          <div className="bg-orange-50 rounded-xl p-6 mb-8">
-            <h2 className="text-lg font-bold text-gray-900 mb-4">Share Message</h2>
+          <div className="bg-orange-50 rounded-xl p-6 mb-6">
+            <h2 className="text-lg font-bold text-gray-900 mb-4">Or Share This Message</h2>
             <div className="bg-white rounded-lg p-4 mb-4 border-2 border-orange-200">
-              <p className="text-sm text-gray-700 leading-relaxed">
+              <p className="text-sm text-gray-700 leading-relaxed whitespace-pre-line">
                 {createShareMessage()}
               </p>
             </div>
-            
-            <div className="flex space-x-3">
-              <button
-                onClick={handleCopyMessage}
-                className="flex-1 bg-orange-500 text-white py-3 rounded-lg font-medium hover:bg-orange-600 transition-colors flex items-center justify-center space-x-2"
-              >
-                <span>📋</span>
-                <span>Copy Message</span>
-              </button>
-              <button
-                onClick={handleCopyCode}
-                className="flex-1 bg-white border-2 border-orange-200 text-orange-600 py-3 rounded-lg font-medium hover:border-orange-400 transition-colors flex items-center justify-center space-x-2"
-              >
-                <span>📋</span>
-                <span>Copy Code Only</span>
-              </button>
-            </div>
+            <button
+              onClick={handleCopyMessage}
+              className="w-full bg-orange-500 hover:bg-orange-600 text-white py-3 rounded-lg font-medium transition-colors flex items-center justify-center space-x-2"
+            >
+              <Copy className="w-4 h-4" />
+              <span>Copy Message</span>
+            </button>
           </div>
 
-          {/* Join Instructions */}
-          <div className="bg-gray-50 rounded-xl p-6 mb-8">
-            <h3 className="text-lg font-bold text-gray-900 mb-4">How Others Join</h3>
-            <div className="space-y-3 text-left">
-              <div className="flex items-start space-x-3">
-                <div className="w-6 h-6 bg-orange-100 rounded-full flex items-center justify-center flex-shrink-0 mt-0.5">
-                  <span className="text-orange-600 font-bold text-xs">1</span>
-                </div>
-                <p className="text-sm text-gray-600">Share the crew code with friends</p>
+          {/* Join Code (Fallback) */}
+          <div className="bg-gray-50 rounded-xl p-4 mb-6">
+            <div className="flex items-center justify-between">
+              <div>
+                <p className="text-xs text-gray-500 mb-1">Join Code (if needed)</p>
+                <p className="text-lg font-mono font-bold text-gray-900">{crewCode}</p>
               </div>
-              <div className="flex items-start space-x-3">
-                <div className="w-6 h-6 bg-orange-100 rounded-full flex items-center justify-center flex-shrink-0 mt-0.5">
-                  <span className="text-orange-600 font-bold text-xs">2</span>
-                </div>
-                <p className="text-sm text-gray-600">They go to <strong>runcrewjoin.gofastcrushgoals.com</strong></p>
-              </div>
-              <div className="flex items-start space-x-3">
-                <div className="w-6 h-6 bg-orange-100 rounded-full flex items-center justify-center flex-shrink-0 mt-0.5">
-                  <span className="text-orange-600 font-bold text-xs">3</span>
-                </div>
-                <p className="text-sm text-gray-600">Enter the code and join your crew!</p>
-              </div>
+              <button
+                onClick={handleCopyCode}
+                className="px-4 py-2 bg-white border-2 border-gray-300 text-gray-700 rounded-lg hover:border-gray-400 transition-colors flex items-center space-x-2"
+              >
+                {copiedCode ? (
+                  <>
+                    <Check className="w-4 h-4" />
+                    <span className="text-sm">Copied</span>
+                  </>
+                ) : (
+                  <>
+                    <Copy className="w-4 h-4" />
+                    <span className="text-sm">Copy</span>
+                  </>
+                )}
+              </button>
             </div>
           </div>
 
