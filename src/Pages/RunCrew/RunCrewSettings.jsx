@@ -20,6 +20,9 @@ export default function RunCrewSettings() {
   const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
   const [showTransferModal, setShowTransferModal] = useState(false);
   const [showAddManagerModal, setShowAddManagerModal] = useState(false);
+  const [crewName, setCrewName] = useState('');
+  const [crewDescription, setCrewDescription] = useState('');
+  const [isSaving, setIsSaving] = useState(false);
 
   // Get crew data from localStorage or hydrate
   useEffect(() => {
@@ -35,6 +38,8 @@ export default function RunCrewSettings() {
         const storedCrew = LocalStorageAPI.getRunCrewData();
         if (storedCrew) {
           setCrew(storedCrew);
+          setCrewName(storedCrew.name || '');
+          setCrewDescription(storedCrew.description || '');
           setLoading(false);
         }
 
@@ -51,6 +56,8 @@ export default function RunCrewSettings() {
 
           if (response.data.success) {
             setCrew(response.data.runCrew);
+            setCrewName(response.data.runCrew.name || '');
+            setCrewDescription(response.data.runCrew.description || '');
             LocalStorageAPI.setRunCrewData(response.data.runCrew);
           }
         }
@@ -64,6 +71,41 @@ export default function RunCrewSettings() {
 
     loadCrew();
   }, []);
+
+  const handleSaveCrewInfo = async () => {
+    if (!crew) return;
+
+    try {
+      const user = auth.currentUser;
+      if (!user) {
+        setError('You must be signed in to update crew');
+        return;
+      }
+
+      setIsSaving(true);
+      const token = await user.getIdToken();
+      const response = await api.patch(`${API_BASE}/runcrew/${crew.id}`, {
+        name: crewName.trim(),
+        description: crewDescription.trim() || null
+      }, {
+        headers: { Authorization: `Bearer ${token}` }
+      });
+
+      if (response.data.success) {
+        // Update local state and localStorage
+        const updatedCrew = { ...crew, name: crewName.trim(), description: crewDescription.trim() || null };
+        setCrew(updatedCrew);
+        LocalStorageAPI.setRunCrewData(updatedCrew);
+        setError(null);
+        // Show success message (you could add a toast here)
+      }
+    } catch (err) {
+      console.error('Error updating crew:', err);
+      setError(err.response?.data?.message || 'Failed to update crew');
+    } finally {
+      setIsSaving(false);
+    }
+  };
 
   const handleDeleteCrew = async () => {
     if (!crew) return;
@@ -281,17 +323,30 @@ export default function RunCrewSettings() {
                       <label className="block text-sm font-medium text-gray-700 mb-2">Crew Name</label>
                       <input
                         type="text"
-                        defaultValue={crewData.name}
+                        value={crewName}
+                        onChange={(e) => setCrewName(e.target.value)}
                         className="w-full p-3 border border-gray-300 rounded-lg"
+                        placeholder="Enter crew name"
                       />
                     </div>
                     <div>
                       <label className="block text-sm font-medium text-gray-700 mb-2">Description</label>
                       <textarea
-                        defaultValue={crewData.description || ''}
+                        value={crewDescription}
+                        onChange={(e) => setCrewDescription(e.target.value)}
                         rows={3}
                         className="w-full p-3 border border-gray-300 rounded-lg"
+                        placeholder="Enter crew description (optional)"
                       />
+                    </div>
+                    <div className="flex justify-end">
+                      <button
+                        onClick={handleSaveCrewInfo}
+                        disabled={isSaving}
+                        className="bg-orange-500 hover:bg-orange-600 text-white font-semibold px-6 py-2 rounded-lg transition disabled:opacity-60"
+                      >
+                        {isSaving ? 'Saving...' : 'Save Changes'}
+                      </button>
                     </div>
                     <div>
                       <label className="block text-sm font-medium text-gray-700 mb-2">Join Code</label>
