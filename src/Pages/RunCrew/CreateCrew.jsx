@@ -12,10 +12,11 @@ const RUNNING_EMOJIS = [
 ];
 
 export default function CreateCrew() {
-  const [name, setName] = useState("");
-  const [inviteCode, setInviteCode] = useState("");
-  const [description, setDescription] = useState("");
-  const [icon, setIcon] = useState("");
+  // Prefill for testing
+  const [name, setName] = useState("Morning Warriors");
+  const [inviteCode, setInviteCode] = useState("FAST123");
+  const [description, setDescription] = useState("5am grind, every day. Let's crush our goals together!");
+  const [icon, setIcon] = useState("🔥");
   const [logo, setLogo] = useState("");
   const [logoFile, setLogoFile] = useState(null);
   const [logoPreview, setLogoPreview] = useState(null);
@@ -168,8 +169,8 @@ export default function CreateCrew() {
         body: JSON.stringify({ 
           name: name.trim(), 
           joinCode: normalizedCode,
-          description: description.trim() || null,
-          icon: icon.trim() || null,
+          description: description?.trim() || null,
+          icon: icon?.trim() || null,
           logo: logo || null,
           athleteId 
         })
