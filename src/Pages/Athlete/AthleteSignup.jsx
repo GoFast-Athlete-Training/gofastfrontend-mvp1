@@ -1,11 +1,14 @@
-import React, { useState } from 'react';
-import { useNavigate } from 'react-router-dom';
+import React, { useState, useEffect } from 'react';
+import { useNavigate, useSearchParams } from 'react-router-dom';
 import { signInWithGoogle, auth } from '../../firebase';
 import api from '../../api/axiosConfig';
 
 const SignupPage = () => {
   const navigate = useNavigate();
+  const [searchParams] = useSearchParams();
   const [isSigningUp, setIsSigningUp] = useState(false);
+  const hasJoinContext = searchParams.get('hasJoinContext') === 'true';
+  const joinSessionId = searchParams.get('sessionId') || localStorage.getItem('joinSessionId');
 
   const handleSignUp = async () => {
     if (isSigningUp) return;
@@ -24,9 +27,12 @@ const SignupPage = () => {
       // Store Firebase token for API calls
       localStorage.setItem("firebaseToken", firebaseToken);
       
-      // Call backend create athlete - no body needed, route extracts from Firebase token
+      // Call backend create athlete - include sessionId if we have join context
       console.log("🌐 Calling backend API: /athlete/create");
-      const res = await api.post("/athlete/create");
+      const requestBody = hasJoinContext && joinSessionId 
+        ? { sessionId: joinSessionId }
+        : {};
+      const res = await api.post("/athlete/create", requestBody);
       
       console.log("✅ Backend API response:", res.data);
       
@@ -41,6 +47,14 @@ const SignupPage = () => {
       localStorage.setItem("firebaseId", result.uid);
       localStorage.setItem("athleteId", athlete.athleteId);
       localStorage.setItem("email", athlete.data?.email || result.email);
+      
+      // If joined a crew via direct-invite flow, redirect to precrewpage
+      if (hasJoinContext && athlete.runCrewId) {
+        console.log("✅ SUCCESS: Joined RunCrew via direct-invite → PreCrewPage");
+        localStorage.removeItem('joinSessionId'); // Clean up
+        navigate(`/precrewpage?crewId=${athlete.runCrewId}`);
+        return;
+      }
       
       // Route based on profile completion (check gofastHandle - better indicator than firstName)
       // If gofastHandle exists, athlete has completed profile setup → route to home

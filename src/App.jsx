@@ -32,6 +32,9 @@ import RunCrewSuccess from './Pages/RunCrew/RunCrewSuccess';
 import MyActivities from './Pages/Activity/MyActivities';
 import ActivityDetail from './Pages/Activity/ActivityDetail';
 
+// Young Athlete Components
+import YoungAthleteWelcome from './Pages/YoungAthlete/YoungAthleteWelcome';
+
 // Debug Components
 import FindMyUserId from './Pages/Debug/FindMyUserId';
 
@@ -65,6 +68,9 @@ const App = () => {
         {/* Activity Routes */}
         <Route path="/my-activities" element={<MyActivities />} />
         <Route path="/activity/:id" element={<ActivityDetail />} />
+        
+        {/* Young Athlete Routes */}
+        <Route path="/young-athlete/welcome" element={<YoungAthleteWelcome />} />
         
         {/* Garmin OAuth 2.0 PKCE Flow */}
         <Route path="/garmin/callback" element={<GarminOAuthCallback />} />

@@ -35,10 +35,10 @@ const AthleteHome = () => {
   // Check Garmin connection status
   useEffect(() => {
     const checkGarminConnection = async () => {
-      if (!athleteId) {
-        setCheckingConnection(false);
-        return;
-      }
+        if (!athleteId) {
+          setCheckingConnection(false);
+          return;
+        }
 
       try {
         const response = await fetch(`${API_BASE}/garmin/status?athleteId=${athleteId}`);
@@ -73,9 +73,9 @@ const AthleteHome = () => {
     if (!athleteProfile) {
       // No athlete data - redirect to welcome to hydrate
       console.log('⚠️ ATHLETE HOME: No athlete data, redirecting to welcome');
-      navigate('/athlete-welcome', { replace: true });
-      return;
-    }
+          navigate('/athlete-welcome', { replace: true });
+          return;
+        }
 
     // Only run once when athleteProfile is first loaded
     if (onboardingState !== null) {
@@ -87,24 +87,24 @@ const AthleteHome = () => {
       const model = LocalStorageAPI.getFullHydrationModel();
       const { weeklyActivities: cachedActivities, weeklyTotals: cachedTotals } = model || {};
 
-      setWeeklyActivities(Array.isArray(cachedActivities) ? cachedActivities : []);
-      setWeeklyTotals(cachedTotals || null);
+        setWeeklyActivities(Array.isArray(cachedActivities) ? cachedActivities : []);
+        setWeeklyTotals(cachedTotals || null);
 
-      // Calculate onboarding state
-      const storedOnboarding = localStorage.getItem('onboardingState');
-      let onboarding;
-      if (storedOnboarding) {
-        onboarding = JSON.parse(storedOnboarding);
-      } else {
+        // Calculate onboarding state
+        const storedOnboarding = localStorage.getItem('onboardingState');
+        let onboarding;
+        if (storedOnboarding) {
+          onboarding = JSON.parse(storedOnboarding);
+        } else {
         onboarding = UserOnboardingCalculationService.calculateOnboardingState(athleteProfile.createdAt);
-        localStorage.setItem('onboardingState', JSON.stringify(onboarding));
-      }
+          localStorage.setItem('onboardingState', JSON.stringify(onboarding));
+        }
 
-      setOnboardingState(onboarding);
+        setOnboardingState(onboarding);
       setDisplayCards(UserOnboardingCalculationService.getCardsForUser(athleteProfile, onboarding));
-    } catch (error) {
-      console.error('❌ ATHLETE HOME: Error loading athlete data:', error);
-    }
+      } catch (error) {
+        console.error('❌ ATHLETE HOME: Error loading athlete data:', error);
+      }
   }, [athleteProfile, navigate, onboardingState]);
 
   const handleSignOut = async () => {
@@ -153,17 +153,17 @@ const AthleteHome = () => {
 
     // Otherwise, hydrate from backend (shouldn't happen if hydration worked)
     if (!athleteId) {
-      console.warn('⚠️ ATHLETE HOME: Missing athleteId, routing to welcome');
-      navigate('/athlete-welcome');
-      return;
-    }
+        console.warn('⚠️ ATHLETE HOME: Missing athleteId, routing to welcome');
+        navigate('/athlete-welcome');
+        return;
+      }
 
     const user = auth.currentUser;
     if (!user) {
       console.warn('⚠️ ATHLETE HOME: No Firebase user');
       navigate('/athletesignin');
-      return;
-    }
+        return;
+      }
 
     try {
       const token = await user.getIdToken();
