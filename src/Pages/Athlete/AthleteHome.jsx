@@ -17,24 +17,10 @@ const AthleteHome = () => {
   // Use the hook to get all hydrated data from localStorage
   const { athlete: athleteProfile, athleteId, runCrewId, runCrewManagerId, runCrew } = useHydratedAthlete();
 
-  // Check if user is an admin of the current crew
+  // Check if user is an admin of the current crew - if they have a managerId, they're an admin
   const isCrewAdmin = useMemo(() => {
-    if (!runCrew || !athleteId) {
-      return false;
-    }
-    // If they have a manager ID, they're likely an admin
-    if (runCrewManagerId) {
-      return true;
-    }
-    // Check managers array for admin role
-    if (Array.isArray(runCrew.managers)) {
-      return runCrew.managers.some(
-        (manager) => manager.athleteId === athleteId && manager.role === 'admin'
-      );
-    }
-    // Fallback to isAdmin flag if present
-    return runCrew.isAdmin === true;
-  }, [runCrew, athleteId, runCrewManagerId]);
+    return Boolean(runCrewManagerId);
+  }, [runCrewManagerId]);
   
   const [onboardingState, setOnboardingState] = useState(null);
   const [displayCards, setDisplayCards] = useState([]);
