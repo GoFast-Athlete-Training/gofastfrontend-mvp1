@@ -158,6 +158,31 @@ export default function JoinCodeWelcome() {
             <img src="/logo.jpg" alt="GoFast" className="w-12 h-12 rounded-full shadow-md" />
           </div>
           <div>
+            {crewPreview && (crewPreview.icon || crewPreview.logo) && (
+              <div className="flex items-center justify-center mb-3">
+                {crewPreview.logo ? (
+                  <img 
+                    src={crewPreview.logo} 
+                    alt={crewPreview.name} 
+                    className="w-16 h-16 rounded-xl object-cover border-2 border-sky-200 shadow-md"
+                    onError={(e) => {
+                      e.target.style.display = 'none';
+                      if (crewPreview.icon) {
+                        const iconFallback = e.target.nextElementSibling;
+                        if (iconFallback) iconFallback.style.display = 'flex';
+                      }
+                    }}
+                  />
+                ) : null}
+                {crewPreview.icon && (
+                  <div 
+                    className={`w-16 h-16 rounded-xl bg-sky-100 border-2 border-sky-200 flex items-center justify-center text-4xl shadow-md ${crewPreview.logo ? 'hidden' : ''}`}
+                  >
+                    {crewPreview.icon}
+                  </div>
+                )}
+              </div>
+            )}
             <h1 className="text-3xl font-bold text-gray-900 mb-2">
               {crewPreview 
                 ? `Welcome to ${crewPreview.name}!` 
@@ -204,16 +229,54 @@ export default function JoinCodeWelcome() {
           <div className="space-y-4">
             {/* Crew Preview Card */}
             <div className="bg-gradient-to-br from-sky-50 to-blue-50 border-2 border-sky-200 rounded-xl p-6 space-y-4">
-              <div className="space-y-3">
+              <div className="space-y-4">
                 {crewPreview.description && (
                   <div>
                     <p className="text-xs font-semibold text-gray-500 uppercase tracking-wide mb-1">About This Crew</p>
                     <p className="text-base text-gray-800 leading-relaxed">{crewPreview.description}</p>
                   </div>
                 )}
+                
+                {/* Admin Info - More Personal & Comforting */}
+                {crewPreview.admin && (
+                  <div className="pt-3 border-t border-sky-200">
+                    <p className="text-xs font-semibold text-gray-500 uppercase tracking-wide mb-3">Crew Admin</p>
+                    <div className="flex items-center space-x-3">
+                      <div className="flex-shrink-0">
+                        {crewPreview.admin.photoURL ? (
+                          <img 
+                            src={crewPreview.admin.photoURL} 
+                            alt={`${crewPreview.admin.firstName} ${crewPreview.admin.lastName}`}
+                            className="w-12 h-12 rounded-full object-cover border-2 border-sky-300 shadow-sm"
+                            onError={(e) => {
+                              e.target.style.display = 'none';
+                              e.target.nextElementSibling.style.display = 'flex';
+                            }}
+                          />
+                        ) : null}
+                        <div 
+                          className={`w-12 h-12 rounded-full bg-sky-200 border-2 border-sky-300 flex items-center justify-center text-xl font-bold text-sky-700 ${crewPreview.admin.photoURL ? 'hidden' : ''}`}
+                        >
+                          {crewPreview.admin.firstName?.[0] || 'A'}
+                        </div>
+                      </div>
+                      <div className="flex-1 min-w-0">
+                        <p className="text-base font-semibold text-gray-900 truncate">
+                          {crewPreview.admin.firstName} {crewPreview.admin.lastName}
+                        </p>
+                        <p className="text-xs text-gray-600">
+                          Crew Administrator
+                        </p>
+                      </div>
+                    </div>
+                  </div>
+                )}
+                
+                {/* Member Count (Secondary Info) */}
                 <div className="pt-2 border-t border-sky-200">
-                  <p className="text-xs font-semibold text-gray-500 uppercase tracking-wide mb-1">Current Members</p>
-                  <p className="text-lg font-bold text-sky-700">{crewPreview.memberCount} member{crewPreview.memberCount !== 1 ? 's' : ''}</p>
+                  <p className="text-xs text-gray-500">
+                    {crewPreview.memberCount} member{crewPreview.memberCount !== 1 ? 's' : ''} in this crew
+                  </p>
                 </div>
               </div>
             </div>
