@@ -161,26 +161,33 @@ export default function JoinCodeWelcome() {
             {crewPreview && (crewPreview.icon || crewPreview.logo) && (
               <div className="flex items-center justify-center mb-3">
                 {crewPreview.logo ? (
-                  <img 
-                    src={crewPreview.logo} 
-                    alt={crewPreview.name} 
-                    className="w-16 h-16 rounded-xl object-cover border-2 border-sky-200 shadow-md"
-                    onError={(e) => {
-                      e.target.style.display = 'none';
-                      if (crewPreview.icon) {
-                        const iconFallback = e.target.nextElementSibling;
-                        if (iconFallback) iconFallback.style.display = 'flex';
-                      }
-                    }}
-                  />
-                ) : null}
-                {crewPreview.icon && (
-                  <div 
-                    className={`w-16 h-16 rounded-xl bg-sky-100 border-2 border-sky-200 flex items-center justify-center text-4xl shadow-md ${crewPreview.logo ? 'hidden' : ''}`}
-                  >
+                  <>
+                    <img 
+                      src={crewPreview.logo} 
+                      alt={crewPreview.name} 
+                      className="w-16 h-16 rounded-xl object-cover border-2 border-sky-200 shadow-md"
+                      onError={(e) => {
+                        e.target.style.display = 'none';
+                        const iconFallback = document.getElementById('crew-icon-fallback');
+                        if (iconFallback && crewPreview.icon) {
+                          iconFallback.style.display = 'flex';
+                        }
+                      }}
+                    />
+                    {crewPreview.icon && (
+                      <div 
+                        id="crew-icon-fallback"
+                        className="w-16 h-16 rounded-xl bg-sky-100 border-2 border-sky-200 flex items-center justify-center text-4xl shadow-md hidden"
+                      >
+                        {crewPreview.icon}
+                      </div>
+                    )}
+                  </>
+                ) : crewPreview.icon ? (
+                  <div className="w-16 h-16 rounded-xl bg-sky-100 border-2 border-sky-200 flex items-center justify-center text-4xl shadow-md">
                     {crewPreview.icon}
                   </div>
-                )}
+                ) : null}
               </div>
             )}
             <h1 className="text-3xl font-bold text-gray-900 mb-2">
