@@ -144,14 +144,34 @@ export default function RunCrewSettings() {
       });
 
       if (response.data.success) {
+        // Clear ALL crew-related localStorage data FIRST
+        LocalStorageAPI.clearRunCrewData();
+        
+        // Also clear the full hydration model's crew data
+        const fullModel = LocalStorageAPI.getFullHydrationModel();
+        if (fullModel?.athlete) {
+          // Remove crew-related data from athlete object
+          const cleanedAthlete = { ...fullModel.athlete };
+          delete cleanedAthlete.runCrewMemberships;
+          delete cleanedAthlete.runCrewManagers;
+          delete cleanedAthlete.adminRunCrews;
+          delete cleanedAthlete.MyCrew;
+          delete cleanedAthlete.MyCrewManagerId;
+          delete cleanedAthlete.runCrews;
+          
+          // Update the hydration model
+          LocalStorageAPI.setFullHydrationModel({
+            ...fullModel,
+            athlete: cleanedAthlete
+          });
+        }
+        
         // Show success message
         setDeleteSuccess(true);
-        // Clear localStorage
-        LocalStorageAPI.clearRunCrewData();
         
         // Redirect to home after 2 seconds
         setTimeout(() => {
-          navigate('/athlete-home');
+          navigate('/athlete-home', { replace: true });
         }, 2000);
       }
     } catch (err) {
@@ -161,10 +181,30 @@ export default function RunCrewSettings() {
       // If crew is already deleted/archived, treat it as success
       if (err.response?.status === 400 && errorMessage.includes('already')) {
         console.log('✅ Crew already deleted, clearing localStorage and redirecting');
-        setDeleteSuccess(true);
+        
+        // Clear ALL crew-related localStorage data
         LocalStorageAPI.clearRunCrewData();
+        
+        // Also clear the full hydration model's crew data
+        const fullModel = LocalStorageAPI.getFullHydrationModel();
+        if (fullModel?.athlete) {
+          const cleanedAthlete = { ...fullModel.athlete };
+          delete cleanedAthlete.runCrewMemberships;
+          delete cleanedAthlete.runCrewManagers;
+          delete cleanedAthlete.adminRunCrews;
+          delete cleanedAthlete.MyCrew;
+          delete cleanedAthlete.MyCrewManagerId;
+          delete cleanedAthlete.runCrews;
+          
+          LocalStorageAPI.setFullHydrationModel({
+            ...fullModel,
+            athlete: cleanedAthlete
+          });
+        }
+        
+        setDeleteSuccess(true);
         setTimeout(() => {
-          navigate('/athlete-home');
+          navigate('/athlete-home', { replace: true });
         }, 2000);
         return;
       }

@@ -63,12 +63,27 @@ export const LocalStorageAPI = {
     return data ? JSON.parse(data) : null;
   },
   clearRunCrewData: () => {
+    // Clear all crew-related keys
     localStorage.removeItem(STORAGE_KEYS.runCrewData);
     localStorage.removeItem(STORAGE_KEYS.runCrewId);
     localStorage.removeItem(STORAGE_KEYS.MyCrew);
     localStorage.removeItem(STORAGE_KEYS.runCrewManagerId);
     localStorage.removeItem(STORAGE_KEYS.MyCrewManagerId);
-    console.log('✅ LocalStorageAPI: Cleared all crew data');
+    localStorage.removeItem(STORAGE_KEYS.runCrewMemberships);
+    localStorage.removeItem(STORAGE_KEYS.runCrewManagers);
+    localStorage.removeItem(STORAGE_KEYS.adminRunCrews);
+    
+    // Also clear any crew-specific hydration caches
+    const keysToRemove = [];
+    for (let i = 0; i < localStorage.length; i++) {
+      const key = localStorage.key(i);
+      if (key && key.startsWith('crew_') && key.includes('_hydration')) {
+        keysToRemove.push(key);
+      }
+    }
+    keysToRemove.forEach(key => localStorage.removeItem(key));
+    
+    console.log('✅ LocalStorageAPI: Cleared all crew data and related caches');
   },
   setCrewHydration: (runCrewId, crewData) => {
     if (!runCrewId || !crewData) return;
