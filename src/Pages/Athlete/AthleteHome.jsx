@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useMemo } from 'react';
 import { useNavigate, useLocation } from 'react-router-dom';
 import axios from 'axios';
 import { signOut } from 'firebase/auth';
@@ -16,6 +16,25 @@ const AthleteHome = () => {
   
   // Use the hook to get all hydrated data from localStorage
   const { athlete: athleteProfile, athleteId, runCrewId, runCrewManagerId, runCrew } = useHydratedAthlete();
+
+  // Check if user is an admin of the current crew
+  const isCrewAdmin = useMemo(() => {
+    if (!runCrew || !athleteId) {
+      return false;
+    }
+    // If they have a manager ID, they're likely an admin
+    if (runCrewManagerId) {
+      return true;
+    }
+    // Check managers array for admin role
+    if (Array.isArray(runCrew.managers)) {
+      return runCrew.managers.some(
+        (manager) => manager.athleteId === athleteId && manager.role === 'admin'
+      );
+    }
+    // Fallback to isAdmin flag if present
+    return runCrew.isAdmin === true;
+  }, [runCrew, athleteId, runCrewManagerId]);
   
   const [onboardingState, setOnboardingState] = useState(null);
   const [displayCards, setDisplayCards] = useState([]);
@@ -137,8 +156,10 @@ const AthleteHome = () => {
 
     // If we have crew data from hook, use it directly
     if (runCrew) {
-      console.log('✅ ATHLETE HOME: Using crew data from hook, navigating to central');
-      navigate('/runcrew/central', { replace: true });
+      // Route to admin page if user is an admin, otherwise regular central
+      const targetRoute = isCrewAdmin ? '/crew/crewadmin' : '/runcrew/central';
+      console.log(`✅ ATHLETE HOME: Using crew data from hook, navigating to ${isCrewAdmin ? 'admin' : 'central'}`);
+      navigate(targetRoute, { replace: true });
       // Don't reset flag here - let the navigation complete
       setTimeout(() => setIsNavigatingToCrew(false), 1000);
       return;
@@ -171,14 +192,28 @@ const AthleteHome = () => {
       );
 
       if (data?.success && data.runCrew) {
-        LocalStorageAPI.setRunCrewData(data.runCrew);
-        navigate('/runcrew/central', { replace: true });
+        // Check if user is admin before storing
+        const managerRecord = Array.isArray(data.runCrew?.managers)
+          ? data.runCrew.managers.find((manager) => manager.athleteId === athleteId && manager.role === 'admin')
+          : null;
+        const isAdmin = Boolean(managerRecord);
+        
+        LocalStorageAPI.setRunCrewData({
+          ...data.runCrew,
+          isAdmin
+        });
+        
+        // Route to admin page if user is an admin, otherwise regular central
+        const targetRoute = isAdmin ? '/crew/crewadmin' : '/runcrew/central';
+        console.log(`✅ ATHLETE HOME: Crew hydrated, navigating to ${isAdmin ? 'admin' : 'central'}`);
+        navigate(targetRoute, { replace: true });
       } else {
         throw new Error(data?.error || data?.message || 'Failed to hydrate crew');
       }
     } catch (error) {
       console.error('❌ ATHLETE HOME: Unable to load crew', error);
       // If hydration fails, still try to navigate - RunCrewCentral will handle it
+      // Default to regular central if we can't determine admin status
       navigate('/runcrew/central', { replace: true });
     } finally {
       setIsCrewHydrating(false);
