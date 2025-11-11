@@ -3,9 +3,9 @@ import { useNavigate } from 'react-router-dom';
 import { auth } from '../../firebase';
 
 export default function CreateCrew() {
-  // DEMO MODE: Pre-fill with fake data so you can click through
-  const [name, setName] = useState("Morning Warriors");
-  const [inviteCode, setInviteCode] = useState("FAST123");
+  // Pre-fill with default values for quick testing
+  const [name, setName] = useState("");
+  const [inviteCode, setInviteCode] = useState("");
   const [loading, setLoading] = useState(false);
   const navigate = useNavigate();
 
