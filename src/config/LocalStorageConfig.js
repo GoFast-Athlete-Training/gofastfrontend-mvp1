@@ -62,6 +62,14 @@ export const LocalStorageAPI = {
     const data = localStorage.getItem(STORAGE_KEYS.runCrewData);
     return data ? JSON.parse(data) : null;
   },
+  clearRunCrewData: () => {
+    localStorage.removeItem(STORAGE_KEYS.runCrewData);
+    localStorage.removeItem(STORAGE_KEYS.runCrewId);
+    localStorage.removeItem(STORAGE_KEYS.MyCrew);
+    localStorage.removeItem(STORAGE_KEYS.runCrewManagerId);
+    localStorage.removeItem(STORAGE_KEYS.MyCrewManagerId);
+    console.log('✅ LocalStorageAPI: Cleared all crew data');
+  },
   setCrewHydration: (runCrewId, crewData) => {
     if (!runCrewId || !crewData) return;
 
