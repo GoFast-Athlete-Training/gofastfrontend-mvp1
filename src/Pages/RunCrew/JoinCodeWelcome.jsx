@@ -15,6 +15,8 @@ export default function JoinCodeWelcome() {
   const [crewPreview, setCrewPreview] = useState(null);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState(null);
+  const [joinSuccess, setJoinSuccess] = useState(false);
+  const [joinedCrew, setJoinedCrew] = useState(null);
   
   // Check if code came from URL (auto-hydrate mode)
   const hasCodeInUrl = !!(code || codeFromQuery);
@@ -123,8 +125,34 @@ export default function JoinCodeWelcome() {
         localStorage.setItem('firebaseId', user.uid);
         localStorage.setItem('email', user.email || '');
 
-        // Redirect to central
-        navigate('/runcrew/central');
+        // Check if user is admin (via RunCrewManager)
+        const isAdmin = runCrew.managers?.some(
+          manager => manager.athleteId === athleteId && manager.role === 'admin'
+        );
+
+        // Store admin status
+        if (isAdmin && runCrew.managers) {
+          const adminManager = runCrew.managers.find(
+            m => m.athleteId === athleteId && m.role === 'admin'
+          );
+          if (adminManager) {
+            LocalStorageAPI.setRunCrewManagerId(adminManager.id);
+          }
+        }
+
+        // Show success state briefly before redirecting
+        setJoinedCrew(runCrew);
+        setJoinSuccess(true);
+        setLoading(false);
+
+        // Redirect after 2 seconds with success message visible
+        setTimeout(() => {
+          if (isAdmin) {
+            navigate('/crew/crewadmin', { replace: true });
+          } else {
+            navigate('/runcrew/central', { replace: true });
+          }
+        }, 2000);
       } else {
         throw new Error(response.data.message || 'Failed to join crew');
       }
@@ -224,7 +252,25 @@ export default function JoinCodeWelcome() {
           </div>
         )}
 
-        {loading && !crewPreview && (
+        {/* Join Success State */}
+        {joinSuccess && joinedCrew && (
+          <div className="text-center py-8 space-y-4">
+            <div className="w-20 h-20 bg-green-100 rounded-full mx-auto flex items-center justify-center mb-4">
+              <svg className="w-12 h-12 text-green-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
+              </svg>
+            </div>
+            <h2 className="text-2xl font-bold text-gray-900">You're In!</h2>
+            <p className="text-gray-600">
+              Welcome to <strong>{joinedCrew.name}</strong>! Redirecting you now...
+            </p>
+            <div className="pt-4">
+              <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-sky-500 mx-auto"></div>
+            </div>
+          </div>
+        )}
+
+        {loading && !crewPreview && !joinSuccess && (
           <div className="text-center py-8">
             <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-sky-500 mx-auto"></div>
             <p className="text-gray-600 mt-4 text-sm">Finding your crew...</p>
@@ -232,7 +278,7 @@ export default function JoinCodeWelcome() {
           </div>
         )}
 
-        {crewPreview ? (
+        {crewPreview && !joinSuccess ? (
           <div className="space-y-4">
             {/* Crew Preview Card */}
             <div className="bg-gradient-to-br from-sky-50 to-blue-50 border-2 border-sky-200 rounded-xl p-6 space-y-4">
