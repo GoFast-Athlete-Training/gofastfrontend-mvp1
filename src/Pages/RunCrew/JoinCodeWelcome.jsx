@@ -224,16 +224,60 @@ export default function JoinCodeWelcome() {
             {/* Crew Preview Card */}
             <div className="bg-gradient-to-br from-sky-50 to-blue-50 border-2 border-sky-200 rounded-xl p-6 space-y-4">
               <div className="space-y-3">
+                {/* Crew Icon/Logo */}
+                {(crewPreview.icon || crewPreview.logo) && (
+                  <div className="text-center mb-2">
+                    {crewPreview.logo ? (
+                      <img 
+                        src={crewPreview.logo} 
+                        alt={crewPreview.name}
+                        className="w-16 h-16 mx-auto rounded-full object-cover"
+                      />
+                    ) : crewPreview.icon ? (
+                      <span className="text-5xl">{crewPreview.icon}</span>
+                    ) : null}
+                  </div>
+                )}
+                
                 {crewPreview.description && (
                   <div>
                     <p className="text-xs font-semibold text-gray-500 uppercase tracking-wide mb-1">About This Crew</p>
                     <p className="text-base text-gray-800 leading-relaxed">{crewPreview.description}</p>
                   </div>
                 )}
-                <div className="pt-2 border-t border-sky-200">
-                  <p className="text-xs font-semibold text-gray-500 uppercase tracking-wide mb-1">Current Members</p>
-                  <p className="text-lg font-bold text-sky-700">{crewPreview.memberCount} member{crewPreview.memberCount !== 1 ? 's' : ''}</p>
-                </div>
+                
+                {/* Admin Display - Show admin profile instead of member count */}
+                {crewPreview.admin ? (
+                  <div className="pt-2 border-t border-sky-200">
+                    <p className="text-xs font-semibold text-gray-500 uppercase tracking-wide mb-2">Crew Admin</p>
+                    <div className="flex items-center space-x-3">
+                      {crewPreview.admin.photoURL ? (
+                        <img 
+                          src={crewPreview.admin.photoURL} 
+                          alt={`${crewPreview.admin.firstName} ${crewPreview.admin.lastName}`}
+                          className="w-12 h-12 rounded-full object-cover border-2 border-sky-300"
+                        />
+                      ) : (
+                        <div className="w-12 h-12 rounded-full bg-sky-200 flex items-center justify-center border-2 border-sky-300">
+                          <span className="text-sky-600 font-bold text-lg">
+                            {crewPreview.admin.firstName?.[0] || 'A'}
+                          </span>
+                        </div>
+                      )}
+                      <div>
+                        <p className="text-base font-semibold text-gray-900">
+                          {crewPreview.admin.firstName} {crewPreview.admin.lastName}
+                        </p>
+                        <p className="text-xs text-gray-500">Crew Admin</p>
+                      </div>
+                    </div>
+                  </div>
+                ) : (
+                  <div className="pt-2 border-t border-sky-200">
+                    <p className="text-xs font-semibold text-gray-500 uppercase tracking-wide mb-1">Current Members</p>
+                    <p className="text-lg font-bold text-sky-700">{crewPreview.memberCount} member{crewPreview.memberCount !== 1 ? 's' : ''}</p>
+                  </div>
+                )}
               </div>
             </div>
 
