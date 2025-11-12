@@ -48,19 +48,62 @@ export default function JoinCodeWelcome() {
     }
   };
 
-  // Auto-fill join code from URL and auto-lookup
+  // Check auth state on mount and when code changes
   useEffect(() => {
-    const codeToUse = code || codeFromQuery;
-    if (codeToUse) {
-      const normalizedCode = codeToUse.toUpperCase().trim();
-      setJoinCode(normalizedCode);
-      // Auto-trigger lookup when code is detected from URL
-      if (normalizedCode) {
-        handleLookupWithCode(normalizedCode);
+    const checkAuthAndHandleCode = async () => {
+      const codeToUse = code || codeFromQuery;
+      if (codeToUse) {
+        const normalizedCode = codeToUse.toUpperCase().trim();
+        setJoinCode(normalizedCode);
+        
+        // Auto-trigger lookup when code is detected from URL
+        if (normalizedCode) {
+          await handleLookupWithCode(normalizedCode);
+        }
       }
-    }
+
+      // Check if user is already authenticated
+      const user = auth.currentUser;
+      if (user && crewPreview) {
+        // User is authenticated - check token and complete join flow
+        try {
+          const token = await user.getIdToken();
+          if (token) {
+            console.log('✅ JoinCodeWelcome: User authenticated, completing join flow...');
+            await completeJoinForAuthenticatedUser(user, token);
+          }
+        } catch (err) {
+          console.error('❌ JoinCodeWelcome: Token check failed:', err);
+        }
+      }
+    };
+
+    checkAuthAndHandleCode();
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [code, codeFromQuery]);
+
+  // Watch for crewPreview changes to trigger auth check
+  useEffect(() => {
+    const checkAuthIfCrewFound = async () => {
+      if (crewPreview) {
+        const user = auth.currentUser;
+        if (user) {
+          try {
+            const token = await user.getIdToken();
+            if (token) {
+              console.log('✅ JoinCodeWelcome: Crew found and user authenticated, completing join...');
+              await completeJoinForAuthenticatedUser(user, token);
+            }
+          } catch (err) {
+            console.error('❌ JoinCodeWelcome: Token check failed:', err);
+          }
+        }
+      }
+    };
+
+    checkAuthIfCrewFound();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [crewPreview]);
 
   const handleLookup = async () => {
     if (!joinCode.trim()) {
@@ -68,6 +111,107 @@ export default function JoinCodeWelcome() {
       return;
     }
     await handleLookupWithCode(joinCode);
+  };
+
+  // Complete join flow for authenticated users
+  const completeJoinForAuthenticatedUser = async (user, token) => {
+    if (!crewPreview || !joinCode.trim()) {
+      return;
+    }
+
+    setLoading(true);
+    setError(null);
+
+    try {
+      // Check if athlete exists and has profile
+      const athleteResponse = await axios.post(
+        `${API_BASE}/athlete/create`,
+        {},
+        {
+          headers: {
+            Authorization: `Bearer ${token}`
+          }
+        }
+      );
+
+      if (!athleteResponse.data || !athleteResponse.data.success) {
+        throw new Error(athleteResponse.data?.message || 'Failed to get athlete');
+      }
+
+      const athleteId = athleteResponse.data.athleteId;
+      const athleteData = athleteResponse.data.data;
+
+      // Store athlete data
+      localStorage.setItem('athleteId', athleteId);
+      localStorage.setItem('firebaseToken', token);
+      localStorage.setItem('firebaseId', user.uid);
+      localStorage.setItem('email', user.email || '');
+
+      // Check if profile is complete
+      if (!athleteData?.gofastHandle) {
+        // Profile incomplete - store join intent and go to profile
+        localStorage.setItem('pendingJoinCode', joinCode.trim().toUpperCase());
+        localStorage.setItem('pendingJoinCrewId', crewPreview.id);
+        localStorage.setItem('pendingJoinCrewName', crewPreview.name);
+        console.log('✅ JoinCodeWelcome: Profile incomplete → Redirecting to profile');
+        navigate('/joincrew-ath-profile', { replace: true });
+        return;
+      }
+
+      // Profile complete - join crew atomically
+      const joinResponse = await axios.post(
+        `${API_BASE}/runcrew/join`,
+        {
+          joinCode: joinCode.trim().toUpperCase()
+        },
+        {
+          headers: {
+            Authorization: `Bearer ${token}`
+          }
+        }
+      );
+
+      if (!joinResponse.data.success) {
+        throw new Error(joinResponse.data.message || 'Failed to join crew');
+      }
+
+      const { runCrew } = joinResponse.data;
+
+      // Check if user is admin
+      const managerRecord = Array.isArray(runCrew?.managers)
+        ? runCrew.managers.find((manager) => manager.athleteId === athleteId && manager.role === 'admin')
+        : null;
+      const isAdmin = Boolean(managerRecord);
+
+      // Store crew data
+      LocalStorageAPI.setRunCrewData({
+        ...runCrew,
+        isAdmin
+      });
+      LocalStorageAPI.setRunCrewId(runCrew.id);
+      
+      if (managerRecord) {
+        LocalStorageAPI.setRunCrewManagerId(managerRecord.id);
+      }
+
+      // Show success and redirect
+      setJoinedCrew(runCrew);
+      setJoinSuccess(true);
+      setLoading(false);
+
+      setTimeout(() => {
+        if (isAdmin) {
+          navigate('/crew/crewadmin', { replace: true });
+        } else {
+          navigate('/runcrew/central', { replace: true });
+        }
+      }, 2000);
+
+    } catch (err) {
+      console.error('❌ JoinCodeWelcome: Complete join error:', err);
+      setError(err.response?.data?.message || err.message || 'Failed to join crew');
+      setLoading(false);
+    }
   };
 
   const handleJoinCrew = async () => {
@@ -80,7 +224,18 @@ export default function JoinCodeWelcome() {
     setError(null);
 
     try {
-      // Store join intent in localStorage (soft onboarding - illusion of joining)
+      // Check if user is already authenticated
+      const user = auth.currentUser;
+      if (user) {
+        const token = await user.getIdToken();
+        if (token) {
+          // User is authenticated - complete join flow
+          await completeJoinForAuthenticatedUser(user, token);
+          return;
+        }
+      }
+
+      // User NOT authenticated - store join intent and show soft onboarding
       localStorage.setItem('pendingJoinCode', joinCode.trim().toUpperCase());
       localStorage.setItem('pendingJoinCrewId', crewPreview.id);
       localStorage.setItem('pendingJoinCrewName', crewPreview.name);
@@ -88,11 +243,6 @@ export default function JoinCodeWelcome() {
       // Show "soft join" success screen (illusion of joining)
       setSoftJoinComplete(true);
       setLoading(false);
-      
-      // Redirect to dedicated signup page after 2 seconds
-      setTimeout(() => {
-        navigate('/joincrew-ath-signup', { replace: true });
-      }, 2000);
       
     } catch (err) {
       console.error('Join error:', err);
