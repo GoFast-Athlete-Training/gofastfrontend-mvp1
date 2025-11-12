@@ -6,23 +6,32 @@ import useHydratedAthlete from '../../hooks/useHydratedAthlete';
 import { LocalStorageAPI } from '../../config/LocalStorageConfig';
 import GooglePlacesAutocomplete from '../../Components/RunCrew/GooglePlacesAutocomplete';
 import StravaRoutePreview from '../../Components/RunCrew/StravaRoutePreview';
-import { generateShareOptions, generateDirectInviteLink, generateAuthenticatedInviteLink, copyInviteLink } from '../../utils/InviteLinkGenerator';
+import { copyInviteLink } from '../../utils/InviteLinkGenerator';
 import { generateUniversalInviteLink } from '../../utils/AuthDetectionService';
 import { Settings } from 'lucide-react';
 
 const API_BASE = 'https://gofastbackendv2-fall2025.onrender.com/api';
 
-const initialRunForm = {
-  title: '',
-  date: '',
-  time: '',
-  meetUpPoint: '',
-  meetUpAddress: '',
-  totalMiles: '',
-  pace: '',
-  description: '',
-  stravaMapUrl: ''
+// Prefill run form for testing
+const getInitialRunForm = () => {
+  const tomorrow = new Date();
+  tomorrow.setDate(tomorrow.getDate() + 1);
+  const formattedDate = tomorrow.toISOString().split('T')[0]; // YYYY-MM-DD
+  
+  return {
+    title: 'Saturday Sunrise Run',
+    date: formattedDate,
+    time: '6:30 AM',
+    meetUpPoint: 'Central Park – Bethesda Terrace',
+    meetUpAddress: 'Central Park, New York, NY',
+    totalMiles: '5.0',
+    pace: '8:00-8:30',
+    description: 'Early morning run to start the weekend right. All paces welcome!',
+    stravaMapUrl: ''
+  };
 };
+
+const initialRunForm = getInitialRunForm();
 
 const paceOptions = [
   '6:00-6:30',
@@ -372,7 +381,7 @@ export default function RunCrewCentralAdmin() {
 
   const openCreateRun = () => {
     setEditingRunId(null);
-    setRunForm(initialRunForm);
+    setRunForm(getInitialRunForm()); // Use function to get fresh prefilled data
     setPlaceData(null);
     setShowRunModal(true);
   };
@@ -568,168 +577,155 @@ export default function RunCrewCentralAdmin() {
         </div>
       </header>
 
-      <main className="max-w-6xl mx-auto px-4 lg:px-6 py-10 space-y-8">
+      <main className="max-w-7xl mx-auto px-4 lg:px-6 py-10">
         {syncError && (
-          <div className="bg-red-50 border border-red-200 text-red-700 px-4 py-3 rounded-lg text-sm">
+          <div className="bg-red-50 border border-red-200 text-red-700 px-4 py-3 rounded-lg text-sm mb-6">
             {syncError}
           </div>
         )}
 
-        {/* Top Row Cards */}
-        <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-          <section className="bg-white rounded-2xl border border-gray-200 shadow-sm p-6 space-y-6 lg:col-span-2">
-            <div className="flex items-center justify-between">
-              <div>
-                <h2 className="text-xl font-bold text-gray-900">Announcements</h2>
-                <p className="text-sm text-gray-500">Share updates with your crew. Posts stay local until we wire the backend.</p>
+        {/* 3-Column Layout: Members (Left) | Main Content (Center) | Actions (Right) */}
+        <div className="grid grid-cols-1 lg:grid-cols-12 gap-6">
+          {/* LEFT SIDEBAR: Members (Prominent) */}
+          <aside className="lg:col-span-3 space-y-6">
+            <section className="bg-white rounded-2xl border border-gray-200 shadow-sm p-6 sticky top-6">
+              <div className="flex items-center justify-between mb-4">
+                <h2 className="text-xl font-bold text-gray-900">Members</h2>
+                <span className="text-sm text-gray-500 bg-gray-100 px-2 py-1 rounded-full">{memberships.length}</span>
               </div>
-            </div>
-
-            <form onSubmit={handleAnnouncementSubmit} className="space-y-4">
-              <textarea
-                value={announcementContent}
-                onChange={handleAnnouncementChange}
-                placeholder="What’s happening next?"
-                className="w-full border border-gray-300 rounded-lg px-4 py-3 text-sm focus:outline-none focus:ring-2 focus:ring-sky-500 focus:border-sky-500 min-h-[100px]"
-              />
-              <div className="flex justify-end">
-                <button
-                  type="submit"
-                  className="bg-orange-500 hover:bg-orange-600 text-white px-5 py-2 rounded-lg text-sm font-semibold transition"
-                >
-                  Post Announcement
-                </button>
-              </div>
-            </form>
-
-            <div className="space-y-4">
-              {announcements.length === 0 && (
-                <p className="text-sm text-gray-500">No announcements yet. Be the first to post one.</p>
-              )}
-              {announcements.map((announcement) => (
-                <div key={announcement.id} className="border border-gray-200 rounded-xl px-4 py-3 bg-gray-50">
-                  <div className="flex items-center justify-between text-xs text-gray-500 mb-2">
-                    <span>
-                      {announcement.author?.firstName
-                        ? `${announcement.author.firstName}${announcement.author.lastName ? ` ${announcement.author.lastName}` : ''}`
-                        : 'Admin'}
-                    </span>
-                    <span>
-                      {announcement.createdAt
-                        ? new Date(announcement.createdAt).toLocaleString('en-US', {
-                            month: 'short',
-                            day: 'numeric',
-                            hour: 'numeric',
-                            minute: '2-digit'
-                          })
-                        : 'Just now'}
-                    </span>
-                  </div>
-                  <p className="text-sm text-gray-800 whitespace-pre-line">{announcement.content || announcement.text}</p>
+              
+              {memberships.length === 0 ? (
+                <div className="border border-dashed border-gray-300 rounded-xl p-6 text-center text-sm text-gray-500">
+                  No members yet. Share your join code to build the crew.
                 </div>
-              ))}
-            </div>
-          </section>
+              ) : (
+                <div className="space-y-3 max-h-[600px] overflow-y-auto">
+                  {memberships.map((membership) => {
+                    const athlete = membership.athlete || membership;
+                    const managerRecord = Array.isArray(crew.managers)
+                      ? crew.managers.find((manager) => manager.athleteId === athlete?.id && manager.role === 'admin')
+                      : null;
 
-          <section className="bg-white rounded-2xl border border-gray-200 shadow-sm p-6 space-y-6">
-            <div className="flex items-center justify-between">
-              <h2 className="text-xl font-bold text-gray-900">Crew Actions</h2>
-              <button
-                onClick={openCreateRun}
-                className="bg-emerald-500 hover:bg-emerald-600 text-white px-4 py-2 rounded-lg text-sm font-semibold transition"
-              >
-                Schedule Run
-              </button>
-            </div>
-            <div className="space-y-4">
-              <div className="border border-gray-200 rounded-xl p-4 bg-gray-50 space-y-2">
-                <p className="text-xs uppercase tracking-wide text-gray-500">Crew Health</p>
-                <p className="text-lg font-semibold text-gray-900">{runs.length} upcoming runs</p>
-                <p className="text-sm text-gray-600">Keep the calendar full to keep members engaged.</p>
-              </div>
-              <div className="border border-gray-200 rounded-xl p-4 bg-gray-50 space-y-2">
-                <p className="text-xs uppercase tracking-wide text-gray-500">Messages</p>
-                <p className="text-lg font-semibold text-gray-900">{messages.length}</p>
-                <p className="text-sm text-gray-600">Announcements & chat keep the crew energized.</p>
-              </div>
-              <div className="border border-gray-200 rounded-xl p-4 bg-gray-50 space-y-2">
-                <p className="text-xs uppercase tracking-wide text-gray-500">Members</p>
-                <p className="text-lg font-semibold text-gray-900">{memberships.length}</p>
-                {joinCode && (
-                  <div className="mt-2 space-y-2">
-                    <p className="text-xs text-gray-500 font-semibold">Invite teammates:</p>
-                    
-                    {/* Universal Invite Link (Smart - Auto-detects auth state) */}
-                    <div className="bg-white border-2 border-green-200 rounded-lg p-3 space-y-2">
-                      <p className="text-xs font-semibold text-green-600">🌟 Universal Invite Link (Recommended)</p>
-                      <p className="text-xs text-gray-600">Works for both new and existing users - auto-detects auth state</p>
-                      <code className="block text-xs text-gray-700 break-all bg-gray-50 px-2 py-1 rounded">
-                        {generateUniversalInviteLink(joinCode)}
-                      </code>
-                      <button
-                        onClick={async () => {
-                          const success = await copyInviteLink(generateUniversalInviteLink(joinCode));
-                          showToast(success ? 'Universal invite link copied!' : 'Failed to copy');
-                        }}
-                        className="text-xs bg-green-500 hover:bg-green-600 text-white px-3 py-1 rounded font-semibold"
-                      >
-                        Copy Universal Link
-                      </button>
-                    </div>
-                    
-                    {/* Direct Invite Link (Join Code-First Flow) */}
-                    <div className="bg-white border border-orange-200 rounded-lg p-3 space-y-2">
-                      <p className="text-xs font-semibold text-orange-600">Direct Invite Link (New Users Only)</p>
-                      <code className="block text-xs text-gray-700 break-all bg-gray-50 px-2 py-1 rounded">
-                        {generateDirectInviteLink(joinCode)}
-                      </code>
-                      <button
-                        onClick={async () => {
-                          const success = await copyInviteLink(generateDirectInviteLink(joinCode));
-                          showToast(success ? 'Direct invite link copied!' : 'Failed to copy');
-                        }}
-                        className="text-xs bg-orange-500 hover:bg-orange-600 text-white px-3 py-1 rounded font-semibold"
-                      >
-                        Copy Direct Link
-                      </button>
-                    </div>
-                    
-                    {/* Authenticated Invite Link (Athlete-First Flow) */}
-                    <div className="bg-white border border-blue-200 rounded-lg p-3 space-y-2">
-                      <p className="text-xs font-semibold text-blue-600">Authenticated Link (Existing Users Only)</p>
-                      <code className="block text-xs text-gray-700 break-all bg-gray-50 px-2 py-1 rounded">
-                        {generateAuthenticatedInviteLink(joinCode)}
-                      </code>
-                      <button
-                        onClick={async () => {
-                          const success = await copyInviteLink(generateAuthenticatedInviteLink(joinCode));
-                          showToast(success ? 'Authenticated link copied!' : 'Failed to copy');
-                        }}
-                        className="text-xs bg-blue-500 hover:bg-blue-600 text-white px-3 py-1 rounded font-semibold"
-                      >
-                        Copy Auth Link
-                      </button>
-                    </div>
-                    
-                    {/* Join Code Display */}
-                    <div className="bg-gray-50 border border-gray-200 rounded px-3 py-2">
-                      <p className="text-xs text-gray-500">Join Code:</p>
-                      <code className="text-sm font-bold text-orange-600">{joinCode}</code>
+                    return (
+                      <div key={athlete?.id || membership.id} className="flex items-center gap-3 p-3 border border-gray-200 rounded-lg hover:bg-gray-50 transition">
+                        {athlete?.photoURL ? (
+                          <img
+                            src={athlete.photoURL}
+                            alt={`${athlete.firstName} ${athlete.lastName}`}
+                            className="w-10 h-10 rounded-full object-cover border-2 border-gray-200"
+                          />
+                        ) : (
+                          <div className="w-10 h-10 rounded-full bg-gradient-to-br from-sky-400 to-sky-600 flex items-center justify-center text-white font-semibold text-sm">
+                            {(athlete?.firstName?.[0] || 'A').toUpperCase()}
+                          </div>
+                        )}
+                        <div className="flex-1 min-w-0">
+                          <p className="text-sm font-semibold text-gray-900 truncate">
+                            {athlete?.firstName || 'Athlete'} {athlete?.lastName || ''}
+                            {managerRecord && <span className="text-orange-600 text-xs font-bold ml-1">Admin</span>}
+                          </p>
+                          {athlete?.email && (
+                            <p className="text-xs text-gray-500 truncate">{athlete.email}</p>
+                          )}
+                        </div>
+                      </div>
+                    );
+                  })}
+                </div>
+              )}
+
+              {/* Invite Section */}
+              {joinCode && (
+                <div className="mt-6 pt-6 border-t border-gray-200 space-y-3">
+                  <p className="text-xs text-gray-500 font-semibold uppercase tracking-wide">Invite Teammates</p>
+                  
+                  <div className="bg-emerald-50 border-2 border-emerald-200 rounded-lg p-4 space-y-3">
+                    <code className="block text-xs text-gray-700 break-all bg-white px-3 py-2 rounded border border-gray-200">
+                      {generateUniversalInviteLink(joinCode)}
+                    </code>
+                    <button
+                      onClick={async () => {
+                        const success = await copyInviteLink(generateUniversalInviteLink(joinCode));
+                        showToast(success ? 'Invite link copied!' : 'Failed to copy');
+                      }}
+                      className="w-full text-sm bg-emerald-500 hover:bg-emerald-600 text-white px-4 py-2 rounded-lg font-semibold transition"
+                    >
+                      Copy Invite Link
+                    </button>
+                    <div className="text-center">
+                      <p className="text-xs text-gray-500 mb-1">Or share code:</p>
+                      <code className="text-base font-bold text-emerald-600">{joinCode}</code>
                     </div>
                   </div>
-                )}
-              </div>
-            </div>
-          </section>
-        </div>
+                </div>
+              )}
+            </section>
+          </aside>
 
-        {/* Runs Module */}
-        <section className="bg-white rounded-2xl border border-gray-200 shadow-sm p-6 space-y-6">
+          {/* MAIN CONTENT: Announcements, Runs, Messages */}
+          <div className="lg:col-span-6 space-y-6">
+            {/* Announcements */}
+            <section className="bg-white rounded-2xl border border-gray-200 shadow-sm p-6 space-y-6">
+              <div className="flex items-center justify-between">
+                <div>
+                  <h2 className="text-xl font-bold text-gray-900">Announcements</h2>
+                  <p className="text-sm text-gray-500">Share updates with your crew</p>
+                </div>
+              </div>
+
+              <form onSubmit={handleAnnouncementSubmit} className="space-y-4">
+                <textarea
+                  value={announcementContent}
+                  onChange={handleAnnouncementChange}
+                  placeholder="What's happening next?"
+                  className="w-full border border-gray-300 rounded-lg px-4 py-3 text-sm focus:outline-none focus:ring-2 focus:ring-sky-500 focus:border-sky-500 min-h-[100px]"
+                />
+                <div className="flex justify-end">
+                  <button
+                    type="submit"
+                    className="bg-orange-500 hover:bg-orange-600 text-white px-5 py-2 rounded-lg text-sm font-semibold transition"
+                  >
+                    Post Announcement
+                  </button>
+                </div>
+              </form>
+
+              <div className="space-y-4">
+                {announcements.length === 0 && (
+                  <p className="text-sm text-gray-500">No announcements yet. Be the first to post one.</p>
+                )}
+                {announcements.map((announcement) => (
+                  <div key={announcement.id} className="border border-gray-200 rounded-xl px-4 py-3 bg-gray-50">
+                    <div className="flex items-center justify-between text-xs text-gray-500 mb-2">
+                      <span>
+                        {announcement.author?.firstName
+                          ? `${announcement.author.firstName}${announcement.author.lastName ? ` ${announcement.author.lastName}` : ''}`
+                          : 'Admin'}
+                      </span>
+                      <span>
+                        {announcement.createdAt
+                          ? new Date(announcement.createdAt).toLocaleString('en-US', {
+                              month: 'short',
+                              day: 'numeric',
+                              hour: 'numeric',
+                              minute: '2-digit'
+                            })
+                          : 'Just now'}
+                      </span>
+                    </div>
+                    <p className="text-sm text-gray-800 whitespace-pre-line">{announcement.content || announcement.text}</p>
+                  </div>
+                ))}
+              </div>
+            </section>
+
+            {/* Runs Module */}
+            <section className="bg-white rounded-2xl border border-gray-200 shadow-sm p-6 space-y-6">
           <div className="space-y-4">
             <h3 className="text-lg font-semibold text-gray-900">Upcoming Runs</h3>
             {runs.length === 0 && (
               <div className="border border-dashed border-gray-300 rounded-xl p-6 text-center text-sm text-gray-500">
-                No runs yet — click “Schedule Run” to add one.
+                No runs yet — click "Create Run" to add one.
               </div>
             )}
             <div className="space-y-3">
@@ -921,47 +917,44 @@ export default function RunCrewCentralAdmin() {
             </div>
           </form>
         </section>
-
-        {/* Members + Leaderboard */}
-        <section className="bg-white rounded-2xl border border-gray-200 shadow-sm p-6 space-y-6">
-          <div className="flex items-center justify-between">
-            <div>
-              <h2 className="text-xl font-bold text-gray-900">Members</h2>
-              <p className="text-sm text-gray-500">Your crew roster. Admins are highlighted.</p>
-            </div>
           </div>
-          {memberships.length === 0 && (
-            <div className="border border-dashed border-gray-300 rounded-xl p-6 text-center text-sm text-gray-500">
-              No members yet. Share your join code to build the crew.
-            </div>
-          )}
-          <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-            <div className="lg:col-span-2 space-y-3">
-              {memberships.map((membership) => {
-                const athlete = membership.athlete || membership;
-                const managerRecord = Array.isArray(crew.managers)
-                  ? crew.managers.find((manager) => manager.athleteId === athlete?.id && manager.role === 'admin')
-                  : null;
 
-                return (
-                  <div key={athlete?.id || membership.id} className="border border-gray-200 rounded-xl px-4 py-3 bg-gray-50 flex items-center justify-between">
-                    <div>
-                      <p className="text-sm font-semibold text-gray-900">
-                        {athlete?.firstName || 'Athlete'} {athlete?.lastName || ''}
-                        {managerRecord && <span className="text-orange-600 text-xs font-bold ml-2">Admin</span>}
-                      </p>
-                      {athlete?.email && (
-                        <p className="text-xs text-gray-500 mt-1">{athlete.email}</p>
-                      )}
-                    </div>
-                    <span className="text-xs text-gray-500">Joined {membership.joinedAt ? new Date(membership.joinedAt).toLocaleDateString() : 'recently'}</span>
-                  </div>
-                );
-              })}
-            </div>
-            <div className="border border-gray-200 rounded-xl p-4 bg-gray-50 space-y-3">
+          {/* RIGHT SIDEBAR: Actions & Stats */}
+          <aside className="lg:col-span-3 space-y-6">
+            {/* Create Run Button */}
+            <section className="bg-white rounded-2xl border border-gray-200 shadow-sm p-6">
+              <button
+                onClick={openCreateRun}
+                className="w-full bg-emerald-500 hover:bg-emerald-600 text-white px-6 py-4 rounded-xl text-base font-bold transition shadow-lg hover:shadow-xl flex items-center justify-center gap-2"
+              >
+                <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4" />
+                </svg>
+                Create Run
+              </button>
+            </section>
+
+            {/* Crew Stats */}
+            <section className="bg-white rounded-2xl border border-gray-200 shadow-sm p-6 space-y-4">
+              <h3 className="text-lg font-bold text-gray-900">Crew Stats</h3>
+              <div className="space-y-3">
+                <div className="border border-gray-200 rounded-xl p-4 bg-gradient-to-br from-emerald-50 to-emerald-100">
+                  <p className="text-xs uppercase tracking-wide text-gray-600 font-semibold">Upcoming Runs</p>
+                  <p className="text-3xl font-bold text-emerald-700 mt-1">{runs.length}</p>
+                  <p className="text-xs text-gray-600 mt-1">Keep the calendar full</p>
+                </div>
+                <div className="border border-gray-200 rounded-xl p-4 bg-gradient-to-br from-orange-50 to-orange-100">
+                  <p className="text-xs uppercase tracking-wide text-gray-600 font-semibold">Messages</p>
+                  <p className="text-3xl font-bold text-orange-700 mt-1">{messages.length}</p>
+                  <p className="text-xs text-gray-600 mt-1">Crew engagement</p>
+                </div>
+              </div>
+            </section>
+
+            {/* Leaderboard */}
+            <section className="bg-white rounded-2xl border border-gray-200 shadow-sm p-6 space-y-4">
               <div className="flex items-center justify-between">
-                <h3 className="text-sm font-semibold text-gray-900">Leaderboard</h3>
+                <h3 className="text-lg font-bold text-gray-900">Leaderboard</h3>
                 <div className="flex gap-1">
                   {['miles','runs','calories'].map((metric) => (
                     <button
@@ -980,8 +973,8 @@ export default function RunCrewCentralAdmin() {
                   <p className="text-xs text-gray-500">Stats will appear once your crew syncs activities.</p>
                 )}
                 {getLeaderboardDisplay(leaderboard).map((entry, index) => (
-                  <div key={entry.athleteId || index} className="flex items-center gap-3">
-                    <div className="w-6 h-6 rounded-full bg-gradient-to-br from-yellow-400 to-orange-500 flex items-center justify-center text-white font-bold text-xs">
+                  <div key={entry.athleteId || index} className="flex items-center gap-3 p-2 hover:bg-gray-50 rounded-lg transition">
+                    <div className="w-8 h-8 rounded-full bg-gradient-to-br from-yellow-400 to-orange-500 flex items-center justify-center text-white font-bold text-xs">
                       {index + 1}
                     </div>
                     <p className="flex-1 text-sm font-semibold text-gray-900">{entry.firstName || 'Athlete'}</p>
@@ -989,9 +982,9 @@ export default function RunCrewCentralAdmin() {
                   </div>
                 ))}
               </div>
-            </div>
-          </div>
-        </section>
+            </section>
+          </aside>
+        </div>
       </main>
 
       {/* Run Modal */}
