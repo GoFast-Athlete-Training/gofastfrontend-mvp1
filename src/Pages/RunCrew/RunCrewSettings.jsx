@@ -281,12 +281,20 @@ export default function RunCrewSettings() {
         <div className="bg-white rounded-xl shadow-lg p-6 mb-6">
           <div className="flex items-center justify-between mb-4">
             <h1 className="text-3xl font-bold text-gray-900">Run Crew Settings</h1>
-            <button
-              onClick={() => navigate('/runcrew/central')}
-              className="text-gray-600 hover:text-gray-800"
-            >
-              ← Back to Central
-            </button>
+            <div className="flex items-center gap-3">
+              <button
+                onClick={() => navigate('/athlete-home')}
+                className="px-4 py-2 text-sm font-semibold text-gray-700 hover:bg-gray-100 rounded-lg transition border border-gray-300"
+              >
+                Home
+              </button>
+              <button
+                onClick={() => navigate('/crew/crewadmin')}
+                className="px-4 py-2 text-sm font-semibold text-gray-700 hover:bg-gray-100 rounded-lg transition border border-gray-300"
+              >
+                Back to Admin
+              </button>
+            </div>
           </div>
           <p className="text-gray-600">Manage your crew configuration and permissions</p>
         </div>

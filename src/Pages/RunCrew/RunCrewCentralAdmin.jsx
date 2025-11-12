@@ -554,6 +554,12 @@ export default function RunCrewCentralAdmin() {
           </div>
           <div className="flex items-center gap-3">
             <button
+              onClick={() => navigate('/athlete-home')}
+              className="px-4 py-2 text-sm font-semibold text-gray-700 hover:bg-gray-100 rounded-lg transition border border-gray-300"
+            >
+              Home
+            </button>
+            <button
               onClick={goToMemberView}
               className="text-sm text-gray-600 hover:text-gray-900 border border-gray-300 rounded-lg px-4 py-2 transition"
             >
