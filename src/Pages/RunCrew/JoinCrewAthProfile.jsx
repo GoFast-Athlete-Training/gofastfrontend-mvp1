@@ -490,4 +490,4 @@ const JoinCrewAthProfile = () => {
   );
 };
 
-export default AthleteCreateProfile;
+export default JoinCrewAthProfile;
