@@ -15,6 +15,7 @@ export default function JoinCodeWelcome() {
   const [crewPreview, setCrewPreview] = useState(null);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState(null);
+  const [softJoinComplete, setSoftJoinComplete] = useState(false);
   
   // Check if code came from URL (auto-hydrate mode)
   const hasCodeInUrl = !!(code || codeFromQuery);
