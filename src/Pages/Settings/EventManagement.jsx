@@ -82,6 +82,7 @@ const EventManagement = () => {
   const [volunteerForm, setVolunteerForm] = useState({
     name: '',
     email: '',
+    phone: '',
     role: '',
     notes: '',
   });
@@ -234,6 +235,7 @@ const EventManagement = () => {
     setVolunteerForm({
       name: volunteer.name,
       email: volunteer.email,
+      phone: volunteer.phone || '',
       role: volunteer.role,
       notes: volunteer.notes || '',
     });
@@ -271,18 +273,16 @@ const EventManagement = () => {
         return;
       }
 
-      // For now, we'll need to create a new volunteer entry since we don't have an update endpoint
-      // TODO: Add PUT endpoint for updating volunteers
-      const response = await fetch(`${API_BASE}/event-volunteer`, {
-        method: 'POST',
+      // Use PUT endpoint to update volunteer
+      const response = await fetch(`${API_BASE}/event-volunteer/${editingVolunteer.id}`, {
+        method: 'PUT',
         headers: {
           'Content-Type': 'application/json',
         },
         body: JSON.stringify({
-          eventId: selectedEventId,
           name: volunteerForm.name,
           email: volunteerForm.email,
-          role: volunteerForm.role,
+          phone: volunteerForm.phone || undefined,
           notes: volunteerForm.notes || undefined,
         }),
       });
@@ -291,7 +291,7 @@ const EventManagement = () => {
       
       if (data.success) {
         setEditingVolunteer(null);
-        setVolunteerForm({ name: '', email: '', role: '', notes: '' });
+        setVolunteerForm({ name: '', email: '', phone: '', role: '', notes: '' });
         fetchVolunteers(selectedEventId);
         alert('Volunteer updated successfully!');
       } else {
@@ -468,6 +468,9 @@ const EventManagement = () => {
                               Email
                             </th>
                             <th className="px-4 py-3 text-left text-xs font-semibold text-gray-600 uppercase tracking-wider">
+                              Phone
+                            </th>
+                            <th className="px-4 py-3 text-left text-xs font-semibold text-gray-600 uppercase tracking-wider">
                               Notes
                             </th>
                             <th className="px-4 py-3 text-left text-xs font-semibold text-gray-600 uppercase tracking-wider">
@@ -506,6 +509,15 @@ const EventManagement = () => {
                                   </td>
                                   <td className="px-4 py-3 whitespace-nowrap text-sm text-gray-600">
                                     {volunteer.email}
+                                  </td>
+                                  <td className="px-4 py-3 whitespace-nowrap text-sm text-gray-600">
+                                    {volunteer.phone ? (
+                                      <a href={`tel:${volunteer.phone}`} className="text-orange-600 hover:text-orange-700 hover:underline">
+                                        {volunteer.phone}
+                                      </a>
+                                    ) : (
+                                      <span className="text-gray-400">—</span>
+                                    )}
                                   </td>
                                   <td className="px-4 py-3 text-sm text-gray-600">
                                     {volunteer.notes || '—'}
@@ -709,7 +721,7 @@ const EventManagement = () => {
               <button
                 onClick={() => {
                   setEditingVolunteer(null);
-                  setVolunteerForm({ name: '', email: '', role: '', notes: '' });
+                  setVolunteerForm({ name: '', email: '', phone: '', role: '', notes: '' });
                 }}
                 className="text-gray-400 hover:text-gray-600"
               >
@@ -746,6 +758,20 @@ const EventManagement = () => {
 
               <div>
                 <label className="block text-sm font-semibold text-gray-700 mb-2">
+                  Phone
+                </label>
+                <input
+                  type="tel"
+                  value={volunteerForm.phone}
+                  onChange={(e) => setVolunteerForm({ ...volunteerForm, phone: e.target.value })}
+                  placeholder="(555) 123-4567"
+                  className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-orange-500 focus:border-transparent"
+                />
+                <p className="mt-1 text-xs text-gray-500">For text strand communication</p>
+              </div>
+
+              <div>
+                <label className="block text-sm font-semibold text-gray-700 mb-2">
                   Role <span className="text-red-500">*</span>
                 </label>
                 <select
@@ -778,7 +804,7 @@ const EventManagement = () => {
                   type="button"
                   onClick={() => {
                     setEditingVolunteer(null);
-                    setVolunteerForm({ name: '', email: '', role: '', notes: '' });
+                    setVolunteerForm({ name: '', email: '', phone: '', role: '', notes: '' });
                   }}
                   className="px-6 py-2 border border-gray-300 rounded-lg font-semibold text-gray-700 hover:bg-gray-50"
                 >
