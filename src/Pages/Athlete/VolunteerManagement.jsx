@@ -146,13 +146,14 @@ const VolunteerManagement = () => {
     // Add volunteers grouped by role
     Object.entries(groupedByRole).forEach(([role, roleVolunteers]) => {
       csvContent += `\n${role} (${roleVolunteers.length})\n`;
-      csvContent += `Name,Email,Notes,Signup Date\n`;
+      csvContent += `Name,Email,Phone,Notes,Signup Date\n`;
       roleVolunteers.forEach(volunteer => {
         const name = volunteer.name || '';
         const email = volunteer.email || '';
+        const phone = volunteer.phone || '';
         const notes = volunteer.notes || '';
         const date = volunteer.createdAt ? new Date(volunteer.createdAt).toLocaleDateString() : '';
-        csvContent += `"${name}","${email}","${notes}","${date}"\n`;
+        csvContent += `"${name}","${email}","${phone}","${notes}","${date}"\n`;
       });
     });
 
@@ -350,6 +351,13 @@ const VolunteerManagement = () => {
                                 <div className="flex-1">
                                   <div className="font-medium text-gray-900">{volunteer.name}</div>
                                   <div className="text-sm text-gray-600 mt-1">{volunteer.email}</div>
+                                  {volunteer.phone && (
+                                    <div className="text-sm text-gray-600 mt-1">
+                                      <a href={`tel:${volunteer.phone}`} className="text-orange-600 hover:text-orange-700 hover:underline">
+                                        {volunteer.phone}
+                                      </a>
+                                    </div>
+                                  )}
                                   {volunteer.notes && (
                                     <div className="text-xs text-gray-500 mt-1">{volunteer.notes}</div>
                                   )}
