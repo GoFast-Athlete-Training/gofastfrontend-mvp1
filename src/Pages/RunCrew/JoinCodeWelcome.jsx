@@ -80,68 +80,23 @@ export default function JoinCodeWelcome() {
     setError(null);
 
     try {
-      // Check if user is signed in
-      let user = auth.currentUser;
-      
-      if (!user) {
-        // Perform Firebase Google sign-in
-        console.log('🔐 No user signed in, performing Google sign-in...');
-        await signInWithGoogle();
-        user = auth.currentUser;
-        
-        if (!user) {
-          throw new Error('Sign-in failed. Please try again.');
-        }
-      }
-
-      // Get Firebase token
-      const token = await user.getIdToken();
-      
-      // Call join endpoint
-      const response = await axios.post(
-        `${API_BASE}/runcrew/join`,
-        {
-          joinCode: joinCode.trim().toUpperCase()
-        },
-        {
-          headers: {
-            Authorization: `Bearer ${token}`
-          }
-        }
-      );
-
-      if (response.data.success) {
-        const { athleteId, runCrew } = response.data;
-
-        // Persist data to localStorage
-        LocalStorageAPI.setRunCrewData(runCrew);
-        LocalStorageAPI.setRunCrewId(runCrew.id);
-        LocalStorageAPI.setAthleteId(athleteId);
-
-        // Store Firebase token
-        localStorage.setItem('firebaseToken', token);
-        localStorage.setItem('firebaseId', user.uid);
-        localStorage.setItem('email', user.email || '');
-
-        // Store join intent for soft onboarding
+      // Store join intent in localStorage (soft onboarding - illusion of joining)
       localStorage.setItem('pendingJoinCode', joinCode.trim().toUpperCase());
       localStorage.setItem('pendingJoinCrewId', crewPreview.id);
       localStorage.setItem('pendingJoinCrewName', crewPreview.name);
 
-      // Show "soft join" success and redirect to signup
+      // Show "soft join" success screen (illusion of joining)
       setSoftJoinComplete(true);
       setLoading(false);
       
+      // Redirect to dedicated signup page after 2 seconds
       setTimeout(() => {
         navigate('/joincrew-ath-signup', { replace: true });
       }, 2000);
-      } else {
-        throw new Error(response.data.message || 'Failed to join crew');
-      }
+      
     } catch (err) {
       console.error('Join error:', err);
-      setError(err.response?.data?.message || err.message || 'Failed to join crew. Please try again.');
-    } finally {
+      setError(err.message || 'Failed to proceed. Please try again.');
       setLoading(false);
     }
   };
