@@ -82,7 +82,7 @@ export default function JoinCodeWelcome() {
     setError(null);
 
     try {
-      // Check if user is signed in
+      // Step 1: Check if user is signed in
       let user = auth.currentUser;
       
       if (!user) {
@@ -99,7 +99,37 @@ export default function JoinCodeWelcome() {
       // Get Firebase token
       const token = await user.getIdToken();
       
-      // Call join endpoint
+      // Step 2: Create/find athlete FIRST (ensures athlete exists before joining)
+      console.log('👤 Creating/finding athlete via /api/athlete/create...');
+      const athleteResponse = await axios.post(
+        `${API_BASE}/athlete/create`,
+        {},
+        {
+          headers: {
+            Authorization: `Bearer ${token}`
+          }
+        }
+      );
+
+      if (!athleteResponse.data || !athleteResponse.data.success) {
+        throw new Error(athleteResponse.data?.message || 'Failed to create athlete profile');
+      }
+
+      const athleteId = athleteResponse.data.athleteId;
+      if (!athleteId) {
+        throw new Error('No athlete ID returned from server');
+      }
+
+      console.log('✅ Athlete created/found:', athleteId);
+
+      // Store athlete data in localStorage
+      localStorage.setItem('athleteId', athleteId);
+      localStorage.setItem('firebaseToken', token);
+      localStorage.setItem('firebaseId', user.uid);
+      localStorage.setItem('email', user.email || '');
+
+      // Step 3: Now join the crew (athlete exists, can safely join)
+      console.log('🏃 Joining crew via /api/runcrew/join...');
       const response = await axios.post(
         `${API_BASE}/runcrew/join`,
         {
@@ -113,7 +143,7 @@ export default function JoinCodeWelcome() {
       );
 
       if (response.data.success) {
-        const { athleteId, runCrew } = response.data;
+        const { runCrew } = response.data;
 
         // Check if user is admin (via RunCrewManager) - matching pattern from JoinCrew.jsx
         const managerRecord = Array.isArray(runCrew?.managers)
@@ -121,7 +151,7 @@ export default function JoinCodeWelcome() {
           : null;
         const isAdmin = Boolean(managerRecord);
 
-        // Persist data to localStorage (with isAdmin flag)
+        // Persist crew data to localStorage (with isAdmin flag)
         LocalStorageAPI.setRunCrewData({
           ...runCrew,
           isAdmin
@@ -133,11 +163,6 @@ export default function JoinCodeWelcome() {
         if (managerRecord) {
           LocalStorageAPI.setRunCrewManagerId(managerRecord.id);
         }
-
-        // Store Firebase token
-        localStorage.setItem('firebaseToken', token);
-        localStorage.setItem('firebaseId', user.uid);
-        localStorage.setItem('email', user.email || '');
 
         // Show success state briefly before redirecting
         setJoinedCrew(runCrew);
