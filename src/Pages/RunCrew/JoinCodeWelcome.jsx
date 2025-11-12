@@ -125,20 +125,22 @@ export default function JoinCodeWelcome() {
         localStorage.setItem('firebaseId', user.uid);
         localStorage.setItem('email', user.email || '');
 
-        // Check if user is admin (via RunCrewManager)
-        const isAdmin = runCrew.managers?.some(
-          manager => manager.athleteId === athleteId && manager.role === 'admin'
-        );
+        // Check if user is admin (via RunCrewManager) - matching pattern from JoinCrew.jsx
+        const managerRecord = Array.isArray(runCrew?.managers)
+          ? runCrew.managers.find((manager) => manager.athleteId === athleteId && manager.role === 'admin')
+          : null;
+        const isAdmin = Boolean(managerRecord);
 
-        // Store admin status
-        if (isAdmin && runCrew.managers) {
-          const adminManager = runCrew.managers.find(
-            m => m.athleteId === athleteId && m.role === 'admin'
-          );
-          if (adminManager) {
-            LocalStorageAPI.setRunCrewManagerId(adminManager.id);
-          }
+        // Store admin status and managerId
+        if (managerRecord) {
+          LocalStorageAPI.setRunCrewManagerId(managerRecord.id);
         }
+        
+        // Also store isAdmin flag on crew data
+        LocalStorageAPI.setRunCrewData({
+          ...runCrew,
+          isAdmin
+        });
 
         // Show success state briefly before redirecting
         setJoinedCrew(runCrew);
