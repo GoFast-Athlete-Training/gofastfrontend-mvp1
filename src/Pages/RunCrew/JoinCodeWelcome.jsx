@@ -103,10 +103,7 @@ export default function JoinCodeWelcome() {
       setSoftJoinComplete(true);
       setLoading(false);
       
-      // Redirect to dedicated signup page after 2 seconds
-      setTimeout(() => {
-        navigate('/joincrew-ath-signup', { replace: true });
-      }, 2000);
+      // NO AUTO-REDIRECT - User must click button to proceed
       
     } catch (err) {
       console.error('Join error:', err);
