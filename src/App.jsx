@@ -21,6 +21,8 @@ import JoinOrStartCrew from './Pages/RunCrew/JoinOrStartCrew';
 import JoinCrew from './Pages/RunCrew/JoinCrew';
 import JoinCodeWelcome from './Pages/RunCrew/JoinCodeWelcome';
 import JoinRunCrewWelcome from './Pages/RunCrew/JoinRunCrewWelcome';
+import JoinCrewAthSignup from './Pages/RunCrew/JoinCrewAthSignup';
+import JoinCrewAthProfile from './Pages/RunCrew/JoinCrewAthProfile';
 import PreCrewPage from './Pages/RunCrew/PreCrewPage';
 import CreateCrew from './Pages/RunCrew/CreateCrew';
 import RunCrewCentral from './Pages/RunCrew/RunCrewCentral';
@@ -86,6 +88,9 @@ const App = () => {
         {/* Clean external URL: /join/:code or /join?code=XXX */}
         <Route path="/join/:code" element={<JoinCodeWelcome />} />
         <Route path="/join" element={<JoinCodeWelcome />} />
+        {/* Join Crew Flow - Dedicated Components */}
+        <Route path="/joincrew-ath-signup" element={<JoinCrewAthSignup />} />
+        <Route path="/joincrew-ath-profile" element={<JoinCrewAthProfile />} />
         {/* Legacy route - redirect to new clean route */}
         <Route path="/runcrew/join" element={<JoinCodeWelcome />} />
         {/* Existing Join or Start Flow (PRESERVED) */}

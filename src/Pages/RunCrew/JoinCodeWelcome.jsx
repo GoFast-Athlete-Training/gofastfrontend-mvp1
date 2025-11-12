@@ -15,8 +15,6 @@ export default function JoinCodeWelcome() {
   const [crewPreview, setCrewPreview] = useState(null);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState(null);
-  const [joinSuccess, setJoinSuccess] = useState(false);
-  const [joinedCrew, setJoinedCrew] = useState(null);
   
   // Check if code came from URL (auto-hydrate mode)
   const hasCodeInUrl = !!(code || codeFromQuery);
@@ -82,7 +80,7 @@ export default function JoinCodeWelcome() {
     setError(null);
 
     try {
-      // Step 1: Check if user is signed in
+      // Check if user is signed in
       let user = auth.currentUser;
       
       if (!user) {
@@ -99,37 +97,7 @@ export default function JoinCodeWelcome() {
       // Get Firebase token
       const token = await user.getIdToken();
       
-      // Step 2: Create/find athlete FIRST (ensures athlete exists before joining)
-      console.log('👤 Creating/finding athlete via /api/athlete/create...');
-      const athleteResponse = await axios.post(
-        `${API_BASE}/athlete/create`,
-        {},
-        {
-          headers: {
-            Authorization: `Bearer ${token}`
-          }
-        }
-      );
-
-      if (!athleteResponse.data || !athleteResponse.data.success) {
-        throw new Error(athleteResponse.data?.message || 'Failed to create athlete profile');
-      }
-
-      const athleteId = athleteResponse.data.athleteId;
-      if (!athleteId) {
-        throw new Error('No athlete ID returned from server');
-      }
-
-      console.log('✅ Athlete created/found:', athleteId);
-
-      // Store athlete data in localStorage
-      localStorage.setItem('athleteId', athleteId);
-      localStorage.setItem('firebaseToken', token);
-      localStorage.setItem('firebaseId', user.uid);
-      localStorage.setItem('email', user.email || '');
-
-      // Step 3: Now join the crew (athlete exists, can safely join)
-      console.log('🏃 Joining crew via /api/runcrew/join...');
+      // Call join endpoint
       const response = await axios.post(
         `${API_BASE}/runcrew/join`,
         {
@@ -143,40 +111,30 @@ export default function JoinCodeWelcome() {
       );
 
       if (response.data.success) {
-        const { runCrew } = response.data;
+        const { athleteId, runCrew } = response.data;
 
-        // Check if user is admin (via RunCrewManager) - matching pattern from JoinCrew.jsx
-        const managerRecord = Array.isArray(runCrew?.managers)
-          ? runCrew.managers.find((manager) => manager.athleteId === athleteId && manager.role === 'admin')
-          : null;
-        const isAdmin = Boolean(managerRecord);
-
-        // Persist crew data to localStorage (with isAdmin flag)
-        LocalStorageAPI.setRunCrewData({
-          ...runCrew,
-          isAdmin
-        });
+        // Persist data to localStorage
+        LocalStorageAPI.setRunCrewData(runCrew);
         LocalStorageAPI.setRunCrewId(runCrew.id);
         LocalStorageAPI.setAthleteId(athleteId);
 
-        // Store admin status and managerId
-        if (managerRecord) {
-          LocalStorageAPI.setRunCrewManagerId(managerRecord.id);
-        }
+        // Store Firebase token
+        localStorage.setItem('firebaseToken', token);
+        localStorage.setItem('firebaseId', user.uid);
+        localStorage.setItem('email', user.email || '');
 
-        // Show success state briefly before redirecting
-        setJoinedCrew(runCrew);
-        setJoinSuccess(true);
-        setLoading(false);
+        // Store join intent for soft onboarding
+      localStorage.setItem('pendingJoinCode', joinCode.trim().toUpperCase());
+      localStorage.setItem('pendingJoinCrewId', crewPreview.id);
+      localStorage.setItem('pendingJoinCrewName', crewPreview.name);
 
-        // Redirect after 2 seconds with success message visible
-        setTimeout(() => {
-          if (isAdmin) {
-            navigate('/crew/crewadmin', { replace: true });
-          } else {
-            navigate('/runcrew/central', { replace: true });
-          }
-        }, 2000);
+      // Show "soft join" success and redirect to signup
+      setSoftJoinComplete(true);
+      setLoading(false);
+      
+      setTimeout(() => {
+        navigate('/joincrew-ath-signup', { replace: true });
+      }, 2000);
       } else {
         throw new Error(response.data.message || 'Failed to join crew');
       }
@@ -210,38 +168,6 @@ export default function JoinCodeWelcome() {
             <img src="/logo.jpg" alt="GoFast" className="w-12 h-12 rounded-full shadow-md" />
           </div>
           <div>
-            {crewPreview && (crewPreview.icon || crewPreview.logo) && (
-              <div className="flex items-center justify-center mb-3">
-                {crewPreview.logo ? (
-                  <>
-                    <img 
-                      src={crewPreview.logo} 
-                      alt={crewPreview.name} 
-                      className="w-16 h-16 rounded-xl object-cover border-2 border-sky-200 shadow-md"
-                      onError={(e) => {
-                        e.target.style.display = 'none';
-                        const iconFallback = document.getElementById('crew-icon-fallback');
-                        if (iconFallback && crewPreview.icon) {
-                          iconFallback.style.display = 'flex';
-                        }
-                      }}
-                    />
-                    {crewPreview.icon && (
-                      <div 
-                        id="crew-icon-fallback"
-                        className="w-16 h-16 rounded-xl bg-sky-100 border-2 border-sky-200 flex items-center justify-center text-4xl shadow-md hidden"
-                      >
-                        {crewPreview.icon}
-                      </div>
-                    )}
-                  </>
-                ) : crewPreview.icon ? (
-                  <div className="w-16 h-16 rounded-xl bg-sky-100 border-2 border-sky-200 flex items-center justify-center text-4xl shadow-md">
-                    {crewPreview.icon}
-                  </div>
-                ) : null}
-              </div>
-            )}
             <h1 className="text-3xl font-bold text-gray-900 mb-2">
               {crewPreview 
                 ? `Welcome to ${crewPreview.name}!` 
@@ -276,25 +202,31 @@ export default function JoinCodeWelcome() {
           </div>
         )}
 
-        {/* Join Success State */}
-        {joinSuccess && joinedCrew && (
+        {/* Soft Join Success State - "You're joined! (but not really)" */}
+        {softJoinComplete && crewPreview && (
           <div className="text-center py-8 space-y-4">
             <div className="w-20 h-20 bg-green-100 rounded-full mx-auto flex items-center justify-center mb-4">
               <svg className="w-12 h-12 text-green-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
               </svg>
             </div>
-            <h2 className="text-2xl font-bold text-gray-900">You're In!</h2>
+            <h2 className="text-2xl font-bold text-gray-900">You're Joined!</h2>
             <p className="text-gray-600">
-              Welcome to <strong>{joinedCrew.name}</strong>! Redirecting you now...
+              Welcome to <strong>{crewPreview.name}</strong>!
             </p>
+            <div className="bg-blue-50 border border-blue-200 rounded-lg p-4 mt-4">
+              <p className="text-sm text-blue-800">
+                <strong>Almost there!</strong> Complete your profile to fully join the crew and start running together.
+              </p>
+            </div>
             <div className="pt-4">
               <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-sky-500 mx-auto"></div>
+              <p className="text-gray-500 text-sm mt-2">Setting up your account...</p>
             </div>
           </div>
         )}
 
-        {loading && !crewPreview && !joinSuccess && (
+        {loading && !crewPreview && (
           <div className="text-center py-8">
             <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-sky-500 mx-auto"></div>
             <p className="text-gray-600 mt-4 text-sm">Finding your crew...</p>
@@ -302,58 +234,20 @@ export default function JoinCodeWelcome() {
           </div>
         )}
 
-        {crewPreview && !joinSuccess ? (
+        {crewPreview ? (
           <div className="space-y-4">
             {/* Crew Preview Card */}
             <div className="bg-gradient-to-br from-sky-50 to-blue-50 border-2 border-sky-200 rounded-xl p-6 space-y-4">
-              <div className="space-y-4">
+              <div className="space-y-3">
                 {crewPreview.description && (
                   <div>
                     <p className="text-xs font-semibold text-gray-500 uppercase tracking-wide mb-1">About This Crew</p>
                     <p className="text-base text-gray-800 leading-relaxed">{crewPreview.description}</p>
                   </div>
                 )}
-                
-                {/* Admin Info - More Personal & Comforting */}
-                {crewPreview.admin && (
-                  <div className="pt-3 border-t border-sky-200">
-                    <p className="text-xs font-semibold text-gray-500 uppercase tracking-wide mb-3">Crew Admin</p>
-                    <div className="flex items-center space-x-3">
-                      <div className="flex-shrink-0">
-                        {crewPreview.admin.photoURL ? (
-                          <img 
-                            src={crewPreview.admin.photoURL} 
-                            alt={`${crewPreview.admin.firstName} ${crewPreview.admin.lastName}`}
-                            className="w-12 h-12 rounded-full object-cover border-2 border-sky-300 shadow-sm"
-                            onError={(e) => {
-                              e.target.style.display = 'none';
-                              e.target.nextElementSibling.style.display = 'flex';
-                            }}
-                          />
-                        ) : null}
-                        <div 
-                          className={`w-12 h-12 rounded-full bg-sky-200 border-2 border-sky-300 flex items-center justify-center text-xl font-bold text-sky-700 ${crewPreview.admin.photoURL ? 'hidden' : ''}`}
-                        >
-                          {crewPreview.admin.firstName?.[0] || 'A'}
-                        </div>
-                      </div>
-                      <div className="flex-1 min-w-0">
-                        <p className="text-base font-semibold text-gray-900 truncate">
-                          {crewPreview.admin.firstName} {crewPreview.admin.lastName}
-                        </p>
-                        <p className="text-xs text-gray-600">
-                          Crew Administrator
-                        </p>
-                      </div>
-                    </div>
-                  </div>
-                )}
-                
-                {/* Member Count (Secondary Info) */}
                 <div className="pt-2 border-t border-sky-200">
-                  <p className="text-xs text-gray-500">
-                    {crewPreview.memberCount} member{crewPreview.memberCount !== 1 ? 's' : ''} in this crew
-                  </p>
+                  <p className="text-xs font-semibold text-gray-500 uppercase tracking-wide mb-1">Current Members</p>
+                  <p className="text-lg font-bold text-sky-700">{crewPreview.memberCount} member{crewPreview.memberCount !== 1 ? 's' : ''}</p>
                 </div>
               </div>
             </div>
