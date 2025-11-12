@@ -35,8 +35,8 @@
 - `JoinCrewAthProfile.jsx` - Profile creation (if profile incomplete)
 
 **Backend Route**: `POST /api/runcrew/join`
-- May or may not be authenticated
-- May or may not have `athleteId`
+- **May or may not be authenticated** (key difference from Flow 1)
+- **May or may not have `athleteId`**
 - Backend handles athlete upsert + join atomically
 
 **Flow**:
@@ -44,12 +44,14 @@
 2. `JoinCodeWelcome` auto-looks up crew
 3. Shows crew preview
 4. User clicks "Join This Crew"
-   - **If authenticated**: Stores join intent → redirects to signup/profile
+   - **If authenticated + has token**: Complete join immediately (like Flow 1)
+     - Upsert athlete → check profile → join crew → redirect to crew
    - **If not authenticated**: Shows "You're Joined!" → redirects to signup
-5. `JoinCrewAthSignup` signs in → upserts athlete → checks profile
-6. If profile incomplete → `JoinCrewAthProfile` → completes profile → joins crew
-7. If profile complete → joins crew immediately
-8. Redirects to `/runcrew/central` or `/crew/crewadmin`
+5. **If not authenticated**:
+   - `JoinCrewAthSignup` signs in → upserts athlete → checks profile
+   - If profile incomplete → `JoinCrewAthProfile` → completes profile → joins crew
+   - If profile complete → joins crew immediately
+6. Redirects to `/runcrew/central` or `/crew/crewadmin`
 
 ---
 
@@ -58,12 +60,13 @@
 | Aspect | Flow 1 (From Home) | Flow 2 (Direct Link) |
 |--------|-------------------|---------------------|
 | **Entry** | `/runcrew/join-or-start` | `/join/:code` |
-| **Auth State** | Always authenticated | May not be authenticated |
-| **Athlete Exists** | Yes (has athleteId) | May not exist |
+| **Auth State** | Always authenticated | **May or may not be authenticated** |
+| **Athlete Exists** | Yes (has athleteId) | May or may not exist |
 | **Backend Route** | `POST /api/runcrew/join` | `POST /api/runcrew/join` |
 | **Backend Behavior** | Upserts athlete + creates membership | Upserts athlete + creates membership |
 | **Profile Check** | Assumed complete | Checks and routes to profile if incomplete |
 | **Components** | `JoinCrew.jsx`, `JoinCrewWelcome.jsx` | `JoinCodeWelcome.jsx`, `JoinCrewAthSignup.jsx`, `JoinCrewAthProfile.jsx` |
+| **Key Difference** | Always authenticated athlete | **Handles both authenticated AND unauthenticated** |
 
 ---
 
