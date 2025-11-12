@@ -96,13 +96,19 @@ const JoinCrewAthProfile = () => {
     }
 
     try {
-      // Verify user is logged in (axios will auto-add token)
+      // Verify user is logged in and has valid token
       const firebaseUser = auth.currentUser;
       
       if (!firebaseUser) {
         alert('No user logged in. Please sign in first.');
-        navigate('/athletesignin');
+        navigate('/joincrew-ath-signup');
         return;
+      }
+
+      // Verify token exists
+      const token = await firebaseUser.getIdToken();
+      if (!token) {
+        throw new Error('Failed to get authentication token');
       }
       
       // Step 1: Find or create athlete - axios automatically sends Firebase token

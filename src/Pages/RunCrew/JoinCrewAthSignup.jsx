@@ -39,15 +39,45 @@ const JoinCrewAthSignup = () => {
       
       console.log("✅ JoinCrewAthSignup: Google sign-in successful:", result.email);
       
-      // Get Firebase ID token
-      const firebaseToken = await auth.currentUser.getIdToken();
+      // Verify token exists
+      const firebaseToken = await auth.currentUser?.getIdToken();
+      if (!firebaseToken) {
+        throw new Error('Failed to get authentication token');
+      }
       console.log("🔐 JoinCrewAthSignup: Firebase token obtained");
       
       // Store Firebase token
       localStorage.setItem("firebaseToken", firebaseToken);
+      localStorage.setItem("firebaseId", result.uid);
+      localStorage.setItem("email", result.email);
       
-      // Call backend - upsert athlete + join crew atomically
-      console.log("🌐 JoinCrewAthSignup: Upserting athlete + joining crew atomically...");
+      // Call backend - upsert athlete with Firebase data (simple - just push Firebase data)
+      console.log("🌐 JoinCrewAthSignup: Upserting athlete with Firebase data...");
+      const athleteResponse = await api.post('/athlete/create', {});
+
+      if (!athleteResponse.data || !athleteResponse.data.success) {
+        throw new Error(athleteResponse.data?.message || 'Failed to create athlete');
+      }
+
+      const athleteId = athleteResponse.data.athleteId;
+      if (!athleteId) {
+        throw new Error('No athlete ID returned from server');
+      }
+      console.log("✅ JoinCrewAthSignup: Athlete upserted:", athleteId);
+      
+      localStorage.setItem("athleteId", athleteId);
+
+      // Check if athlete has profile (gofastHandle) - if not, go to profile creation
+      const athleteData = athleteResponse.data.data;
+      if (!athleteData?.gofastHandle) {
+        // Profile incomplete - redirect to profile creation (join will happen after profile)
+        console.log("✅ JoinCrewAthSignup: Profile incomplete → Redirecting to profile creation");
+        navigate('/joincrew-ath-profile', { replace: true });
+        return;
+      }
+
+      // Profile complete - now join crew atomically
+      console.log("🌐 JoinCrewAthSignup: Profile complete, joining crew atomically...");
       const joinResponse = await api.post('/runcrew/join', {
         joinCode: pendingJoinCode
       });
@@ -56,8 +86,7 @@ const JoinCrewAthSignup = () => {
         throw new Error(joinResponse.data.message || 'Failed to join crew');
       }
 
-      const { athleteId, runCrew } = joinResponse.data;
-      console.log("✅ JoinCrewAthSignup: Athlete upserted + crew joined:", athleteId);
+      const { runCrew } = joinResponse.data;
 
       // Check if user is admin
       const managerRecord = Array.isArray(runCrew?.managers)
@@ -71,39 +100,22 @@ const JoinCrewAthSignup = () => {
         isAdmin
       });
       LocalStorageAPI.setRunCrewId(runCrew.id);
-      LocalStorageAPI.setAthleteId(athleteId);
       
       if (managerRecord) {
         LocalStorageAPI.setRunCrewManagerId(managerRecord.id);
       }
-
-      // Store auth data
-      localStorage.setItem("firebaseId", result.uid);
-      localStorage.setItem("athleteId", athleteId);
-      localStorage.setItem("email", result.email);
 
       // Clear pending join intent
       localStorage.removeItem('pendingJoinCode');
       localStorage.removeItem('pendingJoinCrewId');
       localStorage.removeItem('pendingJoinCrewName');
 
-      // Check if athlete has profile (gofastHandle)
-      const athleteData = joinResponse.data.runCrew?.memberships?.find(
-        m => m.athleteId === athleteId
-      )?.athlete;
-
-      if (athleteData?.gofastHandle) {
-        // Profile complete - redirect to crew
-        console.log("✅ JoinCrewAthSignup: Profile complete → Redirecting to crew");
-        if (isAdmin) {
-          navigate('/crew/crewadmin', { replace: true });
-        } else {
-          navigate('/runcrew/central', { replace: true });
-        }
+      // Redirect to crew
+      console.log("✅ JoinCrewAthSignup: Join completed! Redirecting to crew");
+      if (isAdmin) {
+        navigate('/crew/crewadmin', { replace: true });
       } else {
-        // Profile incomplete - redirect to profile creation
-        console.log("✅ JoinCrewAthSignup: Profile incomplete → Redirecting to profile creation");
-        navigate('/joincrew-ath-profile', { replace: true });
+        navigate('/runcrew/central', { replace: true });
       }
       
     } catch (error) {

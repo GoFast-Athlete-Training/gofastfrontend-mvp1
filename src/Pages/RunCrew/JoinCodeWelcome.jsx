@@ -169,15 +169,31 @@ export default function JoinCodeWelcome() {
             <p className="text-gray-600">
               Welcome to <strong>{crewPreview.name}</strong>!
             </p>
-            <div className="bg-blue-50 border border-blue-200 rounded-lg p-4 mt-4">
-              <p className="text-sm text-blue-800">
-                <strong>Almost there!</strong> Complete your profile to fully join the crew and start running together.
+            
+            {/* Warning Box */}
+            <div className="bg-orange-50 border-2 border-orange-200 rounded-lg p-4 mt-4">
+              <p className="text-sm text-orange-800 font-medium mb-2">
+                ⚠️ <strong>Important:</strong> Your join is pending!
+              </p>
+              <p className="text-xs text-orange-700">
+                You need to sign up to secure your spot. If you don't create an account, your choice to join might not stick.
               </p>
             </div>
-            <div className="pt-4">
-              <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-sky-500 mx-auto"></div>
-              <p className="text-gray-500 text-sm mt-2">Setting up your account...</p>
-            </div>
+
+            {/* Sign Up Button */}
+            <button
+              onClick={() => navigate('/joincrew-ath-signup', { replace: true })}
+              className="w-full bg-gradient-to-r from-sky-600 to-sky-700 hover:from-sky-700 hover:to-sky-800 text-white font-bold py-4 rounded-xl transition shadow-lg hover:shadow-xl flex items-center justify-center space-x-2 mt-4"
+            >
+              <svg className="w-5 h-5" fill="currentColor" viewBox="0 0 20 20">
+                <path d="M10 0C4.477 0 0 4.477 0 10c0 4.418 2.865 8.166 6.839 9.49.5.092.682-.217.682-.482 0-.237-.008-.866-.013-1.7-2.782.603-3.369-1.34-3.369-1.34-.454-1.156-1.11-1.463-1.11-1.463-.908-.62.069-.608.069-.608 1.003.07 1.531 1.03 1.531 1.03.892 1.529 2.341 1.087 2.91.831.092-.646.35-1.087.636-1.337-2.22-.253-4.555-1.11-4.555-4.943 0-1.091.39-1.984 1.03-2.683-.103-.253-.446-1.27.098-2.647 0 0 .84-.269 2.75 1.025A9.578 9.578 0 0110 4.837c.85.004 1.705.114 2.504.336 1.909-1.294 2.747-1.025 2.747-1.025.546 1.377.203 2.394.1 2.647.64.699 1.025 1.592 1.025 2.683 0 3.842-2.339 4.687-4.566 4.935.359.309.678.919.678 1.852 0 1.336-.012 2.415-.012 2.743 0 .267.18.578.688.48C17.138 18.163 20 14.418 20 10c0-5.523-4.477-10-10-10z"></path>
+              </svg>
+              <span>Click here to sign up</span>
+            </button>
+
+            <p className="text-xs text-gray-500 mt-2">
+              We'll use your Google account to get you started quickly
+            </p>
           </div>
         )}
 
