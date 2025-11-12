@@ -21,47 +21,60 @@ export default function JoinCodeWelcome() {
   const hasCodeInUrl = !!(code || codeFromQuery);
 
   // Separate lookup function that can be called with a code
-  const handleLookupWithCode = async (codeToLookup) => {
+  // Using useCallback to ensure stable reference for useEffect dependency
+  const handleLookupWithCode = React.useCallback(async (codeToLookup) => {
     if (!codeToLookup || !codeToLookup.trim()) {
+      console.log('⚠️ JoinCodeWelcome: No code provided to lookup');
       return;
     }
 
+    const normalizedCode = codeToLookup.trim().toUpperCase();
+    console.log('🔍 JoinCodeWelcome: Looking up crew with code:', normalizedCode);
+    
     setLoading(true);
     setError(null);
 
     try {
       const response = await axios.post(`${API_BASE}/runcrew/lookup`, {
-        joinCode: codeToLookup.trim().toUpperCase()
+        joinCode: normalizedCode
       });
+
+      console.log('✅ JoinCodeWelcome: Lookup response:', response.data);
 
       if (response.data.success) {
         setCrewPreview(response.data);
+        console.log('✅ JoinCodeWelcome: Crew preview set:', response.data.name);
       } else {
         setError(response.data.message || 'Invalid or expired join code');
         setCrewPreview(null);
       }
     } catch (err) {
-      console.error('Lookup error:', err);
+      console.error('❌ JoinCodeWelcome: Lookup error:', err);
       setError(err.response?.data?.message || 'Invalid or expired join code');
       setCrewPreview(null);
     } finally {
       setLoading(false);
     }
-  };
+  }, []); // Empty deps - function doesn't depend on any props/state
 
   // Auto-fill join code from URL and auto-lookup
   useEffect(() => {
     const codeToUse = code || codeFromQuery;
+    console.log('🔍 JoinCodeWelcome: useEffect triggered - code:', code, 'codeFromQuery:', codeFromQuery);
+    
     if (codeToUse) {
       const normalizedCode = codeToUse.toUpperCase().trim();
+      console.log('🔍 JoinCodeWelcome: Normalized code:', normalizedCode);
       setJoinCode(normalizedCode);
       // Auto-trigger lookup when code is detected from URL
       if (normalizedCode) {
+        console.log('🔍 JoinCodeWelcome: Auto-lookup triggered with code:', normalizedCode);
         handleLookupWithCode(normalizedCode);
       }
+    } else {
+      console.log('⚠️ JoinCodeWelcome: No code found in URL');
     }
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [code, codeFromQuery]);
+  }, [code, codeFromQuery, handleLookupWithCode]);
 
   const handleLookup = async () => {
     if (!joinCode.trim()) {
