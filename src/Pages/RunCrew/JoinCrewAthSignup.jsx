@@ -66,14 +66,14 @@ const JoinCrewAthSignup = () => {
 
     localStorage.setItem("athleteId", athleteId);
 
-    // Check if athlete has profile (gofastHandle) - if not, go to profile creation
-    const athleteData = athleteResponse.data.data;
-    if (!athleteData?.gofastHandle) {
-      // Profile incomplete - redirect to profile creation (join will happen after profile)
-      console.log("✅ JoinCrewAthSignup: Profile incomplete → Redirecting to profile creation");
-      navigate('/joincrew-ath-profile', { replace: true });
-      return;
-    }
+      // Check if athlete has profile (gofastHandle) - if not, go to profile creation
+      const athleteData = athleteResponse.data.data;
+      if (!athleteData?.gofastHandle) {
+        // Profile incomplete - redirect to profile creation (join will happen after profile)
+        console.log("✅ JoinCrewAthSignup: Profile incomplete → Redirecting to profile creation");
+        navigate('/crewjoin/profile', { replace: true });
+        return;
+      }
 
     // Profile complete - now join crew atomically
     console.log("🌐 JoinCrewAthSignup: Profile complete, joining crew atomically...");

@@ -193,7 +193,7 @@ export default function JoinCodeWelcome() {
 
             {/* Sign Up Button */}
             <button
-              onClick={() => navigate('/joincrew-ath-signup', { replace: true })}
+              onClick={() => navigate('/crewjoin', { replace: true })}
               className="w-full bg-gradient-to-r from-sky-600 to-sky-700 hover:from-sky-700 hover:to-sky-800 text-white font-bold py-4 rounded-xl transition shadow-lg hover:shadow-xl flex items-center justify-center space-x-2 mt-4"
             >
               <svg className="w-5 h-5" fill="currentColor" viewBox="0 0 20 20">

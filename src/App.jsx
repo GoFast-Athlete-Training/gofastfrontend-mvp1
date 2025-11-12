@@ -89,8 +89,8 @@ const App = () => {
         <Route path="/join/:code" element={<JoinCodeWelcome />} />
         <Route path="/join" element={<JoinCodeWelcome />} />
         {/* Join Crew Flow - Dedicated Components */}
-        <Route path="/joincrew-ath-signup" element={<JoinCrewAthSignup />} />
-        <Route path="/joincrew-ath-profile" element={<JoinCrewAthProfile />} />
+        <Route path="/crewjoin" element={<JoinCrewAthSignup />} />
+        <Route path="/crewjoin/profile" element={<JoinCrewAthProfile />} />
         {/* Legacy route - redirect to new clean route */}
         <Route path="/runcrew/join" element={<JoinCodeWelcome />} />
         {/* Existing Join or Start Flow (PRESERVED) */}

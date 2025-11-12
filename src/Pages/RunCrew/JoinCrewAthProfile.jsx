@@ -101,7 +101,7 @@ const JoinCrewAthProfile = () => {
       
       if (!firebaseUser) {
         alert('No user logged in. Please sign in first.');
-        navigate('/joincrew-ath-signup');
+        navigate('/crewjoin');
         return;
       }
 
