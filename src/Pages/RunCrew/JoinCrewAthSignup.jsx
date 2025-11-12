@@ -75,47 +75,43 @@ const JoinCrewAthSignup = () => {
         return;
       }
 
-    // Profile complete - now join crew atomically
-    console.log("🌐 JoinCrewAthSignup: Profile complete, joining crew atomically...");
-    const joinResponse = await api.post('/runcrew/join', {
-      joinCode: pendingJoinCode
-    });
+      // Profile complete - now join crew atomically
+      console.log("🌐 JoinCrewAthSignup: Profile complete, joining crew atomically...");
+      const joinResponse = await api.post('/runcrew/join', {
+        joinCode: pendingJoinCode
+      });
 
-    if (!joinResponse.data.success) {
-      throw new Error(joinResponse.data.message || 'Failed to join crew');
-    }
+      if (!joinResponse.data.success) {
+        throw new Error(joinResponse.data.message || 'Failed to join crew');
+      }
 
-    const { runCrew } = joinResponse.data;
+      const { runCrew } = joinResponse.data;
 
-    // Check if user is admin
-    const managerRecord = Array.isArray(runCrew?.managers)
-      ? runCrew.managers.find((manager) => manager.athleteId === athleteId && manager.role === 'admin')
-      : null;
-    const isAdmin = Boolean(managerRecord);
+      // Check if user is admin
+      const managerRecord = Array.isArray(runCrew?.managers)
+        ? runCrew.managers.find((manager) => manager.athleteId === athleteId && manager.role === 'admin')
+        : null;
+      const isAdmin = Boolean(managerRecord);
 
-    // Store crew data
-    LocalStorageAPI.setRunCrewData({
-      ...runCrew,
-      isAdmin
-    });
-    LocalStorageAPI.setRunCrewId(runCrew.id);
+      // Store crew data
+      LocalStorageAPI.setRunCrewData({
+        ...runCrew,
+        isAdmin
+      });
+      LocalStorageAPI.setRunCrewId(runCrew.id);
 
-    if (managerRecord) {
-      LocalStorageAPI.setRunCrewManagerId(managerRecord.id);
-    }
+      if (managerRecord) {
+        LocalStorageAPI.setRunCrewManagerId(managerRecord.id);
+      }
 
-    // Clear pending join intent
-    localStorage.removeItem('pendingJoinCode');
-    localStorage.removeItem('pendingJoinCrewId');
-    localStorage.removeItem('pendingJoinCrewName');
+      // Clear pending join intent
+      localStorage.removeItem('pendingJoinCode');
+      localStorage.removeItem('pendingJoinCrewId');
+      localStorage.removeItem('pendingJoinCrewName');
 
-    // Redirect to crew
-    console.log("✅ JoinCrewAthSignup: Join completed! Redirecting to crew");
-    if (isAdmin) {
-      navigate('/crew/crewadmin', { replace: true });
-    } else {
-      navigate('/runcrew/central', { replace: true });
-    }
+      // Redirect to success page (user chooses next step)
+      console.log("✅ JoinCrewAthSignup: Join completed! Redirecting to success page");
+      navigate('/crewjoin/profile/success', { replace: true });
   };
 
   const handleGoogleSignUp = async () => {

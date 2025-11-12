@@ -257,19 +257,59 @@ export default function RunCrewCentral() {
     <div className="min-h-screen bg-gray-50 flex flex-col">
       {/* Header */}
       <header className="bg-white shadow-sm">
-        <div className="max-w-6xl mx-auto px-6 py-5 flex items-center justify-between">
-          <div className="flex items-center space-x-4">
-            <button
-              onClick={() => navigate('/athlete-home')}
-              className="text-gray-600 hover:text-gray-900"
-            >
-              <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 19l-7-7 7-7" />
-              </svg>
-            </button>
-            <div>
-              <h1 className="text-3xl font-bold text-gray-900">{crew.name || 'RunCrew'}</h1>
-              <p className="text-sm text-gray-500">{currentDate}</p>
+        <div className="max-w-6xl mx-auto px-6 py-5">
+          <div className="flex items-start justify-between">
+            <div className="flex items-start space-x-4 flex-1">
+              <button
+                onClick={() => navigate('/athlete-home')}
+                className="text-gray-600 hover:text-gray-900 mt-1"
+              >
+                <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 19l-7-7 7-7" />
+                </svg>
+              </button>
+              <div className="flex-1">
+                <div className="flex items-center gap-3 mb-2">
+                  {/* Crew Icon/Logo */}
+                  {crew.icon ? (
+                    <span className="text-4xl">{crew.icon}</span>
+                  ) : crew.logo ? (
+                    <img 
+                      src={crew.logo} 
+                      alt={crew.name}
+                      className="w-12 h-12 rounded-full object-cover"
+                    />
+                  ) : null}
+                  <div>
+                    <h1 className="text-3xl font-bold text-gray-900">{crew.name || 'RunCrew'}</h1>
+                    <p className="text-sm text-gray-500">{currentDate}</p>
+                  </div>
+                </div>
+                {/* Crew Description */}
+                {crew.description && (
+                  <p className="text-base text-gray-700 mt-2 max-w-2xl">{crew.description}</p>
+                )}
+              </div>
+            </div>
+            
+            {/* Navigation Actions */}
+            <div className="flex items-center gap-3 ml-4">
+              <button
+                onClick={() => navigate('/athlete-home')}
+                className="px-4 py-2 text-sm font-semibold text-gray-700 hover:bg-gray-100 rounded-lg transition"
+              >
+                Home
+              </button>
+              <button
+                onClick={() => navigate('/settings')}
+                className="px-4 py-2 text-sm font-semibold text-gray-700 hover:bg-gray-100 rounded-lg transition flex items-center gap-2"
+              >
+                <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.065 2.572c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 00-2.572 1.065c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 00-2.573-1.066c-1.543.94-3.31-.826-2.37-2.37a1.724 1.724 0 00-1.065-2.572c-1.756-.426-1.756-2.924 0-3.35a1.724 1.724 0 001.066-2.573c-.94-1.543.826-3.31 2.37-2.37.996.608 2.296.07 2.572-1.065z" />
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
+                </svg>
+                Settings
+              </button>
             </div>
           </div>
         </div>

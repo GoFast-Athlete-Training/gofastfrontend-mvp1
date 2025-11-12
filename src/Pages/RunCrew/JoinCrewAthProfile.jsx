@@ -186,13 +186,9 @@ const JoinCrewAthProfile = () => {
             localStorage.removeItem('pendingJoinCrewId');
             localStorage.removeItem('pendingJoinCrewName');
 
-            console.log('✅ JoinCrewAthProfile: Join completed! Redirecting to crew...');
-            // Redirect to crew (admin or member)
-            if (isAdmin) {
-              navigate('/crew/crewadmin', { replace: true });
-            } else {
-              navigate('/runcrew/central', { replace: true });
-            }
+            console.log('✅ JoinCrewAthProfile: Join completed! Redirecting to success page...');
+            // Redirect to success page (user chooses next step)
+            navigate('/crewjoin/profile/success', { replace: true });
             return;
           }
         } catch (joinError) {
