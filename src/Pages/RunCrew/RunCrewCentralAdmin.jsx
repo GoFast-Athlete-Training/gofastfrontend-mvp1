@@ -67,15 +67,17 @@ export default function RunCrewCentralAdmin() {
     runCrewManagerId
   } = useHydratedAthlete();
 
-  const [crew, setCrew] = useState(() => LocalStorageAPI.getRunCrewData());
+  const [crew, setCrew] = useState(null);
+  const [loadingCrew, setLoadingCrew] = useState(true);
+  const [crewError, setCrewError] = useState(null);
   const [syncing, setSyncing] = useState(false);
-  const [syncError, setSyncError] = useState(null);
   const [toast, setToast] = useState(null);
 
   const [announcementContent, setAnnouncementContent] = useState('');
   const [announcementTitle, setAnnouncementTitle] = useState('');
   const [announcements, setAnnouncements] = useState([]);
   const [loadingAnnouncements, setLoadingAnnouncements] = useState(false);
+  const [announcementsError, setAnnouncementsError] = useState(null);
   const [runForm, setRunForm] = useState(initialRunForm);
   const [editingRunId, setEditingRunId] = useState(null);
   const [expandedRunId, setExpandedRunId] = useState(null);
@@ -84,6 +86,8 @@ export default function RunCrewCentralAdmin() {
   const [activeMetric, setActiveMetric] = useState('miles');
   const [leaderboard, setLeaderboard] = useState([]);
   const [loadingLeaderboard, setLoadingLeaderboard] = useState(false);
+  const [leaderboardError, setLeaderboardError] = useState(null);
+  const [membersError, setMembersError] = useState(null);
 
   const isAdmin = useMemo(() => {
     if (!crew || !athleteId) {
@@ -107,8 +111,9 @@ export default function RunCrewCentralAdmin() {
   }), []);
 
   const runs = crew?.runs || [];
-  const memberships = crew?.memberships || crew?.members || [];
-  const inviteCode = crew?.joinCode || crew?.inviteCode || null;
+  const memberships = crew?.memberships || [];
+  // Extract invite code from crew data (no hardcoded values)
+  const inviteCode = crew?.joinCode || null;
 
   const showToast = (message) => {
     setToast(message);
@@ -142,18 +147,75 @@ export default function RunCrewCentralAdmin() {
     setCrew(enrichedCrew);
   };
 
+  // Load RunCrew independently from /api/runcrew/:id
+  const loadRunCrew = useCallback(async () => {
+    if (!runCrewId) {
+      setCrewError('Missing crew ID');
+      setLoadingCrew(false);
+      return;
+    }
+    
+    try {
+      setLoadingCrew(true);
+      setCrewError(null);
+      const user = auth.currentUser;
+      const token = await user?.getIdToken();
+      
+      if (!token) {
+        throw new Error('Please sign in to view crew');
+      }
+
+      const { data } = await axios.get(
+        `${API_BASE}/runcrew/${runCrewId}`,
+        {
+          headers: { Authorization: `Bearer ${token}` }
+        }
+      );
+
+      if (data?.success && data.runCrew) {
+        const managerRecord = Array.isArray(data.runCrew?.managers)
+          ? data.runCrew.managers.find((manager) => manager.athleteId === athleteId && manager.role === 'admin')
+          : null;
+
+        const updatedCrew = {
+          ...data.runCrew,
+          isAdmin: managerRecord ? true : data.runCrew.isAdmin
+        };
+
+        LocalStorageAPI.setRunCrewData(updatedCrew);
+        LocalStorageAPI.setRunCrewId(data.runCrew.id);
+        LocalStorageAPI.setRunCrewManagerId(managerRecord?.id || data.runCrew.currentManagerId || null);
+
+        setCrew(updatedCrew);
+        setMembersError(null); // Clear members error if successful
+      } else {
+        throw new Error(data?.error || 'Failed to load crew');
+      }
+    } catch (error) {
+      console.error('Failed to load RunCrew:', error);
+      setCrewError(error.response?.data?.error || error.message || 'Failed to load crew data');
+      
+      // If crew fails to load, we can't verify members either
+      if (error.response?.status === 404 || error.response?.status === 403) {
+        setMembersError('Unable to load members. Crew not found or access denied.');
+      }
+    } finally {
+      setLoadingCrew(false);
+    }
+  }, [runCrewId, athleteId]);
+
   // Load announcements independently
   const loadAnnouncements = useCallback(async () => {
     if (!runCrewId) return;
     
     try {
       setLoadingAnnouncements(true);
+      setAnnouncementsError(null);
       const user = auth.currentUser;
       const token = await user?.getIdToken();
       
       if (!token) {
-        console.error('No auth token for announcements');
-        return;
+        throw new Error('Please sign in to view announcements');
       }
 
       const { data } = await axios.get(
@@ -165,9 +227,12 @@ export default function RunCrewCentralAdmin() {
 
       if (data?.success && Array.isArray(data.announcements)) {
         setAnnouncements(data.announcements);
+      } else {
+        throw new Error(data?.error || 'Failed to load announcements');
       }
     } catch (error) {
       console.error('Failed to load announcements:', error);
+      setAnnouncementsError(error.response?.data?.error || error.message || 'Failed to load announcements');
     } finally {
       setLoadingAnnouncements(false);
     }
@@ -179,12 +244,12 @@ export default function RunCrewCentralAdmin() {
     
     try {
       setLoadingLeaderboard(true);
+      setLeaderboardError(null);
       const user = auth.currentUser;
       const token = await user?.getIdToken();
       
       if (!token) {
-        console.error('No auth token for leaderboard');
-        return;
+        throw new Error('Please sign in to view leaderboard');
       }
 
       const { data } = await axios.get(
@@ -196,9 +261,12 @@ export default function RunCrewCentralAdmin() {
 
       if (data?.success && Array.isArray(data.leaderboard)) {
         setLeaderboard(data.leaderboard);
+      } else {
+        throw new Error(data?.error || 'Failed to load leaderboard');
       }
     } catch (error) {
       console.error('Failed to load leaderboard:', error);
+      setLeaderboardError(error.response?.data?.error || error.message || 'Failed to load leaderboard');
       setLeaderboard([]);
     } finally {
       setLoadingLeaderboard(false);
@@ -207,64 +275,54 @@ export default function RunCrewCentralAdmin() {
 
   const handleResync = useCallback(async () => {
     if (!runCrewId) {
-      setSyncError('Missing crew context. Please return to Athlete Home.');
+      showToast('Missing crew context. Please return to Athlete Home.');
       return;
     }
 
     try {
       setSyncing(true);
-      setSyncError(null);
-
-      const { data } = await axios.post(`${API_BASE}/runcrew/hydrate`, {
-        runCrewId,
-        athleteId
-      });
-
-      if (!data?.success || !data.runCrew) {
-        throw new Error(data?.error || data?.message || 'Unable to hydrate crew');
-      }
-
-      const managerRecord = Array.isArray(data.runCrew?.managers)
-        ? data.runCrew.managers.find((manager) => manager.athleteId === athleteId && manager.role === 'admin')
-        : null;
-
-      const updatedCrew = {
-        ...data.runCrew,
-        isAdmin: managerRecord ? true : data.runCrew.isAdmin
-      };
-
-      LocalStorageAPI.setRunCrewData(updatedCrew);
-      LocalStorageAPI.setRunCrewId(data.runCrew.id);
-      LocalStorageAPI.setRunCrewManagerId(managerRecord?.id || data.runCrew.currentManagerId || null);
-
-      setCrew(updatedCrew);
       
-      // Reload announcements and leaderboard after sync
-      loadAnnouncements();
-      loadLeaderboard();
+      // Reload all data independently
+      await Promise.all([
+        loadRunCrew(),
+        loadAnnouncements(),
+        loadLeaderboard()
+      ]);
       
-      showToast('Crew re-synced from server');
+      showToast('Crew data refreshed');
     } catch (error) {
-      setSyncError(error.message || 'Unable to sync crew. Try again.');
+      console.error('Failed to sync crew:', error);
+      showToast('Failed to refresh crew data');
     } finally {
       setSyncing(false);
     }
-  }, [runCrewId, athleteId, loadAnnouncements, loadLeaderboard]);
+  }, [runCrewId, loadRunCrew, loadAnnouncements, loadLeaderboard]);
 
-  // Fetch fresh runCrew data on mount if not already loaded
+  // Fetch fresh runCrew data on mount (independent of Welcome hydration)
   useEffect(() => {
-    if (runCrewId && athleteId && !crew) {
-      handleResync();
+    if (runCrewId && athleteId) {
+      // Load RunCrew first, then other data
+      loadRunCrew().then(() => {
+        // Once crew is loaded, load announcements and leaderboard
+        if (runCrewId) {
+          loadAnnouncements();
+          loadLeaderboard();
+        }
+      });
+    } else if (!runCrewId) {
+      setCrewError('No crew ID found. Please join or create a crew first.');
+      setLoadingCrew(false);
     }
-  }, [runCrewId, athleteId, crew, handleResync]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []); // Only run on mount - loadRunCrew is stable via useCallback
 
-  // Load announcements and leaderboard on mount and when runCrewId changes
+  // Reload leaderboard when metric changes (only after crew is loaded)
   useEffect(() => {
-    if (runCrewId) {
-      loadAnnouncements();
+    if (runCrewId && crew && !loadingCrew) {
       loadLeaderboard();
     }
-  }, [runCrewId, loadAnnouncements, loadLeaderboard]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [activeMetric]); // Only reload when metric changes
 
   const handleAnnouncementSubmit = async (event) => {
     event.preventDefault();
@@ -306,6 +364,7 @@ export default function RunCrewCentralAdmin() {
         setAnnouncements([data.data, ...announcements]);
         setAnnouncementTitle('');
         setAnnouncementContent('');
+        setAnnouncementsError(null); // Clear error on success
         showToast('Announcement posted successfully');
       } else {
         throw new Error(data?.error || 'Failed to post announcement');
@@ -391,35 +450,52 @@ export default function RunCrewCentralAdmin() {
       return;
     }
 
-    // CREATE MODE: Add new run locally
-    const newRun = {
-      id: `local-run-${Date.now()}`,
-      title,
-      date: isoDate,
-      startTime: time,
-      meetUpPoint,
-      meetUpAddress: meetUpAddress || null,
-      totalMiles: totalMiles ? parseFloat(totalMiles) : null,
-      pace: pace || null,
-      stravaMapUrl: stravaMapUrl || null,
-      description: description || null,
-      createdAt: new Date().toISOString(),
-      createdBy: hydratedAthlete
-        ? {
-            id: athleteId,
-            firstName: hydratedAthlete.firstName,
-            lastName: hydratedAthlete.lastName
-          }
-        : null,
-      rsvps: []
-    };
+    // CREATE MODE: Create run via API
+    try {
+      const user = auth.currentUser;
+      if (!user) {
+        showToast('Please sign in to create runs');
+        return;
+      }
 
-    const optimisticRuns = [newRun, ...runs];
-    persistCrew({ ...crew, runs: optimisticRuns });
-    setRunForm(initialRunForm);
-    setPlaceData(null);
-    setShowRunModal(false);
-    showToast('Run created (sync later)');
+      const token = await user.getIdToken();
+      const { data } = await axios.post(
+        `${API_BASE}/runcrew/${runCrewId}/runs`,
+        {
+          title,
+          date: isoDate,
+          startTime: time,
+          meetUpPoint,
+          meetUpAddress: meetUpAddress || null,
+          meetUpLat: placeData?.lat || null,
+          meetUpLng: placeData?.lng || null,
+          meetUpPlaceId: placeData?.placeId || null,
+          totalMiles: totalMiles ? parseFloat(totalMiles) : null,
+          pace: pace || null,
+          stravaMapUrl: stravaMapUrl || null,
+          description: description || null
+        },
+        {
+          headers: { Authorization: `Bearer ${token}` }
+        }
+      );
+
+      if (data?.success && data.data) {
+        // Update crew with new run
+        const updatedRuns = [data.data, ...runs];
+        const updatedCrew = { ...crew, runs: updatedRuns };
+        persistCrew(updatedCrew);
+        setRunForm(initialRunForm);
+        setPlaceData(null);
+        setShowRunModal(false);
+        showToast('Run created successfully');
+      } else {
+        throw new Error(data?.error || 'Failed to create run');
+      }
+    } catch (error) {
+      console.error('Error creating run:', error);
+      showToast(error.response?.data?.error || error.message || 'Failed to create run');
+    }
   };
 
   const openCreateRun = () => {
@@ -530,37 +606,47 @@ export default function RunCrewCentralAdmin() {
     navigate('/runcrew-settings');
   };
 
-  const renderSyncGate = () => (
-    <main className="min-h-screen bg-gray-50 flex items-center justify-center px-6 py-12">
-      <div className="max-w-xl w-full bg-white border border-gray-200 rounded-xl shadow-sm p-8 text-center space-y-6">
-        <h1 className="text-2xl font-bold text-gray-900">Sync your RunCrew</h1>
-        <p className="text-gray-600 text-sm">
-          We couldn’t find cached crew data. Tap the button below to load the latest snapshot from the backend.
-        </p>
-        {syncError && (
-          <div className="bg-red-50 border border-red-200 text-red-700 px-4 py-2 rounded text-sm">
-            {syncError}
-          </div>
-        )}
-        <button
-          onClick={handleResync}
-          disabled={syncing}
-          className="w-full bg-sky-600 hover:bg-sky-700 text-white font-semibold py-3 rounded-lg transition disabled:opacity-60"
-        >
-          {syncing ? 'Syncing…' : 'Sync Crew Data'}
-        </button>
-        <button
-          onClick={() => navigate('/athlete-home')}
-          className="w-full border border-gray-300 text-gray-700 font-semibold py-3 rounded-lg hover:bg-gray-50 transition"
-        >
-          Back to Athlete Home
-        </button>
-      </div>
-    </main>
-  );
+  // Render loading state
+  if (loadingCrew) {
+    return (
+      <main className="min-h-screen bg-gray-50 flex items-center justify-center px-6 py-12">
+        <div className="max-w-xl w-full bg-white border border-gray-200 rounded-xl shadow-sm p-8 text-center space-y-6">
+          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-orange-500 mx-auto"></div>
+          <p className="text-gray-600 text-sm">Loading crew data...</p>
+        </div>
+      </main>
+    );
+  }
 
-  if (!crew) {
-    return renderSyncGate();
+  // Render error state for RunCrew hydration failure
+  if (crewError || !crew) {
+    return (
+      <main className="min-h-screen bg-gray-50 flex items-center justify-center px-6 py-12">
+        <div className="max-w-xl w-full bg-white border border-gray-200 rounded-xl shadow-sm p-8 space-y-6">
+          <div className="bg-red-50 border border-red-200 rounded-lg p-6">
+            <h3 className="text-red-800 font-semibold mb-2">Failed to Load Crew</h3>
+            <p className="text-red-700 text-sm mb-4">
+              {crewError || 'Unable to load crew data. Please check your connection and try again.'}
+            </p>
+            <div className="flex gap-3">
+              <button
+                onClick={loadRunCrew}
+                disabled={loadingCrew}
+                className="bg-red-600 hover:bg-red-700 text-white px-4 py-2 rounded-lg text-sm font-semibold transition disabled:opacity-60"
+              >
+                {loadingCrew ? 'Retrying...' : 'Retry'}
+              </button>
+              <button
+                onClick={() => navigate('/athlete-home')}
+                className="border border-gray-300 text-gray-700 px-4 py-2 rounded-lg text-sm font-semibold hover:bg-gray-50 transition"
+              >
+                Back to Home
+              </button>
+            </div>
+          </div>
+        </div>
+      </main>
+    );
   }
 
   return (
@@ -627,11 +713,6 @@ export default function RunCrewCentralAdmin() {
       </header>
 
       <main className="max-w-7xl mx-auto px-4 lg:px-6 py-10">
-        {syncError && (
-          <div className="bg-red-50 border border-red-200 text-red-700 px-4 py-3 rounded-lg text-sm mb-6">
-            {syncError}
-          </div>
-        )}
 
         {/* 3-Column Layout: Members (Left) | Main Content (Center) | Actions (Right) */}
         <div className="grid grid-cols-1 lg:grid-cols-12 gap-6">
@@ -643,9 +724,20 @@ export default function RunCrewCentralAdmin() {
                 <span className="text-sm text-gray-500 bg-gray-100 px-2 py-1 rounded-full">{memberships.length}</span>
               </div>
               
-              {memberships.length === 0 ? (
+              {membersError ? (
+                <div className="bg-red-50 border border-red-200 rounded-lg p-4">
+                  <p className="text-red-800 text-sm mb-2">Failed to load members</p>
+                  <button 
+                    onClick={loadRunCrew}
+                    className="text-red-600 text-sm underline"
+                  >
+                    Retry
+                  </button>
+                </div>
+              ) : memberships.length === 0 ? (
                 <div className="border border-dashed border-gray-300 rounded-xl p-6 text-center text-sm text-gray-500">
-                  No members yet. Share your join code to build the crew.
+                  <p className="mb-2">No members yet.</p>
+                  <p>Share your invite code to build the crew.</p>
                 </div>
               ) : (
                 <div className="space-y-3 max-h-[600px] overflow-y-auto">
@@ -730,8 +822,20 @@ export default function RunCrewCentralAdmin() {
                 <div className="text-center py-4 text-sm text-gray-500">Loading announcements...</div>
               )}
 
+              {announcementsError && (
+                <div className="bg-yellow-50 border border-yellow-200 rounded-lg p-4 mb-4">
+                  <p className="text-yellow-800 text-sm mb-2">{announcementsError}</p>
+                  <button 
+                    onClick={loadAnnouncements}
+                    className="text-yellow-600 text-sm underline"
+                  >
+                    Retry
+                  </button>
+                </div>
+              )}
+
               <div className="space-y-4">
-                {!loadingAnnouncements && announcements.length === 0 && (
+                {!loadingAnnouncements && !announcementsError && announcements.length === 0 && (
                   <p className="text-sm text-gray-500">No announcements yet. Be the first to post one.</p>
                 )}
                 {announcements.map((announcement) => (
@@ -765,10 +869,22 @@ export default function RunCrewCentralAdmin() {
             {/* Runs Module */}
             <section className="bg-white rounded-2xl border border-gray-200 shadow-sm p-6 space-y-6">
           <div className="space-y-4">
-            <h3 className="text-lg font-semibold text-gray-900">Upcoming Runs</h3>
+            <div className="flex items-center justify-between">
+              <h3 className="text-lg font-semibold text-gray-900">Upcoming Runs</h3>
+              <button
+                onClick={openCreateRun}
+                className="bg-emerald-500 hover:bg-emerald-600 text-white px-4 py-2 rounded-lg text-sm font-semibold transition shadow-sm hover:shadow flex items-center gap-2"
+              >
+                <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4" />
+                </svg>
+                Create Run
+              </button>
+            </div>
             {runs.length === 0 && (
               <div className="border border-dashed border-gray-300 rounded-xl p-6 text-center text-sm text-gray-500">
-                No runs yet — click "Create Run" to add one.
+                <p className="mb-2">No runs yet.</p>
+                <p>Click "Create Run" above to schedule the first run.</p>
               </div>
             )}
             <div className="space-y-3">
@@ -909,19 +1025,6 @@ export default function RunCrewCentralAdmin() {
 
           {/* RIGHT SIDEBAR: Actions & Stats */}
           <aside className="lg:col-span-3 space-y-6">
-            {/* Create Run Button */}
-            <section className="bg-white rounded-2xl border border-gray-200 shadow-sm p-6">
-              <button
-                onClick={openCreateRun}
-                className="w-full bg-emerald-500 hover:bg-emerald-600 text-white px-6 py-4 rounded-xl text-base font-bold transition shadow-lg hover:shadow-xl flex items-center justify-center gap-2"
-              >
-                <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4" />
-                </svg>
-                Create Run
-              </button>
-            </section>
-
             {/* Crew Stats */}
             <section className="bg-white rounded-2xl border border-gray-200 shadow-sm p-6 space-y-4">
               <h3 className="text-lg font-bold text-gray-900">Crew Stats</h3>
@@ -959,7 +1062,20 @@ export default function RunCrewCentralAdmin() {
               {loadingLeaderboard && (
                 <div className="text-center py-4 text-sm text-gray-500">Loading leaderboard...</div>
               )}
-              {!loadingLeaderboard && (
+
+              {leaderboardError && (
+                <div className="bg-yellow-50 border border-yellow-200 rounded-lg p-4 mb-4">
+                  <p className="text-yellow-800 text-sm mb-2">{leaderboardError}</p>
+                  <button 
+                    onClick={loadLeaderboard}
+                    className="text-yellow-600 text-sm underline"
+                  >
+                    Retry
+                  </button>
+                </div>
+              )}
+
+              {!loadingLeaderboard && !leaderboardError && (
                 <div className="space-y-2">
                   {getLeaderboardDisplay().length === 0 && (
                     <div className="text-center py-6">
