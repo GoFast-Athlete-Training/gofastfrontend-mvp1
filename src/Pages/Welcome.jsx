@@ -25,7 +25,7 @@ export default function Welcome() {
         // Call hydration endpoint (token automatically added by api interceptor)
         const response = await api.post('/athlete/hydrate');
         
-        const { success, athlete, weeklyActivities, weeklyTotals } = response.data;
+        const { success, athlete } = response.data;
 
         if (!success || !athlete) {
           console.error('❌ Hydration failed:', response.data.error || 'Invalid response');
@@ -33,13 +33,19 @@ export default function Welcome() {
           return;
         }
 
+        // Extract weeklyActivities and weeklyTotals from athlete object (backend puts them there)
+        const weeklyActivities = athlete.weeklyActivities || [];
+        const weeklyTotals = athlete.weeklyTotals || null;
+
         console.log('✅ WELCOME: Athlete hydrated:', athlete);
+        console.log('✅ WELCOME: Weekly activities count:', weeklyActivities.length);
+        console.log('✅ WELCOME: Weekly totals:', weeklyTotals);
 
         // Store the complete Prisma model (athlete + all relations + activities)
         LocalStorageAPI.setFullHydrationModel({
           athlete,
-          weeklyActivities: weeklyActivities || [],
-          weeklyTotals: weeklyTotals || null
+          weeklyActivities: weeklyActivities,
+          weeklyTotals: weeklyTotals
         });
 
         // Routing Logic based on what's missing

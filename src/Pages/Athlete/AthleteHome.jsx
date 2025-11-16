@@ -6,6 +6,7 @@ import { auth } from '../../firebase';
 import UserOnboardingCalculationService from '../../utils/UserOnboardingCalculationService';
 import { LocalStorageAPI } from '../../config/LocalStorageConfig';
 import useHydratedAthlete from '../../hooks/useHydratedAthlete';
+import useActivities from '../../hooks/useActivities';
 import { Activity, Users, Calendar, Settings } from 'lucide-react';
 
 const API_BASE = 'https://gofastbackendv2-fall2025.onrender.com/api';
@@ -17,6 +18,9 @@ const AthleteHome = () => {
   // Use the hook to get all hydrated data from localStorage
   const { athlete: athleteProfile, athleteId, runCrewId, runCrewManagerId, runCrew } = useHydratedAthlete();
 
+  // Fetch activities (with automatic refresh from backend if localStorage is empty)
+  const { activities: weeklyActivities, weeklyTotals, isLoading: activitiesLoading } = useActivities(athleteId);
+
   // Check if user is an admin of the current crew - if they have a managerId, they're an admin
   const isCrewAdmin = useMemo(() => {
     return Boolean(runCrewManagerId);
@@ -24,8 +28,6 @@ const AthleteHome = () => {
   
   const [onboardingState, setOnboardingState] = useState(null);
   const [displayCards, setDisplayCards] = useState([]);
-  const [weeklyActivities, setWeeklyActivities] = useState([]);
-  const [weeklyTotals, setWeeklyTotals] = useState(null);
   const [isCrewHydrating, setIsCrewHydrating] = useState(false);
   const [isNavigatingToCrew, setIsNavigatingToCrew] = useState(false);
   const [activeSection, setActiveSection] = useState('activity'); // 'activity', 'crew', 'events'
@@ -68,14 +70,14 @@ const AthleteHome = () => {
     }
   }, [location.pathname]);
 
-  // Load weekly activities and totals from localStorage, calculate onboarding
+  // Calculate onboarding state (only once)
   useEffect(() => {
     if (!athleteProfile) {
       // No athlete data - redirect to welcome to hydrate
       console.log('⚠️ ATHLETE HOME: No athlete data, redirecting to welcome');
-          navigate('/athlete-welcome', { replace: true });
-          return;
-        }
+      navigate('/athlete-welcome', { replace: true });
+      return;
+    }
 
     // Only run once when athleteProfile is first loaded
     if (onboardingState !== null) {
@@ -83,29 +85,29 @@ const AthleteHome = () => {
     }
 
     try {
-      // Load activities and totals from full hydration model
-      const model = LocalStorageAPI.getFullHydrationModel();
-      const { weeklyActivities: cachedActivities, weeklyTotals: cachedTotals } = model || {};
-
-        setWeeklyActivities(Array.isArray(cachedActivities) ? cachedActivities : []);
-        setWeeklyTotals(cachedTotals || null);
-
-        // Calculate onboarding state
-        const storedOnboarding = localStorage.getItem('onboardingState');
-        let onboarding;
-        if (storedOnboarding) {
-          onboarding = JSON.parse(storedOnboarding);
-        } else {
+      // Calculate onboarding state
+      const storedOnboarding = localStorage.getItem('onboardingState');
+      let onboarding;
+      if (storedOnboarding) {
+        onboarding = JSON.parse(storedOnboarding);
+      } else {
         onboarding = UserOnboardingCalculationService.calculateOnboardingState(athleteProfile.createdAt);
-          localStorage.setItem('onboardingState', JSON.stringify(onboarding));
-        }
-
-        setOnboardingState(onboarding);
-      setDisplayCards(UserOnboardingCalculationService.getCardsForUser(athleteProfile, onboarding));
-      } catch (error) {
-        console.error('❌ ATHLETE HOME: Error loading athlete data:', error);
+        localStorage.setItem('onboardingState', JSON.stringify(onboarding));
       }
-  }, [athleteProfile, navigate, onboardingState]);
+
+      setOnboardingState(onboarding);
+      setDisplayCards(UserOnboardingCalculationService.getCardsForUser(athleteProfile, onboarding));
+      
+      // Log hydrated data for debugging
+      console.log('✅ ATHLETE HOME: Hydrated athlete:', athleteProfile);
+      console.log('✅ ATHLETE HOME: athleteId:', athleteId);
+      console.log('✅ ATHLETE HOME: activitiesLoading:', activitiesLoading);
+      console.log('✅ ATHLETE HOME: Hydrated activities:', weeklyActivities?.length || 0);
+      console.log('✅ ATHLETE HOME: Weekly totals:', weeklyTotals);
+    } catch (error) {
+      console.error('❌ ATHLETE HOME: Error loading athlete data:', error);
+    }
+  }, [athleteProfile, navigate, onboardingState, weeklyActivities, weeklyTotals]);
 
   const handleSignOut = async () => {
     try {
@@ -397,8 +399,16 @@ const AthleteHome = () => {
           </div>
         )}
 
+                {/* Loading State - Show while fetching activities */}
+                {!checkingConnection && garminConnected && activitiesLoading && (
+                  <div className="bg-white rounded-xl shadow-lg p-8 text-center">
+                    <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-orange-500 mx-auto mb-4"></div>
+                    <p className="text-gray-600">Loading activities...</p>
+                  </div>
+                )}
+
                 {/* Weekly Summary - Show if connected and has activities */}
-                {!checkingConnection && garminConnected && (weeklyTotals || (weeklyActivities && weeklyActivities.length > 0)) && (
+                {!checkingConnection && garminConnected && !activitiesLoading && (weeklyTotals || (weeklyActivities && weeklyActivities.length > 0)) && (
                   <div className="bg-white rounded-xl shadow-lg p-6">
             <div className="flex justify-between items-center mb-4">
               <h2 className="text-2xl font-bold text-gray-900">This Week's Activities</h2>
@@ -432,7 +442,7 @@ const AthleteHome = () => {
         )}
 
                 {/* Empty State - Connected but no activities */}
-                {!checkingConnection && garminConnected && (!weeklyTotals && (!weeklyActivities || weeklyActivities.length === 0)) && (
+                {!checkingConnection && garminConnected && !activitiesLoading && (!weeklyTotals && (!weeklyActivities || weeklyActivities.length === 0)) && (
                   <div className="bg-white rounded-xl shadow-lg p-12 text-center">
                     <Activity className="h-16 w-16 text-gray-400 mx-auto mb-4" />
                     <h3 className="text-xl font-semibold text-gray-900 mb-2">No Activities Yet</h3>

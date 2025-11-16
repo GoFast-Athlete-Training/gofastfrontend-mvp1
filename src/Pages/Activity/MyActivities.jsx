@@ -1,50 +1,15 @@
-import React, { useState, useEffect } from 'react';
+import React from 'react';
 import { useNavigate } from 'react-router-dom';
 import { LocalStorageAPI } from '../../config/LocalStorageConfig';
+import useHydratedAthlete from '../../hooks/useHydratedAthlete';
+import useActivities from '../../hooks/useActivities';
 
 const MyActivities = () => {
   const navigate = useNavigate();
-  const [activities, setActivities] = useState([]);
-  const [weeklyTotals, setWeeklyTotals] = useState(null);
-  const [isLoading, setIsLoading] = useState(true);
-
-  useEffect(() => {
-    const loadActivities = () => {
-      setIsLoading(true);
-
-      try {
-        const model = LocalStorageAPI.getFullHydrationModel();
-        const athlete = model.athlete || LocalStorageAPI.getAthleteProfile();
-
-        const hydratedActivities = Array.isArray(model.weeklyActivities)
-          ? model.weeklyActivities
-          : [];
-        const hydratedTotals = model.weeklyTotals || null;
-
-        if (hydratedActivities.length > 0) {
-          setActivities(hydratedActivities);
-        } else if (athlete?.weeklyActivities?.length) {
-          setActivities(athlete.weeklyActivities);
-        } else {
-          setActivities([]);
-        }
-
-        if (hydratedTotals) {
-          setWeeklyTotals(hydratedTotals);
-        } else if (athlete?.weeklyTotals) {
-          setWeeklyTotals(athlete.weeklyTotals);
-        } else {
-          setWeeklyTotals(null);
-        }
-      } catch (error) {
-        console.error('❌ MY ACTIVITIES: Error loading activities:', error);
-      } finally {
-        setIsLoading(false);
-      }
-    };
-
-    loadActivities();
-  }, []);
+  const { athleteId } = useHydratedAthlete();
+  
+  // Fetch activities (with automatic refresh from backend if localStorage is empty)
+  const { activities, weeklyTotals, isLoading, refresh } = useActivities(athleteId);
 
   const formatDuration = (seconds) => {
     if (!seconds) return '0:00';

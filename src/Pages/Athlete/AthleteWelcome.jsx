@@ -37,7 +37,7 @@ export default function AthleteWelcome() {
         
         console.log('📡 ATHLETE WELCOME: Response received:', response.status);
         
-        const { success, athlete, weeklyActivities, weeklyTotals } = response.data;
+        const { success, athlete } = response.data;
 
         if (!success || !athlete) {
           console.error('❌ ATHLETE WELCOME: Hydration failed:', response.data.error || 'Invalid response');
@@ -46,11 +46,17 @@ export default function AthleteWelcome() {
           return;
         }
 
+        // Extract weeklyActivities and weeklyTotals from athlete object (backend puts them there)
+        const weeklyActivities = athlete.weeklyActivities || [];
+        const weeklyTotals = athlete.weeklyTotals || null;
+
         console.log('✅ ATHLETE WELCOME: Athlete hydrated successfully');
         console.log('✅ ATHLETE WELCOME: Athlete ID:', athlete.athleteId || athlete.id);
         console.log('✅ ATHLETE WELCOME: Email:', athlete.email);
         console.log('✅ ATHLETE WELCOME: Name:', athlete.firstName, athlete.lastName);
         console.log('✅ ATHLETE WELCOME: RunCrews count:', athlete.runCrews?.length || 0);
+        console.log('✅ ATHLETE WELCOME: Weekly activities count:', weeklyActivities.length);
+        console.log('✅ ATHLETE WELCOME: Weekly totals:', weeklyTotals);
         
         if (athlete.runCrews && athlete.runCrews.length > 0) {
           console.log('✅ ATHLETE WELCOME: RunCrews:', athlete.runCrews.map(c => c.name).join(', '));
@@ -60,8 +66,8 @@ export default function AthleteWelcome() {
         console.log('💾 ATHLETE WELCOME: Caching full hydration model to localStorage...');
         LocalStorageAPI.setFullHydrationModel({
           athlete,
-          weeklyActivities: weeklyActivities || [],
-          weeklyTotals: weeklyTotals || null
+          weeklyActivities: weeklyActivities,
+          weeklyTotals: weeklyTotals
         });
         
         console.log('✅ ATHLETE WELCOME: Full hydration model cached');
