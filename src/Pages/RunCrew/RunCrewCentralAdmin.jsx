@@ -1,4 +1,4 @@
-import React, { useMemo, useState } from 'react';
+import React, { useMemo, useState, useEffect, useCallback } from 'react';
 import { useNavigate } from 'react-router-dom';
 import axios from 'axios';
 import { auth } from '../../firebase';
@@ -6,8 +6,7 @@ import useHydratedAthlete from '../../hooks/useHydratedAthlete';
 import { LocalStorageAPI } from '../../config/LocalStorageConfig';
 import GooglePlacesAutocomplete from '../../Components/RunCrew/GooglePlacesAutocomplete';
 import StravaRoutePreview from '../../Components/RunCrew/StravaRoutePreview';
-import { copyInviteLink } from '../../utils/InviteLinkGenerator';
-import { generateUniversalInviteLink } from '../../utils/AuthDetectionService';
+import RunCrewInvitePanel from '../../Components/RunCrew/RunCrewInvitePanel';
 import { Settings } from 'lucide-react';
 
 const API_BASE = 'https://gofastbackendv2-fall2025.onrender.com/api';
@@ -54,8 +53,8 @@ const timeOptions = [
 ];
 
 const metricFormatters = {
-  miles: (entry) => `${(entry.totalDistanceMiles ?? 0).toFixed(1)} mi`,
-  runs: (entry) => `${entry.activityCount ?? 0} runs`,
+  miles: (entry) => `${(entry.totalMiles ?? 0).toFixed(1)} mi`,
+  runs: (entry) => `${entry.totalRuns ?? 0} runs`,
   calories: (entry) => `${Math.round(entry.totalCalories ?? 0)} cal`
 };
 
@@ -74,13 +73,17 @@ export default function RunCrewCentralAdmin() {
   const [toast, setToast] = useState(null);
 
   const [announcementContent, setAnnouncementContent] = useState('');
-  const [messageContent, setMessageContent] = useState('');
+  const [announcementTitle, setAnnouncementTitle] = useState('');
+  const [announcements, setAnnouncements] = useState([]);
+  const [loadingAnnouncements, setLoadingAnnouncements] = useState(false);
   const [runForm, setRunForm] = useState(initialRunForm);
   const [editingRunId, setEditingRunId] = useState(null);
   const [expandedRunId, setExpandedRunId] = useState(null);
   const [placeData, setPlaceData] = useState(null);
   const [showRunModal, setShowRunModal] = useState(false);
   const [activeMetric, setActiveMetric] = useState('miles');
+  const [leaderboard, setLeaderboard] = useState([]);
+  const [loadingLeaderboard, setLoadingLeaderboard] = useState(false);
 
   const isAdmin = useMemo(() => {
     if (!crew || !athleteId) {
@@ -104,11 +107,8 @@ export default function RunCrewCentralAdmin() {
   }), []);
 
   const runs = crew?.runs || [];
-  const announcements = crew?.announcements || [];
-  const messages = crew?.messages || [];
   const memberships = crew?.memberships || crew?.members || [];
-  const joinCode = crew?.joinCode || crew?.inviteCode || null;
-  const leaderboard = crew?.leaderboardDynamic || [];
+  const inviteCode = crew?.joinCode || crew?.inviteCode || null;
 
   const showToast = (message) => {
     setToast(message);
@@ -142,7 +142,70 @@ export default function RunCrewCentralAdmin() {
     setCrew(enrichedCrew);
   };
 
-  const handleResync = async () => {
+  // Load announcements independently
+  const loadAnnouncements = useCallback(async () => {
+    if (!runCrewId) return;
+    
+    try {
+      setLoadingAnnouncements(true);
+      const user = auth.currentUser;
+      const token = await user?.getIdToken();
+      
+      if (!token) {
+        console.error('No auth token for announcements');
+        return;
+      }
+
+      const { data } = await axios.get(
+        `${API_BASE}/runcrew/${runCrewId}/announcements`,
+        {
+          headers: { Authorization: `Bearer ${token}` }
+        }
+      );
+
+      if (data?.success && Array.isArray(data.announcements)) {
+        setAnnouncements(data.announcements);
+      }
+    } catch (error) {
+      console.error('Failed to load announcements:', error);
+    } finally {
+      setLoadingAnnouncements(false);
+    }
+  }, [runCrewId]);
+
+  // Load leaderboard independently
+  const loadLeaderboard = useCallback(async () => {
+    if (!runCrewId) return;
+    
+    try {
+      setLoadingLeaderboard(true);
+      const user = auth.currentUser;
+      const token = await user?.getIdToken();
+      
+      if (!token) {
+        console.error('No auth token for leaderboard');
+        return;
+      }
+
+      const { data } = await axios.get(
+        `${API_BASE}/runcrew/${runCrewId}/leaderboard?metric=${activeMetric}&days=7`,
+        {
+          headers: { Authorization: `Bearer ${token}` }
+        }
+      );
+
+      if (data?.success && Array.isArray(data.leaderboard)) {
+        setLeaderboard(data.leaderboard);
+      }
+    } catch (error) {
+      console.error('Failed to load leaderboard:', error);
+      setLeaderboard([]);
+    } finally {
+      setLoadingLeaderboard(false);
+    }
+  }, [runCrewId, activeMetric]);
+
+  const handleResync = useCallback(async () => {
     if (!runCrewId) {
       setSyncError('Missing crew context. Please return to Athlete Home.');
       return;
@@ -165,114 +228,94 @@ export default function RunCrewCentralAdmin() {
         ? data.runCrew.managers.find((manager) => manager.athleteId === athleteId && manager.role === 'admin')
         : null;
 
-      LocalStorageAPI.setRunCrewData({
+      const updatedCrew = {
         ...data.runCrew,
         isAdmin: managerRecord ? true : data.runCrew.isAdmin
-      });
+      };
+
+      LocalStorageAPI.setRunCrewData(updatedCrew);
       LocalStorageAPI.setRunCrewId(data.runCrew.id);
       LocalStorageAPI.setRunCrewManagerId(managerRecord?.id || data.runCrew.currentManagerId || null);
 
-      setCrew({
-        ...data.runCrew,
-        isAdmin: managerRecord ? true : data.runCrew.isAdmin
-      });
+      setCrew(updatedCrew);
+      
+      // Reload announcements and leaderboard after sync
+      loadAnnouncements();
+      loadLeaderboard();
+      
       showToast('Crew re-synced from server');
     } catch (error) {
       setSyncError(error.message || 'Unable to sync crew. Try again.');
     } finally {
       setSyncing(false);
     }
-  };
+  }, [runCrewId, athleteId, loadAnnouncements, loadLeaderboard]);
 
-  const handleAnnouncementSubmit = (event) => {
+  // Fetch fresh runCrew data on mount if not already loaded
+  useEffect(() => {
+    if (runCrewId && athleteId && !crew) {
+      handleResync();
+    }
+  }, [runCrewId, athleteId, crew, handleResync]);
+
+  // Load announcements and leaderboard on mount and when runCrewId changes
+  useEffect(() => {
+    if (runCrewId) {
+      loadAnnouncements();
+      loadLeaderboard();
+    }
+  }, [runCrewId, loadAnnouncements, loadLeaderboard]);
+
+  const handleAnnouncementSubmit = async (event) => {
     event.preventDefault();
-    if (!crew) {
+    if (!runCrewId) {
       showToast('Sync your crew before posting');
       return;
     }
 
-    const trimmed = announcementContent.trim();
-    if (!trimmed) {
-      showToast('Please write an announcement first');
+    const trimmedTitle = announcementTitle.trim();
+    const trimmedContent = announcementContent.trim();
+    
+    if (!trimmedTitle || !trimmedContent) {
+      showToast('Please provide both title and content');
       return;
     }
-
-    const newAnnouncement = {
-      id: `local-ann-${Date.now()}`,
-      content: trimmed,
-      createdAt: new Date().toISOString(),
-      isLocalOnly: true,
-      author: hydratedAthlete
-        ? {
-            id: athleteId,
-            firstName: hydratedAthlete.firstName,
-            lastName: hydratedAthlete.lastName
-          }
-        : null
-    };
-
-    const optimistic = {
-      ...crew,
-      announcements: [newAnnouncement, ...announcements]
-    };
-
-    setAnnouncementContent('');
-    persistCrew(optimistic);
-    showToast('Announcement added (syncing...)');
-
-    // Fire-and-forget until backend is wired
-  };
-
-  const handleMessageSubmit = async (event) => {
-    event.preventDefault();
-    if (!crew) {
-      showToast('Sync your crew before posting');
-      return;
-    }
-
-    const trimmed = messageContent.trim();
-    if (!trimmed) return;
-
-    const optimisticMessage = {
-      id: `local-msg-${Date.now()}`,
-      content: trimmed,
-      createdAt: new Date().toISOString(),
-      athlete: hydratedAthlete
-        ? {
-            id: athleteId,
-            firstName: hydratedAthlete.firstName,
-            lastName: hydratedAthlete.lastName,
-            photoURL: hydratedAthlete.photoURL
-          }
-        : null
-    };
-
-    persistCrew({ ...crew, messages: [...messages, optimisticMessage] });
-    setMessageContent('');
 
     try {
       const user = auth.currentUser;
       const token = await user?.getIdToken();
-      if (!token) return;
+      
+      if (!token) {
+        showToast('Please sign in to post announcements');
+        return;
+      }
 
-      await axios.post(
-        `${API_BASE}/runcrew/messages`,
+      const { data } = await axios.post(
+        `${API_BASE}/runcrew/${runCrewId}/announcements`,
         {
-          runCrewId: crew.id || runCrewId,
-          message: trimmed
+          title: trimmedTitle,
+          content: trimmedContent
         },
         {
           headers: { Authorization: `Bearer ${token}` }
         }
       );
 
-      showToast('Message sent');
-      handleResync();
+      if (data?.success && data.data) {
+        // Add to local state
+        setAnnouncements([data.data, ...announcements]);
+        setAnnouncementTitle('');
+        setAnnouncementContent('');
+        showToast('Announcement posted successfully');
+      } else {
+        throw new Error(data?.error || 'Failed to post announcement');
+      }
     } catch (error) {
-      console.error('Failed to send message:', error);
-      showToast('Message saved locally (sync later)');
+      console.error('Failed to post announcement:', error);
+      showToast(error.response?.data?.error || 'Failed to post announcement');
     }
   };
+
 
   const handleRunSubmit = async (event) => {
     event.preventDefault();
@@ -464,9 +507,9 @@ export default function RunCrewCentralAdmin() {
     setShowRunModal(false);
   };
 
-  const getLeaderboardDisplay = (entries) => {
-    if (!Array.isArray(entries) || entries.length === 0) return [];
-    return entries
+  const getLeaderboardDisplay = () => {
+    if (!Array.isArray(leaderboard) || leaderboard.length === 0) return [];
+    return leaderboard
       .map((entry) => ({
         ...entry,
         display: metricFormatters[activeMetric](entry)
@@ -641,30 +684,7 @@ export default function RunCrewCentralAdmin() {
               )}
 
               {/* Invite Section */}
-              {joinCode && (
-                <div className="mt-6 pt-6 border-t border-gray-200 space-y-3">
-                  <p className="text-xs text-gray-500 font-semibold uppercase tracking-wide">Invite Teammates</p>
-                  
-                  <div className="bg-emerald-50 border-2 border-emerald-200 rounded-lg p-4 space-y-3">
-                    <code className="block text-xs text-gray-700 break-all bg-white px-3 py-2 rounded border border-gray-200">
-                      {generateUniversalInviteLink(joinCode)}
-                    </code>
-                    <button
-                      onClick={async () => {
-                        const success = await copyInviteLink(generateUniversalInviteLink(joinCode));
-                        showToast(success ? 'Invite link copied!' : 'Failed to copy');
-                      }}
-                      className="w-full text-sm bg-emerald-500 hover:bg-emerald-600 text-white px-4 py-2 rounded-lg font-semibold transition"
-                    >
-                      Copy Invite Link
-                    </button>
-                    <div className="text-center">
-                      <p className="text-xs text-gray-500 mb-1">Or share code:</p>
-                      <code className="text-base font-bold text-emerald-600">{joinCode}</code>
-                    </div>
-                  </div>
-                </div>
-              )}
+              <RunCrewInvitePanel inviteCode={inviteCode} />
             </section>
           </aside>
 
@@ -680,24 +700,38 @@ export default function RunCrewCentralAdmin() {
               </div>
 
               <form onSubmit={handleAnnouncementSubmit} className="space-y-4">
-                <textarea
-                  value={announcementContent}
-                  onChange={handleAnnouncementChange}
-                  placeholder="What's happening next?"
-                  className="w-full border border-gray-300 rounded-lg px-4 py-3 text-sm focus:outline-none focus:ring-2 focus:ring-sky-500 focus:border-sky-500 min-h-[100px]"
-                />
+                <div>
+                  <input
+                    type="text"
+                    value={announcementTitle}
+                    onChange={(e) => setAnnouncementTitle(e.target.value)}
+                    placeholder="Announcement title"
+                    className="w-full border border-gray-300 rounded-lg px-4 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-sky-500 focus:border-sky-500 mb-3"
+                  />
+                  <textarea
+                    value={announcementContent}
+                    onChange={handleAnnouncementChange}
+                    placeholder="What's happening next?"
+                    className="w-full border border-gray-300 rounded-lg px-4 py-3 text-sm focus:outline-none focus:ring-2 focus:ring-sky-500 focus:border-sky-500 min-h-[100px]"
+                  />
+                </div>
                 <div className="flex justify-end">
                   <button
                     type="submit"
-                    className="bg-orange-500 hover:bg-orange-600 text-white px-5 py-2 rounded-lg text-sm font-semibold transition"
+                    disabled={loadingAnnouncements || !announcementTitle.trim() || !announcementContent.trim()}
+                    className="bg-orange-500 hover:bg-orange-600 disabled:opacity-50 disabled:cursor-not-allowed text-white px-5 py-2 rounded-lg text-sm font-semibold transition"
                   >
-                    Post Announcement
+                    {loadingAnnouncements ? 'Posting...' : 'Post Announcement'}
                   </button>
                 </div>
               </form>
 
+              {loadingAnnouncements && (
+                <div className="text-center py-4 text-sm text-gray-500">Loading announcements...</div>
+              )}
+
               <div className="space-y-4">
-                {announcements.length === 0 && (
+                {!loadingAnnouncements && announcements.length === 0 && (
                   <p className="text-sm text-gray-500">No announcements yet. Be the first to post one.</p>
                 )}
                 {announcements.map((announcement) => (
@@ -719,6 +753,9 @@ export default function RunCrewCentralAdmin() {
                           : 'Just now'}
                       </span>
                     </div>
+                    {announcement.title && (
+                      <h4 className="text-sm font-semibold text-gray-900 mb-1">{announcement.title}</h4>
+                    )}
                     <p className="text-sm text-gray-800 whitespace-pre-line">{announcement.content || announcement.text}</p>
                   </div>
                 ))}
@@ -868,61 +905,6 @@ export default function RunCrewCentralAdmin() {
           </div>
         </section>
 
-        {/* Messages */}
-        <section className="bg-white rounded-2xl border border-gray-200 shadow-sm p-6 space-y-4">
-          <div className="flex items-center justify-between">
-            <div>
-              <h2 className="text-xl font-bold text-gray-900">Messages</h2>
-              <p className="text-sm text-gray-500">Crew chatter and updates.</p>
-            </div>
-          </div>
-          {messages.length === 0 && (
-            <p className="text-sm text-gray-500">No messages yet. Conversations appear here.</p>
-          )}
-          <div className="space-y-3">
-            {messages.map((message) => (
-              <div key={message.id || message.createdAt} className="border border-gray-200 rounded-xl px-4 py-3 bg-gray-50">
-                <div className="flex items-center justify-between text-xs text-gray-500 mb-1">
-                  <span>
-                    {message.athlete?.firstName
-                      ? `${message.athlete.firstName}${message.athlete.lastName ? ` ${message.athlete.lastName}` : ''}`
-                      : 'Member'}
-                  </span>
-                  <span>
-                    {message.createdAt
-                      ? new Date(message.createdAt).toLocaleString('en-US', {
-                          hour: 'numeric',
-                          minute: '2-digit',
-                          month: 'short',
-                          day: 'numeric'
-                        })
-                      : 'Just now'}
-                  </span>
-                </div>
-                <p className="text-sm text-gray-800 whitespace-pre-line">{message.content || message.body || message.text}</p>
-              </div>
-            ))}
-          </div>
-
-          <form onSubmit={handleMessageSubmit} className="pt-4 border-t border-gray-200">
-            <div className="flex gap-3">
-              <input
-                type="text"
-                value={messageContent}
-                onChange={(event) => setMessageContent(event.target.value)}
-                placeholder="Drop a note for the crew…"
-                className="flex-1 border border-gray-300 rounded-lg px-4 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-orange-500 focus:border-orange-500"
-              />
-              <button
-                type="submit"
-                disabled={!messageContent.trim()}
-                className="bg-orange-500 hover:bg-orange-600 disabled:opacity-50 text-white px-4 py-2 rounded-lg text-sm font-semibold transition"
-              >
-                Send
-              </button>
-            </div>
-          </form>
-        </section>
           </div>
 
           {/* RIGHT SIDEBAR: Actions & Stats */}
@@ -949,10 +931,10 @@ export default function RunCrewCentralAdmin() {
                   <p className="text-3xl font-bold text-emerald-700 mt-1">{runs.length}</p>
                   <p className="text-xs text-gray-600 mt-1">Keep the calendar full</p>
                 </div>
-                <div className="border border-gray-200 rounded-xl p-4 bg-gradient-to-br from-orange-50 to-orange-100">
-                  <p className="text-xs uppercase tracking-wide text-gray-600 font-semibold">Messages</p>
-                  <p className="text-3xl font-bold text-orange-700 mt-1">{messages.length}</p>
-                  <p className="text-xs text-gray-600 mt-1">Crew engagement</p>
+                <div className="border border-gray-200 rounded-xl p-4 bg-gradient-to-br from-blue-50 to-blue-100">
+                  <p className="text-xs uppercase tracking-wide text-gray-600 font-semibold">Announcements</p>
+                  <p className="text-3xl font-bold text-blue-700 mt-1">{announcements.length}</p>
+                  <p className="text-xs text-gray-600 mt-1">Crew updates</p>
                 </div>
               </div>
             </section>
@@ -974,20 +956,41 @@ export default function RunCrewCentralAdmin() {
                   ))}
                 </div>
               </div>
-              <div className="space-y-2">
-                {getLeaderboardDisplay(leaderboard).length === 0 && (
-                  <p className="text-xs text-gray-500">Stats will appear once your crew syncs activities.</p>
-                )}
-                {getLeaderboardDisplay(leaderboard).map((entry, index) => (
-                  <div key={entry.athleteId || index} className="flex items-center gap-3 p-2 hover:bg-gray-50 rounded-lg transition">
-                    <div className="w-8 h-8 rounded-full bg-gradient-to-br from-yellow-400 to-orange-500 flex items-center justify-center text-white font-bold text-xs">
-                      {index + 1}
+              {loadingLeaderboard && (
+                <div className="text-center py-4 text-sm text-gray-500">Loading leaderboard...</div>
+              )}
+              {!loadingLeaderboard && (
+                <div className="space-y-2">
+                  {getLeaderboardDisplay().length === 0 && (
+                    <div className="text-center py-6">
+                      <p className="text-sm text-gray-500 mb-2">No leaderboard data yet.</p>
+                      <p className="text-xs text-gray-400">Stats will appear once your crew syncs activities from Garmin.</p>
                     </div>
-                    <p className="flex-1 text-sm font-semibold text-gray-900">{entry.firstName || 'Athlete'}</p>
-                    <p className="text-sm font-bold text-orange-600">{entry.display}</p>
-                  </div>
-                ))}
-              </div>
+                  )}
+                  {getLeaderboardDisplay().map((entry, index) => (
+                    <div key={entry.athlete?.id || index} className="flex items-center gap-3 p-2 hover:bg-gray-50 rounded-lg transition">
+                      <div className="w-8 h-8 rounded-full bg-gradient-to-br from-yellow-400 to-orange-500 flex items-center justify-center text-white font-bold text-xs">
+                        {index + 1}
+                      </div>
+                      {entry.athlete?.photoURL ? (
+                        <img
+                          src={entry.athlete.photoURL}
+                          alt={`${entry.athlete.firstName} ${entry.athlete.lastName}`}
+                          className="w-8 h-8 rounded-full object-cover border-2 border-gray-200"
+                        />
+                      ) : (
+                        <div className="w-8 h-8 rounded-full bg-gradient-to-br from-sky-400 to-sky-600 flex items-center justify-center text-white font-semibold text-xs">
+                          {(entry.athlete?.firstName?.[0] || 'A').toUpperCase()}
+                        </div>
+                      )}
+                      <p className="flex-1 text-sm font-semibold text-gray-900">
+                        {entry.athlete?.firstName || 'Athlete'} {entry.athlete?.lastName || ''}
+                      </p>
+                      <p className="text-sm font-bold text-orange-600">{entry.display}</p>
+                    </div>
+                  ))}
+                </div>
+              )}
             </section>
           </aside>
         </div>
