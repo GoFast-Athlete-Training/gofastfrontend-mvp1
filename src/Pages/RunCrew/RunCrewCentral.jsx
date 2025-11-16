@@ -1,4 +1,4 @@
-import React, { useCallback, useMemo, useState, useEffect } from 'react';
+import React, { useCallback, useMemo, useState, useEffect, useRef } from 'react';
 import { useNavigate } from 'react-router-dom';
 import useHydratedAthlete from '../../hooks/useHydratedAthlete';
 import { LocalStorageAPI } from '../../config/LocalStorageConfig';
@@ -17,6 +17,7 @@ export default function RunCrewCentral() {
   const [isSendingMessage, setIsSendingMessage] = useState(false);
   const [copyState, setCopyState] = useState('idle');
   const [isRsvpUpdating, setIsRsvpUpdating] = useState(false);
+  const messagesEndRef = useRef(null);
 
   const runs = useMemo(() => (Array.isArray(crew?.runs) ? crew.runs : []), [crew]);
   const announcements = useMemo(() => (Array.isArray(crew?.announcements) ? crew.announcements : []), [crew]);
@@ -91,6 +92,63 @@ export default function RunCrewCentral() {
     }
   }, [crew, runCrewId, athleteId, refreshCrew]);
 
+  // Auto-scroll to bottom when messages change
+  useEffect(() => {
+    messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
+  }, [messages]);
+
+  // Poll for new messages every 5 seconds
+  useEffect(() => {
+    if (!runCrewId || !athleteId) return;
+
+    const pollMessages = async () => {
+      try {
+        const { data } = await api.get(`/runcrew/${runCrewId}/messages`);
+        if (data?.success && Array.isArray(data.data)) {
+          const newMessages = data.data;
+          // Get current messages from state to compare and update both state and localStorage
+          persistCrew((prevCrew) => {
+            if (!prevCrew) return prevCrew;
+            const currentMessageIds = new Set((prevCrew.messages || []).map((m) => m.id));
+            const hasNewMessages = newMessages.some((msg) => !currentMessageIds.has(msg.id));
+
+            if (hasNewMessages) {
+              return {
+                ...prevCrew,
+                messages: newMessages
+              };
+            }
+            return prevCrew;
+          });
+        }
+      } catch (error) {
+        console.error('Failed to poll messages', error);
+      }
+    };
+
+    // Poll immediately, then every 5 seconds
+    pollMessages();
+    const interval = setInterval(pollMessages, 5000);
+    return () => clearInterval(interval);
+  }, [runCrewId, athleteId, persistCrew]);
+
+  // Format timestamp helper
+  const formatMessageTime = (timestamp) => {
+    if (!timestamp) return 'now';
+    const date = new Date(timestamp);
+    const now = new Date();
+    const diffMs = now - date;
+    const diffMins = Math.floor(diffMs / 60000);
+    const diffHours = Math.floor(diffMs / 3600000);
+    const diffDays = Math.floor(diffMs / 86400000);
+
+    if (diffMins < 1) return 'now';
+    if (diffMins < 60) return `${diffMins}m ago`;
+    if (diffHours < 24) return `${diffHours}h ago`;
+    if (diffDays < 7) return `${diffDays}d ago`;
+    return date.toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
+  };
+
   const handleMessageSubmit = async (event) => {
     event.preventDefault();
     if (!crew || !runCrewId || !athleteId) return;
@@ -124,13 +182,22 @@ export default function RunCrewCentral() {
     setIsSendingMessage(true);
 
     try {
-      await api.post('/runcrew/messages', {
-        runCrewId,
-        message: trimmed
+      // Fixed: Use runCrewId in URL path and 'content' in body (not 'message')
+      await api.post(`/runcrew/${runCrewId}/messages`, {
+        content: trimmed
       });
       await refreshCrew();
     } catch (error) {
       console.error('Failed to send message', error);
+      // Revert optimistic update on error
+      persistCrew((prevCrew) => {
+        if (!prevCrew) return prevCrew;
+        const existingMessages = Array.isArray(prevCrew.messages) ? prevCrew.messages : [];
+        return {
+          ...prevCrew,
+          messages: existingMessages.filter((msg) => msg.id !== optimisticMessage.id)
+        };
+      });
     } finally {
       setIsSendingMessage(false);
     }
@@ -354,74 +421,118 @@ export default function RunCrewCentral() {
               </div>
             </section>
 
-            {/* Crew Feed/Chat */}
-            <section className="bg-white rounded-2xl border border-gray-200 shadow-sm">
-              <div className="border-b border-gray-200 px-6 py-4">
-                <h2 className="text-lg font-bold text-gray-900">Crew Feed</h2>
-                <div className="flex gap-2 mt-3">
-                  <button className="px-3 py-1 text-xs font-semibold bg-gray-100 text-gray-700 rounded-full"># General</button>
-                  <button className="px-3 py-1 text-xs font-semibold text-gray-600 hover:bg-gray-100 rounded-full"># Runs & Training</button>
-                  <button className="px-3 py-1 text-xs font-semibold text-gray-600 hover:bg-gray-100 rounded-full"># Motivation</button>
-                  <button className="px-3 py-1 text-xs font-semibold text-orange-600 hover:bg-orange-50 rounded-full">+ New Topic</button>
+            {/* Crew Feed/Chat - WhatsApp Style */}
+            <section className="bg-white rounded-2xl border border-gray-200 shadow-sm flex flex-col" style={{ height: '700px' }}>
+              <div className="border-b border-gray-200 px-6 py-4 flex-shrink-0">
+                <div className="flex items-center justify-between">
+                  <h2 className="text-lg font-bold text-gray-900">Crew Chat</h2>
+                  <span className="text-xs text-gray-500">{messages.length} {messages.length === 1 ? 'message' : 'messages'}</span>
                 </div>
               </div>
 
-              {/* Messages Feed */}
-              <div className="px-6 py-4 space-y-4 max-h-[600px] overflow-y-auto">
+              {/* Messages Feed - WhatsApp Style Bubbles */}
+              <div className="flex-1 px-4 py-4 overflow-y-auto bg-gray-50" style={{ maxHeight: '600px' }}>
                 {messages.length === 0 && (
-                  <p className="text-sm text-gray-500 text-center py-8">No messages yet. Start the conversation!</p>
-                )}
-                {messages.map((message) => (
-                  <div key={message.id || message.createdAt} className="flex gap-3">
-                    {message.athlete?.photoURL || message.author?.photoURL ? (
-                      <img
-                        src={message.athlete?.photoURL || message.author?.photoURL}
-                        alt={message.athlete?.firstName || message.author?.name || 'Crew member'}
-                        className="w-10 h-10 rounded-full object-cover flex-shrink-0"
-                      />
-                    ) : (
-                      <div className="w-10 h-10 rounded-full bg-gradient-to-br from-orange-400 to-pink-500 flex items-center justify-center text-white font-semibold text-sm flex-shrink-0">
-                        {message.athlete?.firstName?.[0] || message.author?.name?.[0] || 'A'}
-                      </div>
-                    )}
-                    <div className="flex-1">
-                      <div className="flex items-baseline gap-2">
-                        <span className="text-sm font-semibold text-gray-900">
-                          {message.athlete?.firstName || message.author?.name || 'Crew Member'}
-                        </span>
-                        <span className="text-xs text-gray-500">
-                          {message.createdAt
-                            ? new Date(message.createdAt).toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit' })
-                            : 'now'}
-                        </span>
-                      </div>
-                      <p className="text-sm text-gray-800 mt-1 whitespace-pre-line">{message.content || message.text}</p>
-                      {message.reactions && (
-                        <div className="flex gap-2 mt-2">
-                          <span className="text-xs text-gray-400">Reactions coming soon</span>
-                        </div>
-                      )}
+                  <div className="flex items-center justify-center h-full">
+                    <div className="text-center">
+                      <div className="text-4xl mb-3">💬</div>
+                      <p className="text-sm text-gray-500">No messages yet. Start the conversation!</p>
                     </div>
                   </div>
-                ))}
+                )}
+                <div className="space-y-3">
+                  {messages.map((message) => {
+                    const isOwnMessage = message.athlete?.id === athleteId || message.author?.id === athleteId;
+                    const displayName = message.athlete?.firstName || message.author?.name || 'Crew Member';
+                    const displayPhoto = message.athlete?.photoURL || message.author?.photoURL;
+                    const initials = displayName?.[0] || 'A';
+
+                    return (
+                      <div
+                        key={message.id || message.createdAt}
+                        className={`flex gap-2 ${isOwnMessage ? 'flex-row-reverse' : 'flex-row'}`}
+                      >
+                        {/* Avatar */}
+                        {!isOwnMessage && (
+                          <div className="flex-shrink-0">
+                            {displayPhoto ? (
+                              <img
+                                src={displayPhoto}
+                                alt={displayName}
+                                className="w-8 h-8 rounded-full object-cover"
+                              />
+                            ) : (
+                              <div className="w-8 h-8 rounded-full bg-gradient-to-br from-orange-400 to-pink-500 flex items-center justify-center text-white font-semibold text-xs">
+                                {initials}
+                              </div>
+                            )}
+                          </div>
+                        )}
+
+                        {/* Message Bubble */}
+                        <div className={`flex flex-col ${isOwnMessage ? 'items-end' : 'items-start'} max-w-[75%]`}>
+                          {!isOwnMessage && (
+                            <span className="text-xs font-semibold text-gray-700 mb-1 px-1">{displayName}</span>
+                          )}
+                          <div
+                            className={`rounded-2xl px-4 py-2 ${
+                              isOwnMessage
+                                ? 'bg-orange-500 text-white rounded-br-sm'
+                                : 'bg-white text-gray-900 border border-gray-200 rounded-bl-sm shadow-sm'
+                            }`}
+                          >
+                            <p className="text-sm whitespace-pre-wrap break-words">{message.content || message.text}</p>
+                          </div>
+                          <span className="text-xs text-gray-400 mt-1 px-1">
+                            {formatMessageTime(message.createdAt)}
+                          </span>
+                        </div>
+                      </div>
+                    );
+                  })}
+                  <div ref={messagesEndRef} />
+                </div>
               </div>
 
-              {/* Message Input */}
-              <form onSubmit={handleMessageSubmit} className="border-t border-gray-200 px-6 py-4">
-                <div className="flex gap-3">
-                  <input
-                    type="text"
-                    value={messageContent}
-                    onChange={(event) => setMessageContent(event.target.value)}
-                    placeholder="Drop a note for the crew…"
-                    className="flex-1 border border-gray-300 rounded-lg px-4 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-orange-500 focus:border-orange-500"
-                  />
+              {/* Message Input - Fixed at Bottom */}
+              <form onSubmit={handleMessageSubmit} className="border-t border-gray-200 px-4 py-3 bg-white flex-shrink-0">
+                <div className="flex gap-2 items-end">
+                  <div className="flex-1 relative">
+                    <input
+                      type="text"
+                      value={messageContent}
+                      onChange={(event) => setMessageContent(event.target.value)}
+                      placeholder="Type a message..."
+                      className="w-full border border-gray-300 rounded-full px-4 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-orange-500 focus:border-orange-500 pr-12"
+                      onKeyDown={(e) => {
+                        if (e.key === 'Enter' && !e.shiftKey) {
+                          e.preventDefault();
+                          handleMessageSubmit(e);
+                        }
+                      }}
+                    />
+                    {messageContent.trim() && (
+                      <span className="absolute right-3 top-1/2 -translate-y-1/2 text-xs text-gray-400">
+                        {messageContent.length}/2000
+                      </span>
+                    )}
+                  </div>
                   <button
                     type="submit"
                     disabled={!messageContent.trim() || isSendingMessage}
-                    className="bg-orange-500 hover:bg-orange-600 disabled:opacity-50 disabled:cursor-not-allowed text-white px-4 py-2 rounded-lg text-sm font-semibold transition"
+                    className="bg-orange-500 hover:bg-orange-600 disabled:opacity-50 disabled:cursor-not-allowed text-white p-2.5 rounded-full transition min-w-[44px] flex items-center justify-center"
+                    title="Send message"
                   >
-                    {isSendingMessage ? 'Sending…' : 'Send'}
+                    {isSendingMessage ? (
+                      <svg className="animate-spin h-5 w-5" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+                        <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
+                        <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+                      </svg>
+                    ) : (
+                      <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 19l9 2-9-18-9 18 9-2zm0 0v-8" />
+                      </svg>
+                    )}
                   </button>
                 </div>
               </form>
