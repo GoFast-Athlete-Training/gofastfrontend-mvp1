@@ -1,6 +1,6 @@
 import React, { useMemo, useState, useEffect, useCallback } from 'react';
 import { useNavigate } from 'react-router-dom';
-import axios from 'axios';
+import api from '../../api/axiosConfig';
 import { auth } from '../../firebase';
 import { onAuthStateChanged } from 'firebase/auth';
 import useHydratedAthlete from '../../hooks/useHydratedAthlete';
@@ -9,8 +9,6 @@ import GooglePlacesAutocomplete from '../../Components/RunCrew/GooglePlacesAutoc
 import StravaRoutePreview from '../../Components/RunCrew/StravaRoutePreview';
 import RunCrewInvitePanel from '../../Components/RunCrew/RunCrewInvitePanel';
 import { Settings } from 'lucide-react';
-
-const API_BASE = 'https://gofastbackendv2-fall2025.onrender.com/api';
 
 // Prefill run form for testing
 const getInitialRunForm = () => {
@@ -167,6 +165,7 @@ export default function RunCrewCentralAdmin() {
   }, []);
 
   // Helper function to get auth token (waits for auth to be ready)
+  // Uses auth.currentUser as fallback since firebaseUser state might lag
   const getAuthToken = useCallback(async () => {
     // Wait for auth to initialize if not ready yet
     if (!authInitialized) {
@@ -182,9 +181,12 @@ export default function RunCrewCentralAdmin() {
       });
     }
 
-    if (firebaseUser) {
+    // Try firebaseUser state first, then fallback to auth.currentUser
+    const user = firebaseUser || auth.currentUser;
+    
+    if (user) {
       try {
-        return await firebaseUser.getIdToken();
+        return await user.getIdToken();
       } catch (error) {
         console.error('Failed to get auth token:', error);
         return null;
@@ -206,24 +208,20 @@ export default function RunCrewCentralAdmin() {
       setLoadingCrew(true);
       setCrewError(null);
       
-      const token = await getAuthToken();
-      
-      if (!token) {
-        // Check if auth is still initializing
-        if (!authInitialized) {
-          setCrewError('Loading authentication...');
-          setLoadingCrew(false);
-          return;
-        }
+      // Use api instance which has automatic token injection via interceptor
+      // The interceptor will handle token retrieval and injection
+      // We just need to wait for auth to initialize
+      if (!authInitialized) {
+        setCrewError('Loading authentication...');
+        setLoadingCrew(false);
+        return;
+      }
+
+      if (!firebaseUser && !auth.currentUser) {
         throw new Error('Please sign in to view crew');
       }
 
-      const { data } = await axios.get(
-        `${API_BASE}/runcrew/${runCrewId}`,
-        {
-          headers: { Authorization: `Bearer ${token}` }
-        }
-      );
+      const { data } = await api.get(`/runcrew/${runCrewId}`);
 
       if (data?.success && data.runCrew) {
         const managerRecord = Array.isArray(data.runCrew?.managers)
@@ -255,7 +253,7 @@ export default function RunCrewCentralAdmin() {
     } finally {
       setLoadingCrew(false);
     }
-  }, [runCrewId, athleteId, getAuthToken, authInitialized]);
+  }, [runCrewId, athleteId, authInitialized, firebaseUser]);
 
   // Load announcements independently
   const loadAnnouncements = useCallback(async () => {
@@ -265,22 +263,17 @@ export default function RunCrewCentralAdmin() {
       setLoadingAnnouncements(true);
       setAnnouncementsError(null);
       
-      const token = await getAuthToken();
-      
-      if (!token) {
-        if (!authInitialized) {
-          setLoadingAnnouncements(false);
-          return; // Wait for auth to initialize
-        }
+      // Use api instance which has automatic token injection via interceptor
+      if (!authInitialized) {
+        setLoadingAnnouncements(false);
+        return; // Wait for auth to initialize
+      }
+
+      if (!firebaseUser && !auth.currentUser) {
         throw new Error('Please sign in to view announcements');
       }
 
-      const { data } = await axios.get(
-        `${API_BASE}/runcrew/${runCrewId}/announcements`,
-        {
-          headers: { Authorization: `Bearer ${token}` }
-        }
-      );
+      const { data } = await api.get(`/runcrew/${runCrewId}/announcements`);
 
       if (data?.success && Array.isArray(data.announcements)) {
         setAnnouncements(data.announcements);
@@ -293,7 +286,7 @@ export default function RunCrewCentralAdmin() {
     } finally {
       setLoadingAnnouncements(false);
     }
-  }, [runCrewId, getAuthToken, authInitialized]);
+  }, [runCrewId, authInitialized, firebaseUser]);
 
   // Load leaderboard independently
   const loadLeaderboard = useCallback(async () => {
@@ -303,22 +296,19 @@ export default function RunCrewCentralAdmin() {
       setLoadingLeaderboard(true);
       setLeaderboardError(null);
       
-      const token = await getAuthToken();
-      
-      if (!token) {
-        if (!authInitialized) {
-          setLoadingLeaderboard(false);
-          return; // Wait for auth to initialize
-        }
+      // Use api instance which has automatic token injection via interceptor
+      if (!authInitialized) {
+        setLoadingLeaderboard(false);
+        return; // Wait for auth to initialize
+      }
+
+      if (!firebaseUser && !auth.currentUser) {
         throw new Error('Please sign in to view leaderboard');
       }
 
-      const { data } = await axios.get(
-        `${API_BASE}/runcrew/${runCrewId}/leaderboard?metric=${activeMetric}&days=7`,
-        {
-          headers: { Authorization: `Bearer ${token}` }
-        }
-      );
+      const { data } = await api.get(`/runcrew/${runCrewId}/leaderboard`, {
+        params: { metric: activeMetric, days: 7 }
+      });
 
       if (data?.success && Array.isArray(data.leaderboard)) {
         setLeaderboard(data.leaderboard);
@@ -332,7 +322,7 @@ export default function RunCrewCentralAdmin() {
     } finally {
       setLoadingLeaderboard(false);
     }
-  }, [runCrewId, activeMetric, getAuthToken, authInitialized]);
+  }, [runCrewId, activeMetric, authInitialized, firebaseUser]);
 
   const handleResync = useCallback(async () => {
     if (!runCrewId) {
@@ -408,26 +398,21 @@ export default function RunCrewCentralAdmin() {
     }
 
     try {
-      const token = await getAuthToken();
-      if (!token) {
-        if (!authInitialized) {
-          showToast('Loading authentication...');
-          return;
-        }
+      // Use api instance which has automatic token injection via interceptor
+      if (!authInitialized) {
+        showToast('Loading authentication...');
+        return;
+      }
+
+      if (!firebaseUser && !auth.currentUser) {
         showToast('Please sign in to post announcements');
         return;
       }
 
-      const { data } = await axios.post(
-        `${API_BASE}/runcrew/${runCrewId}/announcements`,
-        {
-          title: trimmedTitle,
-          content: trimmedContent
-        },
-        {
-          headers: { Authorization: `Bearer ${token}` }
-        }
-      );
+      const { data } = await api.post(`/runcrew/${runCrewId}/announcements`, {
+        title: trimmedTitle,
+        content: trimmedContent
+      });
 
       if (data?.success && data.data) {
         // Add to local state
@@ -442,15 +427,8 @@ export default function RunCrewCentralAdmin() {
     } catch (error) {
       console.error('Failed to post announcement:', error);
       
-      // If auth error, refresh token and retry once
-      if (error.response?.status === 401 || error.response?.status === 403) {
-        const newToken = await getAuthToken();
-        if (newToken) {
-          showToast('Please try posting again');
-          return;
-        }
-      }
-      
+      // If auth error, the axios interceptor should handle token refresh
+      // Just show the error message
       showToast(error.response?.data?.error || 'Failed to post announcement');
     }
   };
@@ -483,33 +461,28 @@ export default function RunCrewCentralAdmin() {
     // EDIT MODE: Update existing run via backend
     if (editingRunId) {
       try {
-        const token = await getAuthToken();
-        if (!token) {
-          if (!authInitialized) {
-            showToast('Loading authentication...');
-            return;
-          }
+        // Use api instance which has automatic token injection via interceptor
+        if (!authInitialized) {
+          showToast('Loading authentication...');
+          return;
+        }
+
+        if (!firebaseUser && !auth.currentUser) {
           showToast('Please sign in to edit runs');
           return;
         }
 
-      const { data } = await axios.patch(
-        `${API_BASE}/runcrew/runs/${editingRunId}`,
-        {
-          title,
-          date: isoDate,
-          startTime: time,
-          meetUpPoint,
-          meetUpAddress: meetUpAddress || null,
-          totalMiles: totalMiles ? parseFloat(totalMiles) : null,
-          pace: pace || null,
-          stravaMapUrl: stravaMapUrl || null,
-          description: description || null
-        },
-        {
-          headers: { Authorization: `Bearer ${token}` }
-        }
-      );
+        const { data } = await api.patch(`/runcrew/runs/${editingRunId}`, {
+        title,
+        date: isoDate,
+        startTime: time,
+        meetUpPoint,
+        meetUpAddress: meetUpAddress || null,
+        totalMiles: totalMiles ? parseFloat(totalMiles) : null,
+        pace: pace || null,
+        stravaMapUrl: stravaMapUrl || null,
+        description: description || null
+      });
 
         if (data?.success && data.data) {
           // Update the run in the local crew object
@@ -535,35 +508,31 @@ export default function RunCrewCentralAdmin() {
 
     // CREATE MODE: Create run via API
     try {
-      const token = await getAuthToken();
-      if (!token) {
-        if (!authInitialized) {
-          showToast('Loading authentication...');
-          return;
-        }
+      // Use api instance which has automatic token injection via interceptor
+      if (!authInitialized) {
+        showToast('Loading authentication...');
+        return;
+      }
+
+      if (!firebaseUser && !auth.currentUser) {
         showToast('Please sign in to create runs');
         return;
       }
-      const { data } = await axios.post(
-        `${API_BASE}/runcrew/${runCrewId}/runs`,
-        {
-          title,
-          date: isoDate,
-          startTime: time,
-          meetUpPoint,
-          meetUpAddress: meetUpAddress || null,
-          meetUpLat: placeData?.lat || null,
-          meetUpLng: placeData?.lng || null,
-          meetUpPlaceId: placeData?.placeId || null,
-          totalMiles: totalMiles ? parseFloat(totalMiles) : null,
-          pace: pace || null,
-          stravaMapUrl: stravaMapUrl || null,
-          description: description || null
-        },
-        {
-          headers: { Authorization: `Bearer ${token}` }
-        }
-      );
+
+      const { data } = await api.post(`/runcrew/${runCrewId}/runs`, {
+        title,
+        date: isoDate,
+        startTime: time,
+        meetUpPoint,
+        meetUpAddress: meetUpAddress || null,
+        meetUpLat: placeData?.lat || null,
+        meetUpLng: placeData?.lng || null,
+        meetUpPlaceId: placeData?.placeId || null,
+        totalMiles: totalMiles ? parseFloat(totalMiles) : null,
+        pace: pace || null,
+        stravaMapUrl: stravaMapUrl || null,
+        description: description || null
+      });
 
       if (data?.success && data.data) {
         // Update crew with new run
@@ -580,15 +549,7 @@ export default function RunCrewCentralAdmin() {
     } catch (error) {
       console.error('Error creating run:', error);
       
-      // If auth error, refresh token
-      if (error.response?.status === 401 || error.response?.status === 403) {
-        const newToken = await getAuthToken();
-        if (newToken) {
-          showToast('Please try creating the run again');
-          return;
-        }
-      }
-      
+      // If auth error, the axios interceptor should handle token refresh
       showToast(error.response?.data?.error || error.message || 'Failed to create run');
     }
   };
