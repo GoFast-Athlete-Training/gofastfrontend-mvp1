@@ -409,27 +409,31 @@ export default function RunCrewCentralAdmin() {
         return;
       }
 
+      setAnnouncementsError(null);
+
       const { data } = await api.post(`/runcrew/${runCrewId}/announcements`, {
         title: trimmedTitle,
         content: trimmedContent
       });
 
-      if (data?.success && data.data) {
-        // Add to local state
-        setAnnouncements([data.data, ...announcements]);
+      if (data?.success) {
+        // Clear form immediately for better UX
         setAnnouncementTitle('');
         setAnnouncementContent('');
-        setAnnouncementsError(null); // Clear error on success
+        
+        // Reload announcements to get the latest from server
+        // loadAnnouncements will handle its own loading state
+        await loadAnnouncements();
+        
         showToast('Announcement posted successfully');
       } else {
         throw new Error(data?.error || 'Failed to post announcement');
       }
     } catch (error) {
       console.error('Failed to post announcement:', error);
-      
-      // If auth error, the axios interceptor should handle token refresh
-      // Just show the error message
-      showToast(error.response?.data?.error || 'Failed to post announcement');
+      const errorMessage = error.response?.data?.error || 'Failed to post announcement';
+      setAnnouncementsError(errorMessage);
+      showToast(errorMessage);
     }
   };
 
