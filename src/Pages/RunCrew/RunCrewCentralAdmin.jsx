@@ -2,6 +2,7 @@ import React, { useMemo, useState, useEffect, useCallback } from 'react';
 import { useNavigate } from 'react-router-dom';
 import axios from 'axios';
 import { auth } from '../../firebase';
+import { onAuthStateChanged } from 'firebase/auth';
 import useHydratedAthlete from '../../hooks/useHydratedAthlete';
 import { LocalStorageAPI } from '../../config/LocalStorageConfig';
 import GooglePlacesAutocomplete from '../../Components/RunCrew/GooglePlacesAutocomplete';
@@ -88,6 +89,8 @@ export default function RunCrewCentralAdmin() {
   const [loadingLeaderboard, setLoadingLeaderboard] = useState(false);
   const [leaderboardError, setLeaderboardError] = useState(null);
   const [membersError, setMembersError] = useState(null);
+  const [authInitialized, setAuthInitialized] = useState(false);
+  const [firebaseUser, setFirebaseUser] = useState(null);
 
   const isAdmin = useMemo(() => {
     if (!crew || !athleteId) {
@@ -147,6 +150,50 @@ export default function RunCrewCentralAdmin() {
     setCrew(enrichedCrew);
   };
 
+  // Wait for Firebase auth to initialize
+  useEffect(() => {
+    const unsubscribe = onAuthStateChanged(auth, (user) => {
+      setFirebaseUser(user);
+      setAuthInitialized(true);
+      
+      if (!user) {
+        console.log('⚠️ RunCrewAdmin: No authenticated user - may need to sign in');
+      } else {
+        console.log('✅ RunCrewAdmin: Firebase auth initialized, user:', user.email);
+      }
+    });
+
+    return () => unsubscribe();
+  }, []);
+
+  // Helper function to get auth token (waits for auth to be ready)
+  const getAuthToken = useCallback(async () => {
+    // Wait for auth to initialize if not ready yet
+    if (!authInitialized) {
+      return new Promise((resolve) => {
+        const unsubscribe = onAuthStateChanged(auth, (user) => {
+          unsubscribe();
+          if (user) {
+            user.getIdToken().then(resolve).catch(() => resolve(null));
+          } else {
+            resolve(null);
+          }
+        });
+      });
+    }
+
+    if (firebaseUser) {
+      try {
+        return await firebaseUser.getIdToken();
+      } catch (error) {
+        console.error('Failed to get auth token:', error);
+        return null;
+      }
+    }
+
+    return null;
+  }, [authInitialized, firebaseUser]);
+
   // Load RunCrew independently from /api/runcrew/:id
   const loadRunCrew = useCallback(async () => {
     if (!runCrewId) {
@@ -158,10 +205,16 @@ export default function RunCrewCentralAdmin() {
     try {
       setLoadingCrew(true);
       setCrewError(null);
-      const user = auth.currentUser;
-      const token = await user?.getIdToken();
+      
+      const token = await getAuthToken();
       
       if (!token) {
+        // Check if auth is still initializing
+        if (!authInitialized) {
+          setCrewError('Loading authentication...');
+          setLoadingCrew(false);
+          return;
+        }
         throw new Error('Please sign in to view crew');
       }
 
@@ -202,7 +255,7 @@ export default function RunCrewCentralAdmin() {
     } finally {
       setLoadingCrew(false);
     }
-  }, [runCrewId, athleteId]);
+  }, [runCrewId, athleteId, getAuthToken, authInitialized]);
 
   // Load announcements independently
   const loadAnnouncements = useCallback(async () => {
@@ -211,10 +264,14 @@ export default function RunCrewCentralAdmin() {
     try {
       setLoadingAnnouncements(true);
       setAnnouncementsError(null);
-      const user = auth.currentUser;
-      const token = await user?.getIdToken();
+      
+      const token = await getAuthToken();
       
       if (!token) {
+        if (!authInitialized) {
+          setLoadingAnnouncements(false);
+          return; // Wait for auth to initialize
+        }
         throw new Error('Please sign in to view announcements');
       }
 
@@ -236,7 +293,7 @@ export default function RunCrewCentralAdmin() {
     } finally {
       setLoadingAnnouncements(false);
     }
-  }, [runCrewId]);
+  }, [runCrewId, getAuthToken, authInitialized]);
 
   // Load leaderboard independently
   const loadLeaderboard = useCallback(async () => {
@@ -245,10 +302,14 @@ export default function RunCrewCentralAdmin() {
     try {
       setLoadingLeaderboard(true);
       setLeaderboardError(null);
-      const user = auth.currentUser;
-      const token = await user?.getIdToken();
+      
+      const token = await getAuthToken();
       
       if (!token) {
+        if (!authInitialized) {
+          setLoadingLeaderboard(false);
+          return; // Wait for auth to initialize
+        }
         throw new Error('Please sign in to view leaderboard');
       }
 
@@ -271,7 +332,7 @@ export default function RunCrewCentralAdmin() {
     } finally {
       setLoadingLeaderboard(false);
     }
-  }, [runCrewId, activeMetric]);
+  }, [runCrewId, activeMetric, getAuthToken, authInitialized]);
 
   const handleResync = useCallback(async () => {
     if (!runCrewId) {
@@ -299,12 +360,17 @@ export default function RunCrewCentralAdmin() {
   }, [runCrewId, loadRunCrew, loadAnnouncements, loadLeaderboard]);
 
   // Fetch fresh runCrew data on mount (independent of Welcome hydration)
+  // Wait for auth to initialize before loading data
   useEffect(() => {
+    if (!authInitialized) {
+      return; // Wait for Firebase auth to initialize
+    }
+
     if (runCrewId && athleteId) {
       // Load RunCrew first, then other data
       loadRunCrew().then(() => {
         // Once crew is loaded, load announcements and leaderboard
-        if (runCrewId) {
+        if (runCrewId && firebaseUser) {
           loadAnnouncements();
           loadLeaderboard();
         }
@@ -312,9 +378,11 @@ export default function RunCrewCentralAdmin() {
     } else if (!runCrewId) {
       setCrewError('No crew ID found. Please join or create a crew first.');
       setLoadingCrew(false);
+    } else if (!firebaseUser) {
+      setCrewError('Please sign in to view crew');
+      setLoadingCrew(false);
     }
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, []); // Only run on mount - loadRunCrew is stable via useCallback
+  }, [authInitialized, runCrewId, athleteId, firebaseUser, loadRunCrew, loadAnnouncements, loadLeaderboard]);
 
   // Reload leaderboard when metric changes (only after crew is loaded)
   useEffect(() => {
@@ -340,10 +408,12 @@ export default function RunCrewCentralAdmin() {
     }
 
     try {
-      const user = auth.currentUser;
-      const token = await user?.getIdToken();
-      
+      const token = await getAuthToken();
       if (!token) {
+        if (!authInitialized) {
+          showToast('Loading authentication...');
+          return;
+        }
         showToast('Please sign in to post announcements');
         return;
       }
@@ -371,6 +441,16 @@ export default function RunCrewCentralAdmin() {
       }
     } catch (error) {
       console.error('Failed to post announcement:', error);
+      
+      // If auth error, refresh token and retry once
+      if (error.response?.status === 401 || error.response?.status === 403) {
+        const newToken = await getAuthToken();
+        if (newToken) {
+          showToast('Please try posting again');
+          return;
+        }
+      }
+      
       showToast(error.response?.data?.error || 'Failed to post announcement');
     }
   };
@@ -403,30 +483,33 @@ export default function RunCrewCentralAdmin() {
     // EDIT MODE: Update existing run via backend
     if (editingRunId) {
       try {
-        const user = auth.currentUser;
-        if (!user) {
+        const token = await getAuthToken();
+        if (!token) {
+          if (!authInitialized) {
+            showToast('Loading authentication...');
+            return;
+          }
           showToast('Please sign in to edit runs');
           return;
         }
 
-        const token = await user.getIdToken();
-        const { data } = await axios.patch(
-          `${API_BASE}/runcrew/runs/${editingRunId}`,
-          {
-            title,
-            date: isoDate,
-            startTime: time,
-            meetUpPoint,
-            meetUpAddress: meetUpAddress || null,
-            totalMiles: totalMiles ? parseFloat(totalMiles) : null,
-            pace: pace || null,
-            stravaMapUrl: stravaMapUrl || null,
-            description: description || null
-          },
-          {
-            headers: { Authorization: `Bearer ${token}` }
-          }
-        );
+      const { data } = await axios.patch(
+        `${API_BASE}/runcrew/runs/${editingRunId}`,
+        {
+          title,
+          date: isoDate,
+          startTime: time,
+          meetUpPoint,
+          meetUpAddress: meetUpAddress || null,
+          totalMiles: totalMiles ? parseFloat(totalMiles) : null,
+          pace: pace || null,
+          stravaMapUrl: stravaMapUrl || null,
+          description: description || null
+        },
+        {
+          headers: { Authorization: `Bearer ${token}` }
+        }
+      );
 
         if (data?.success && data.data) {
           // Update the run in the local crew object
@@ -452,13 +535,15 @@ export default function RunCrewCentralAdmin() {
 
     // CREATE MODE: Create run via API
     try {
-      const user = auth.currentUser;
-      if (!user) {
+      const token = await getAuthToken();
+      if (!token) {
+        if (!authInitialized) {
+          showToast('Loading authentication...');
+          return;
+        }
         showToast('Please sign in to create runs');
         return;
       }
-
-      const token = await user.getIdToken();
       const { data } = await axios.post(
         `${API_BASE}/runcrew/${runCrewId}/runs`,
         {
@@ -494,6 +579,16 @@ export default function RunCrewCentralAdmin() {
       }
     } catch (error) {
       console.error('Error creating run:', error);
+      
+      // If auth error, refresh token
+      if (error.response?.status === 401 || error.response?.status === 403) {
+        const newToken = await getAuthToken();
+        if (newToken) {
+          showToast('Please try creating the run again');
+          return;
+        }
+      }
+      
       showToast(error.response?.data?.error || error.message || 'Failed to create run');
     }
   };
@@ -606,13 +701,15 @@ export default function RunCrewCentralAdmin() {
     navigate('/runcrew-settings');
   };
 
-  // Render loading state
-  if (loadingCrew) {
+  // Render loading state (wait for auth initialization)
+  if (!authInitialized || loadingCrew) {
     return (
       <main className="min-h-screen bg-gray-50 flex items-center justify-center px-6 py-12">
         <div className="max-w-xl w-full bg-white border border-gray-200 rounded-xl shadow-sm p-8 text-center space-y-6">
           <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-orange-500 mx-auto"></div>
-          <p className="text-gray-600 text-sm">Loading crew data...</p>
+          <p className="text-gray-600 text-sm">
+            {!authInitialized ? 'Initializing authentication...' : 'Loading crew data...'}
+          </p>
         </div>
       </main>
     );
