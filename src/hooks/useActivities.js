@@ -3,12 +3,54 @@ import api from '../api/axiosConfig';
 import { LocalStorageAPI } from '../config/LocalStorageConfig';
 
 /**
- * useActivities - Fetches and manages weekly activities
+ * Filter activities to only running activities (exclude wheelchair)
+ * @param {Array} activities - Array of activity objects
+ * @returns {Array} Filtered array of running activities
+ */
+const filterRunningActivities = (activities) => {
+  if (!Array.isArray(activities)) return [];
+  return activities.filter(activity => {
+    if (!activity.activityType) return false;
+    const type = activity.activityType.toLowerCase();
+    // Include activities with "running" or "run" in the type, but exclude wheelchair
+    return (type.includes('running') || type === 'run') && !type.includes('wheelchair');
+  });
+};
+
+/**
+ * Calculate weekly totals for running activities only
+ * @param {Array} activities - Array of running activity objects
+ * @returns {Object} { totalDistance, totalDistanceMiles, totalDuration, totalCalories, activityCount }
+ */
+const calculateRunTotals = (activities) => {
+  const totals = {
+    totalDistance: 0,
+    totalDuration: 0,
+    totalCalories: 0,
+    activityCount: activities.length
+  };
+  
+  activities.forEach(activity => {
+    if (activity.distance) totals.totalDistance += activity.distance;
+    if (activity.duration) totals.totalDuration += activity.duration;
+    if (activity.calories) totals.totalCalories += activity.calories;
+  });
+  
+  // Convert distance from meters to miles
+  totals.totalDistanceMiles = (totals.totalDistance / 1609.34).toFixed(2);
+  
+  return totals;
+};
+
+/**
+ * useActivities - Fetches and manages weekly activities (RUNS ONLY)
  * 
  * Behavior:
  * 1. First tries to load from localStorage (fast)
  * 2. If empty or stale, fetches from backend
- * 3. Updates localStorage with fresh data
+ * 3. Filters to only running activities (safety net)
+ * 4. Recalculates totals for runs only
+ * 5. Updates localStorage with fresh data
  * 
  * @param {string} athleteId - Athlete ID to fetch activities for
  * @param {boolean} forceRefresh - Force refresh from backend even if localStorage has data
@@ -38,9 +80,13 @@ export default function useActivities(athleteId, forceRefresh = false) {
         const cachedTotals = model?.weeklyTotals || null;
 
         if (cachedActivities.length > 0) {
-          console.log('✅ ACTIVITIES: Loaded from localStorage:', cachedActivities.length, 'activities');
-          setActivities(cachedActivities);
-          setWeeklyTotals(cachedTotals);
+          // Filter to runs only and recalculate totals (safety net)
+          const filteredRuns = filterRunningActivities(cachedActivities);
+          const recalculatedTotals = calculateRunTotals(filteredRuns);
+          
+          console.log('✅ ACTIVITIES: Loaded from localStorage:', cachedActivities.length, 'total activities,', filteredRuns.length, 'runs');
+          setActivities(filteredRuns);
+          setWeeklyTotals(recalculatedTotals);
           setIsLoading(false);
           
           // Still fetch in background to update cache
@@ -70,20 +116,24 @@ export default function useActivities(athleteId, forceRefresh = false) {
         const fetchedActivities = response.data.activities || [];
         const fetchedTotals = response.data.weeklyTotals || null;
 
-        console.log('✅ ACTIVITIES: Fetched from backend:', fetchedActivities.length, 'activities');
-        
-        setActivities(fetchedActivities);
-        setWeeklyTotals(fetchedTotals);
+        // Filter to runs only and recalculate totals (safety net - backend should already filter, but ensure consistency)
+        const filteredRuns = filterRunningActivities(fetchedActivities);
+        const recalculatedTotals = calculateRunTotals(filteredRuns);
 
-        // Update localStorage cache
+        console.log('✅ ACTIVITIES: Fetched from backend:', fetchedActivities.length, 'total activities,', filteredRuns.length, 'runs');
+        
+        setActivities(filteredRuns);
+        setWeeklyTotals(recalculatedTotals);
+
+        // Update localStorage cache with filtered runs and recalculated totals
         const model = LocalStorageAPI.getFullHydrationModel();
         LocalStorageAPI.setFullHydrationModel({
           ...model,
-          weeklyActivities: fetchedActivities,
-          weeklyTotals: fetchedTotals
+          weeklyActivities: filteredRuns,
+          weeklyTotals: recalculatedTotals
         });
 
-        console.log('✅ ACTIVITIES: Updated localStorage cache');
+        console.log('✅ ACTIVITIES: Updated localStorage cache with', filteredRuns.length, 'runs');
       } else {
         throw new Error(response.data?.error || 'Failed to fetch activities');
       }
