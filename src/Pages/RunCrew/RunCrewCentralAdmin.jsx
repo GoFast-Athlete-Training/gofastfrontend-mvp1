@@ -307,7 +307,7 @@ export default function RunCrewCentralAdmin() {
       }
 
       const { data } = await api.get(`/runcrew/${runCrewId}/leaderboard`, {
-        params: { metric: activeMetric, days: 7 }
+        params: { metric: activeMetric, week: 'current' }
       });
 
       if (data?.success && Array.isArray(data.leaderboard)) {

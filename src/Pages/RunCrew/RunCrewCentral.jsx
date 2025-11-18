@@ -47,13 +47,30 @@ export default function RunCrewCentral() {
 
   const leaderboardEntries = useMemo(() => {
     if (!Array.isArray(leaderboard)) return [];
+    
+    // Handle both data structures: API format (totalMiles, totalRuns) and hydration format (totalDistanceMiles, activityCount)
     const formatter = activeMetric === 'runs'
-      ? (entry) => `${entry.activityCount ?? 0} runs`
+      ? (entry) => `${entry.totalRuns ?? entry.activityCount ?? 0} runs`
       : activeMetric === 'calories'
       ? (entry) => `${Math.round(entry.totalCalories ?? 0)} cal`
-      : (entry) => `${(entry.totalDistanceMiles ?? 0).toFixed(1)} mi`;
+      : (entry) => `${(entry.totalMiles ?? entry.totalDistanceMiles ?? 0).toFixed(1)} mi`;
 
-    return leaderboard
+    // Sort by active metric (descending)
+    const sorted = [...leaderboard].sort((a, b) => {
+      if (activeMetric === 'runs') {
+        const aRuns = a.totalRuns ?? a.activityCount ?? 0;
+        const bRuns = b.totalRuns ?? b.activityCount ?? 0;
+        return bRuns - aRuns;
+      } else if (activeMetric === 'calories') {
+        return (b.totalCalories ?? 0) - (a.totalCalories ?? 0);
+      } else {
+        const aMiles = a.totalMiles ?? a.totalDistanceMiles ?? 0;
+        const bMiles = b.totalMiles ?? b.totalDistanceMiles ?? 0;
+        return bMiles - aMiles;
+      }
+    });
+
+    return sorted
       .map((entry) => ({
         ...entry,
         display: formatter(entry)
@@ -709,15 +726,33 @@ export default function RunCrewCentral() {
                 {leaderboardEntries.length === 0 && (
                   <p className="text-sm text-gray-500">Leaderboard data syncs once your crew records activities.</p>
                 )}
-                {leaderboardEntries.map((entry, index) => (
-                  <div key={entry.athleteId || index} className="flex items-center gap-3">
-                    <div className="w-6 h-6 rounded-full bg-gradient-to-br from-yellow-400 to-orange-500 flex items-center justify-center text-white font-bold text-xs">
-                      {index + 1}
+                {leaderboardEntries.map((entry, index) => {
+                  const athlete = entry.athlete || {};
+                  const firstName = athlete.firstName || entry.firstName || 'Athlete';
+                  const lastName = athlete.lastName || entry.lastName || '';
+                  const photoURL = athlete.photoURL || entry.photoURL;
+                  
+                  return (
+                    <div key={entry.athlete?.id || entry.athleteId || index} className="flex items-center gap-3">
+                      <div className="w-6 h-6 rounded-full bg-gradient-to-br from-yellow-400 to-orange-500 flex items-center justify-center text-white font-bold text-xs">
+                        {index + 1}
+                      </div>
+                      {photoURL ? (
+                        <img
+                          src={photoURL}
+                          alt={`${firstName} ${lastName}`}
+                          className="w-6 h-6 rounded-full object-cover border border-gray-200"
+                        />
+                      ) : (
+                        <div className="w-6 h-6 rounded-full bg-gradient-to-br from-sky-400 to-sky-600 flex items-center justify-center text-white font-semibold text-xs">
+                          {firstName[0]?.toUpperCase() || 'A'}
+                        </div>
+                      )}
+                      <p className="flex-1 text-sm font-semibold text-gray-900">{firstName} {lastName}</p>
+                      <p className="text-sm font-bold text-orange-600">{entry.display}</p>
                     </div>
-                    <p className="flex-1 text-sm font-semibold text-gray-900">{entry.firstName || 'Athlete'}</p>
-                    <p className="text-sm font-bold text-orange-600">{entry.display}</p>
-                  </div>
-                ))}
+                  );
+                })}
               </div>
             </section>
           </div>
