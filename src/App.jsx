@@ -40,6 +40,10 @@ import YoungAthleteWelcome from './Pages/YoungAthlete/YoungAthleteWelcome';
 
 // Debug Components
 import FindMyUserId from './Pages/Debug/FindMyUserId';
+// F3 Workout Components (Hidden internal module)
+import F3WorkoutList from './Pages/F3Workout/F3WorkoutList';
+import F3WorkoutBuilder from './Pages/F3Workout/F3WorkoutBuilder';
+import F3WorkoutView from './Pages/F3Workout/F3WorkoutView';
 
 const App = () => {
   return (
@@ -81,6 +85,11 @@ const App = () => {
         
         {/* Debug Routes */}
         <Route path="/debug/userid" element={<FindMyUserId />} />
+        
+        {/* F3 Workout Routes (Hidden internal module - not in nav) */}
+        <Route path="/f3workouts" element={<F3WorkoutList />} />
+        <Route path="/f3workouts/new" element={<F3WorkoutBuilder />} />
+        <Route path="/f3workouts/:workoutId" element={<F3WorkoutView />} />
         
         {/* Smart Onboarding Routes */}
         <Route path="/settings/devices" element={<div className="min-h-screen bg-gray-50 flex items-center justify-center"><h1 className="text-4xl font-bold text-gray-900">Device Settings - Coming Soon!</h1></div>} />
