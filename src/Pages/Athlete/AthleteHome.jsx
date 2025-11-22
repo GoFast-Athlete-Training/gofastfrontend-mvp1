@@ -175,7 +175,7 @@ const AthleteHome = () => {
   return (
     <div className="min-h-screen bg-gray-50">
       {/* Top Header */}
-      <header className="bg-white border-b border-gray-200">
+      <header className="bg-white border-b border-gray-200 relative z-50">
         <div className="max-w-6xl mx-auto px-6 py-4 flex items-center justify-between">
           <div className="flex items-center gap-3">
             <img src="/logo.jpg" alt="GoFast" className="w-8 h-8 rounded-full" />
@@ -199,8 +199,15 @@ const AthleteHome = () => {
               )}
             </button>
             <button
-              onClick={() => navigate('/settings')}
-              className="flex items-center gap-2 px-4 py-2 text-gray-600 hover:text-gray-900 rounded-lg font-medium hover:bg-gray-100 transition"
+              onClick={(e) => {
+                e.preventDefault();
+                e.stopPropagation();
+                console.log('Settings button clicked');
+                navigate('/settings');
+              }}
+              className="flex items-center gap-2 px-4 py-2 text-gray-600 hover:text-gray-900 rounded-lg font-medium hover:bg-gray-100 transition relative z-10 cursor-pointer"
+              type="button"
+              style={{ pointerEvents: 'auto' }}
             >
               <Settings className="h-5 w-5" />
               <span>Settings</span>
