@@ -20,6 +20,10 @@ export default function RunCrewSettings() {
   const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
   const [showTransferModal, setShowTransferModal] = useState(false);
   const [showAddManagerModal, setShowAddManagerModal] = useState(false);
+  const [showTransferModal, setShowTransferModal] = useState(false);
+  const [selectedMemberId, setSelectedMemberId] = useState('');
+  const [selectedRole, setSelectedRole] = useState('manager'); // 'admin' or 'manager'
+  const [isAddingManager, setIsAddingManager] = useState(false);
   const [crewName, setCrewName] = useState('');
   const [crewDescription, setCrewDescription] = useState('');
   const [crewLogo, setCrewLogo] = useState('');
@@ -273,6 +277,67 @@ export default function RunCrewSettings() {
   // Compute admins and members from crew data
   const admins = crew?.managers?.filter(m => m.role === 'admin') || [];
   const members = crew?.memberships || [];
+  
+  // Get members who are NOT already admins (for Add Manager modal)
+  const availableMembers = members.filter(membership => {
+    const isAlreadyAdmin = admins.some(admin => admin.athleteId === membership.athleteId);
+    return !isAlreadyAdmin;
+  });
+
+  const handleAddManager = async () => {
+    if (!selectedMemberId || !crew) {
+      setError('Please select a member');
+      return;
+    }
+
+    try {
+      setIsAddingManager(true);
+      setError(null);
+
+      const user = auth.currentUser;
+      if (!user) {
+        setError('You must be signed in to add managers');
+        setIsAddingManager(false);
+        return;
+      }
+
+      const token = await user.getIdToken();
+      const response = await api.post(`${API_BASE}/runcrew/${crew.id}/managers`, {
+        athleteId: selectedMemberId,
+        role: selectedRole
+      }, {
+        headers: { Authorization: `Bearer ${token}` }
+      });
+
+      if (response.data.success) {
+        // Refresh crew data
+        const hydrateResponse = await api.post(`${API_BASE}/runcrew/hydrate`, {
+          runCrewId: crew.id,
+          athleteId: LocalStorageAPI.getAthleteId()
+        }, {
+          headers: { Authorization: `Bearer ${token}` }
+        });
+
+        if (hydrateResponse.data.success) {
+          setCrew(hydrateResponse.data.runCrew);
+          LocalStorageAPI.setRunCrewData(hydrateResponse.data.runCrew);
+        }
+
+        // Close modal and reset
+        setShowAddManagerModal(false);
+        setSelectedMemberId('');
+        setSelectedRole('manager');
+        setError(null);
+      } else {
+        throw new Error(response.data.error || 'Failed to add manager');
+      }
+    } catch (err) {
+      console.error('Error adding manager:', err);
+      setError(err.response?.data?.message || err.message || 'Failed to add manager');
+    } finally {
+      setIsAddingManager(false);
+    }
+  };
 
   return (
     <div className="min-h-screen bg-gray-50">
@@ -593,6 +658,109 @@ export default function RunCrewSettings() {
           </div>
         </div>
       </div>
+
+      {/* Add Manager Modal */}
+      {showAddManagerModal && (
+        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
+          <div className="bg-white rounded-xl p-6 max-w-md w-full mx-4">
+            <h3 className="text-xl font-bold text-gray-900 mb-4">Add Manager</h3>
+            <p className="text-gray-600 mb-6">
+              Select a member to grant manager or admin permissions.
+            </p>
+            
+            {error && (
+              <div className="bg-red-50 border border-red-200 text-red-700 px-4 py-2 rounded text-sm mb-4">
+                {error}
+              </div>
+            )}
+
+            <div className="space-y-4">
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-2">
+                  Select Member
+                </label>
+                <select
+                  value={selectedMemberId}
+                  onChange={(e) => setSelectedMemberId(e.target.value)}
+                  className="w-full p-3 border border-gray-300 rounded-lg"
+                >
+                  <option value="">Choose a member...</option>
+                  {availableMembers.map((membership) => (
+                    <option key={membership.id} value={membership.athleteId}>
+                      {membership.athlete?.firstName} {membership.athlete?.lastName} 
+                      {membership.athlete?.email ? ` (${membership.athlete.email})` : ''}
+                    </option>
+                  ))}
+                </select>
+                {availableMembers.length === 0 && (
+                  <p className="text-sm text-gray-500 mt-2">
+                    All members are already admins.
+                  </p>
+                )}
+              </div>
+
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-2">
+                  Role
+                </label>
+                <select
+                  value={selectedRole}
+                  onChange={(e) => setSelectedRole(e.target.value)}
+                  className="w-full p-3 border border-gray-300 rounded-lg"
+                >
+                  <option value="manager">Manager</option>
+                  <option value="admin">Admin</option>
+                </select>
+                <p className="text-xs text-gray-500 mt-1">
+                  {selectedRole === 'admin' 
+                    ? 'Admins have full control over the crew'
+                    : 'Managers can help manage runs and announcements'}
+                </p>
+              </div>
+            </div>
+
+            <div className="flex space-x-4 mt-6">
+              <button
+                onClick={() => {
+                  setShowAddManagerModal(false);
+                  setSelectedMemberId('');
+                  setSelectedRole('manager');
+                  setError(null);
+                }}
+                disabled={isAddingManager}
+                className="flex-1 bg-gray-200 hover:bg-gray-300 text-gray-800 font-semibold py-2 rounded-lg transition disabled:opacity-50"
+              >
+                Cancel
+              </button>
+              <button
+                onClick={handleAddManager}
+                disabled={isAddingManager || !selectedMemberId}
+                className="flex-1 bg-green-500 hover:bg-green-600 text-white font-semibold py-2 rounded-lg transition disabled:opacity-50"
+              >
+                {isAddingManager ? 'Adding...' : 'Add Manager'}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Transfer Ownership Modal - Placeholder */}
+      {showTransferModal && (
+        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
+          <div className="bg-white rounded-xl p-6 max-w-md w-full mx-4">
+            <h3 className="text-xl font-bold text-gray-900 mb-4">Transfer Ownership</h3>
+            <p className="text-gray-600 mb-6">
+              Transfer ownership functionality coming soon.
+            </p>
+            <button
+              onClick={() => setShowTransferModal(false)}
+              className="w-full bg-gray-200 hover:bg-gray-300 text-gray-800 font-semibold py-2 rounded-lg transition"
+            >
+              Close
+            </button>
+          </div>
+        </div>
+      )}
     </div>
   );
 }

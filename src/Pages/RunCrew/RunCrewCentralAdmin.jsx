@@ -10,21 +10,21 @@ import StravaRoutePreview from '../../Components/RunCrew/StravaRoutePreview';
 import RunCrewInvitePanel from '../../Components/RunCrew/RunCrewInvitePanel';
 import { Settings } from 'lucide-react';
 
-// Prefill run form for testing
+// Initialize run form with empty fields (date defaults to tomorrow)
 const getInitialRunForm = () => {
   const tomorrow = new Date();
   tomorrow.setDate(tomorrow.getDate() + 1);
   const formattedDate = tomorrow.toISOString().split('T')[0]; // YYYY-MM-DD
   
   return {
-    title: 'Saturday Sunrise Run',
-    date: formattedDate,
-    time: '6:30 AM',
-    meetUpPoint: 'Central Park – Bethesda Terrace',
-    meetUpAddress: 'Central Park, New York, NY',
-    totalMiles: '5.0',
-    pace: '8:00-8:30',
-    description: 'Early morning run to start the weekend right. All paces welcome!',
+    title: '',
+    date: formattedDate, // Keep date calculation for convenience
+    time: '',
+    meetUpPoint: '',
+    meetUpAddress: '',
+    totalMiles: '',
+    pace: '',
+    description: '',
     stravaMapUrl: ''
   };
 };
@@ -773,13 +773,8 @@ export default function RunCrewCentralAdmin() {
               <h1 className="text-3xl font-bold text-gray-900">{crew.name || 'RunCrew Admin'}</h1>
               <p className="text-sm text-gray-500">{currentDate}</p>
               <p className="mt-2 text-base text-gray-700">
-                Welcome back{hydratedAthlete?.firstName ? `, ${hydratedAthlete.firstName}` : ''}! You’re managing everything for this crew.
+                Welcome back{hydratedAthlete?.firstName ? `, ${hydratedAthlete.firstName}` : ''}! You're managing everything for this crew.
               </p>
-              <div className="mt-3 flex flex-wrap gap-3 text-xs text-sky-900">
-                <span className="bg-sky-100 border border-sky-200 rounded px-3 py-1">athleteId: {athleteId || '—'}</span>
-                <span className="bg-sky-100 border border-sky-200 rounded px-3 py-1">runCrewId: {runCrewId || crew.id || '—'}</span>
-                <span className="bg-sky-100 border border-sky-200 rounded px-3 py-1">managerId: {runCrewManagerId || '—'}</span>
-              </div>
             </div>
           </div>
           <div className="flex items-center gap-3">
@@ -787,12 +782,15 @@ export default function RunCrewCentralAdmin() {
               onClick={() => navigate('/athlete-home')}
               className="px-4 py-2 text-sm font-semibold text-gray-700 hover:bg-gray-100 rounded-lg transition border border-gray-300"
             >
-              Home
+              Athlete Dashboard
             </button>
             <button
               onClick={goToMemberView}
-              className="text-sm text-gray-600 hover:text-gray-900 border border-gray-300 rounded-lg px-4 py-2 transition"
+              className="flex items-center gap-2 text-sm text-gray-600 hover:text-gray-900 border border-gray-300 rounded-lg px-4 py-2 transition"
             >
+              <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 10l7-7m0 0l7 7m-7-7v18" />
+              </svg>
               View Member Experience
             </button>
             <button

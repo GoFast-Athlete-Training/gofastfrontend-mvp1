@@ -48,6 +48,7 @@ export default function RunCrewInvitePanel({ inviteCode, className = '' }) {
     }
   };
 
+
   return (
     <div className={`border-t border-gray-200 pt-6 space-y-3 ${className}`}>
       <p className="text-xs text-gray-500 font-semibold uppercase tracking-wide">Invite Teammates</p>

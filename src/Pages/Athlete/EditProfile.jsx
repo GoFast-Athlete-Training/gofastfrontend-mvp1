@@ -372,7 +372,7 @@ const EditProfile = () => {
                 type="text" 
                 value={formData.city} 
                 onChange={(e) => handleInputChange('city', e.target.value)}
-                placeholder="Charlotte"
+                placeholder="City"
                 className="w-full p-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-orange-500 focus:border-orange-500"
                 required
               />
@@ -385,7 +385,7 @@ const EditProfile = () => {
                 type="text" 
                 value={formData.state} 
                 onChange={(e) => handleInputChange('state', e.target.value)}
-                placeholder="NC"
+                placeholder="State"
                 maxLength="2"
                 className="w-full p-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-orange-500 focus:border-orange-500"
                 required
