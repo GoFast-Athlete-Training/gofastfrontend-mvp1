@@ -5,7 +5,7 @@ import useHydratedAthlete from '../../hooks/useHydratedAthlete';
 
 const Settings = () => {
   const navigate = useNavigate();
-  const { athleteId } = useHydratedAthlete();
+  const { athleteId, athlete } = useHydratedAthlete();
   
   // Connection states - will be hydrated from backend
   const [connections, setConnections] = useState({
@@ -19,6 +19,7 @@ const Settings = () => {
     if (athleteId) {
       checkConnectionStatus();
     } else {
+      // If no athleteId, still show settings but without connection status
       setLoading(false);
     }
   }, [athleteId]);
@@ -26,7 +27,7 @@ const Settings = () => {
   const checkConnectionStatus = async () => {
     try {
       if (!athleteId) {
-        console.log('No athleteId found');
+        console.log('No athleteId found - showing settings without connection status');
         setLoading(false);
         return;
       }
@@ -156,14 +157,7 @@ const Settings = () => {
   };
 
 
-  // Redirect if not authenticated
-  useEffect(() => {
-    if (!athleteId && !loading) {
-      console.log('🚨 SETTINGS: No athleteId - redirecting to athlete-home');
-      navigate('/athlete-home', { replace: true });
-    }
-  }, [athleteId, loading, navigate]);
-
+  // Show loading while checking connection status
   if (loading) {
     return (
       <div className="min-h-screen bg-gray-50 flex items-center justify-center">
@@ -173,10 +167,6 @@ const Settings = () => {
         </div>
       </div>
     );
-  }
-
-  if (!athleteId) {
-    return null; // Will redirect via useEffect
   }
 
   return (
