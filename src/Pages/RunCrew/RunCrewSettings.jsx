@@ -20,7 +20,6 @@ export default function RunCrewSettings() {
   const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
   const [showTransferModal, setShowTransferModal] = useState(false);
   const [showAddManagerModal, setShowAddManagerModal] = useState(false);
-  const [showTransferModal, setShowTransferModal] = useState(false);
   const [selectedMemberId, setSelectedMemberId] = useState('');
   const [selectedRole, setSelectedRole] = useState('manager'); // 'admin' or 'manager'
   const [isAddingManager, setIsAddingManager] = useState(false);
