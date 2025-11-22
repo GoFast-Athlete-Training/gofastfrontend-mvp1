@@ -13,11 +13,14 @@ export default function RunCrewCentral() {
   const navigate = useNavigate();
   const { athlete, athleteId, runCrewId } = useHydratedAthlete();
   const [crew, setCrew] = useState(() => LocalStorageAPI.getRunCrewData());
+  const [isHydrating, setIsHydrating] = useState(false);
+  const [hydrationError, setHydrationError] = useState(null);
   const [messageContent, setMessageContent] = useState('');
   const [isSendingMessage, setIsSendingMessage] = useState(false);
   const [copyState, setCopyState] = useState('idle');
   const [isRsvpUpdating, setIsRsvpUpdating] = useState(false);
   const messagesEndRef = useRef(null);
+  const hydrationAttemptedRef = useRef(false);
 
   const runs = useMemo(() => (Array.isArray(crew?.runs) ? crew.runs : []), [crew]);
   const announcements = useMemo(() => (Array.isArray(crew?.announcements) ? crew.announcements : []), [crew]);
@@ -45,8 +48,9 @@ export default function RunCrewCentral() {
       .sort((a, b) => new Date(a.date || a.scheduledAt) - new Date(b.date || b.scheduledAt))[0];
   }, [runs]);
 
+  // Stable leaderboard calculation - prevent hydration chaos when switching metrics
   const leaderboardEntries = useMemo(() => {
-    if (!Array.isArray(leaderboard)) return [];
+    if (!Array.isArray(leaderboard) || leaderboard.length === 0) return [];
     
     // Handle both data structures: API format (totalMiles, totalRuns) and hydration format (totalDistanceMiles, activityCount)
     const formatter = activeMetric === 'runs'
@@ -55,7 +59,7 @@ export default function RunCrewCentral() {
       ? (entry) => `${Math.round(entry.totalCalories ?? 0)} cal`
       : (entry) => `${(entry.totalMiles ?? entry.totalDistanceMiles ?? 0).toFixed(1)} mi`;
 
-    // Sort by active metric (descending)
+    // Sort by active metric (descending) - create stable sorted array
     const sorted = [...leaderboard].sort((a, b) => {
       if (activeMetric === 'runs') {
         const aRuns = a.totalRuns ?? a.activityCount ?? 0;
@@ -70,6 +74,7 @@ export default function RunCrewCentral() {
       }
     });
 
+    // Return stable array - only recalculate when leaderboard data or metric actually changes
     return sorted
       .map((entry) => ({
         ...entry,
@@ -105,26 +110,60 @@ export default function RunCrewCentral() {
     });
   }, []);
 
+  // Track if hydration is in progress to prevent concurrent calls
+  const hydrationInProgressRef = useRef(false);
+
   const refreshCrew = useCallback(async () => {
-    if (!runCrewId || !athleteId) return;
+    if (!runCrewId || !athleteId) {
+      console.warn('⚠️ RUNCREW CENTRAL: Missing runCrewId or athleteId for hydration');
+      return null;
+    }
+    
+    // Prevent concurrent hydration calls (FIX: Prevent hydrate chaos)
+    if (hydrationInProgressRef.current) {
+      console.log('⏸️ RUNCREW CENTRAL: Hydration already in progress, skipping...');
+      return null;
+    }
+    
+    hydrationInProgressRef.current = true;
+    setIsHydrating(true);
+    setHydrationError(null);
+    
     try {
+      console.log('🔄 RUNCREW CENTRAL: Hydrating crew...', { runCrewId, athleteId });
       const { data } = await api.post('/runcrew/hydrate', { runCrewId, athleteId });
+      
       if (data?.success && data.runCrew) {
+        console.log('✅ RUNCREW CENTRAL: Crew hydrated successfully');
         LocalStorageAPI.setRunCrewData(data.runCrew);
         setCrew(data.runCrew);
+        setHydrationError(null);
+        return data.runCrew;
+      } else {
+        throw new Error(data?.error || data?.message || 'Failed to hydrate crew');
       }
     } catch (error) {
-      console.error('Failed to refresh crew', error);
+      console.error('❌ RUNCREW CENTRAL: Failed to hydrate crew', error);
+      const errorMessage = error.response?.data?.error || error.response?.data?.message || error.message || 'Failed to load crew data';
+      setHydrationError(errorMessage);
+      return null;
+    } finally {
+      setIsHydrating(false);
+      hydrationInProgressRef.current = false;
     }
   }, [runCrewId, athleteId]);
 
-  // Auto-hydrate crew if not in localStorage
+  // Auto-hydrate crew on mount if not in localStorage (FINAL BOSS FIX)
+  // Only run once on mount - don't re-run when crew or other state changes
   useEffect(() => {
-    if (!crew && runCrewId && athleteId) {
-      console.log('⚠️ RUNCREW CENTRAL: No crew data, hydrating...');
+    // Only hydrate if we have runCrewId and athleteId but no crew data, and haven't attempted yet
+    if (runCrewId && athleteId && !crew && !isHydrating && !hydrationAttemptedRef.current) {
+      console.log('🚀 RUNCREW CENTRAL: Auto-hydrating on mount...', { runCrewId, athleteId });
+      hydrationAttemptedRef.current = true;
       refreshCrew();
     }
-  }, [crew, runCrewId, athleteId, refreshCrew]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []); // Only run on mount - prevent re-hydration when state changes
 
   // Auto-scroll to bottom when messages change
   useEffect(() => {
@@ -319,13 +358,46 @@ export default function RunCrewCentral() {
     }
   };
 
-  // Loading state - show while hydrating
-  if (!crew && runCrewId) {
+  // Loading state - show while hydrating (FINAL BOSS: Proper loading state)
+  if ((!crew && runCrewId && athleteId) || isHydrating) {
     return (
       <div className="min-h-screen bg-gray-50 flex items-center justify-center">
         <div className="text-center">
           <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-orange-500 mx-auto mb-4"></div>
           <p className="text-gray-600">Loading your crew...</p>
+          {isHydrating && (
+            <p className="text-sm text-gray-500 mt-2">Hydrating crew data...</p>
+          )}
+        </div>
+      </div>
+    );
+  }
+
+  // Error state - show if hydration failed
+  if (hydrationError && !crew) {
+    return (
+      <div className="min-h-screen bg-gray-50 flex items-center justify-center">
+        <div className="text-center max-w-md">
+          <div className="text-red-500 text-4xl mb-4">⚠️</div>
+          <h2 className="text-xl font-semibold text-gray-900 mb-2">Failed to Load Crew</h2>
+          <p className="text-gray-600 mb-6">{hydrationError}</p>
+          <div className="flex gap-3 justify-center">
+            <button
+              onClick={() => {
+                setHydrationError(null);
+                refreshCrew();
+              }}
+              className="bg-orange-500 hover:bg-orange-600 text-white px-6 py-2 rounded-lg font-semibold"
+            >
+              Retry
+            </button>
+            <button
+              onClick={() => navigate('/athlete-home')}
+              className="bg-gray-200 hover:bg-gray-300 text-gray-800 px-6 py-2 rounded-lg font-semibold"
+            >
+              Back to Home
+            </button>
+          </div>
         </div>
       </div>
     );
@@ -715,8 +787,18 @@ export default function RunCrewCentral() {
                 {['miles','runs','calories'].map((metric) => (
                   <button
                     key={metric}
-                    onClick={() => setActiveMetric(metric)}
-                    className={`px-3 py-1 text-xs font-semibold rounded-full ${activeMetric === metric ? 'bg-orange-100 text-orange-700' : 'text-gray-600 hover:bg-gray-100'}`}
+                    onClick={(e) => {
+                      e.preventDefault();
+                      e.stopPropagation();
+                      // Prevent hydration chaos - just update metric, no side effects
+                      setActiveMetric(metric);
+                    }}
+                    disabled={isHydrating}
+                    className={`px-3 py-1 text-xs font-semibold rounded-full transition ${
+                      activeMetric === metric 
+                        ? 'bg-orange-100 text-orange-700' 
+                        : 'text-gray-600 hover:bg-gray-100'
+                    } ${isHydrating ? 'opacity-50 cursor-not-allowed' : ''}`}
                   >
                     {metric === 'miles' ? 'Miles' : metric === 'runs' ? 'Runs' : 'Cals'}
                   </button>

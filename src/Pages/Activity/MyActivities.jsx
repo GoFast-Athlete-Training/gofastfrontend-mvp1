@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { LocalStorageAPI } from '../../config/LocalStorageConfig';
 import useHydratedAthlete from '../../hooks/useHydratedAthlete';
@@ -7,9 +7,10 @@ import useActivities from '../../hooks/useActivities';
 const MyActivities = () => {
   const navigate = useNavigate();
   const { athleteId } = useHydratedAthlete();
+  const [activePeriod, setActivePeriod] = useState('current');
   
-  // Fetch activities (with automatic refresh from backend if localStorage is empty)
-  const { activities, weeklyTotals, isLoading, refresh } = useActivities(athleteId);
+  // Fetch activities for the selected period
+  const { activities, weeklyTotals, isLoading, refresh, periodLabel } = useActivities(athleteId, activePeriod);
 
   const formatDuration = (seconds) => {
     if (!seconds) return '0:00';
@@ -97,10 +98,32 @@ const MyActivities = () => {
 
       {/* Main Content */}
       <div className="max-w-6xl mx-auto px-6 py-8">
-        {/* Weekly Summary */}
+        {/* Period Filter Buttons */}
+        <div className="mb-6 flex flex-wrap gap-2">
+          {[
+            { key: 'current', label: 'This Week' },
+            { key: 'previous', label: 'Last Week' },
+            { key: 'month', label: 'This Month' },
+            { key: 'lastMonth', label: 'Last Month' }
+          ].map(({ key, label }) => (
+            <button
+              key={key}
+              onClick={() => setActivePeriod(key)}
+              className={`px-4 py-2 rounded-lg font-semibold text-sm transition ${
+                activePeriod === key
+                  ? 'bg-orange-500 text-white shadow-md'
+                  : 'bg-white text-gray-700 border border-gray-300 hover:bg-gray-50'
+              }`}
+            >
+              {label}
+            </button>
+          ))}
+        </div>
+
+        {/* Summary */}
         {weeklyTotals && (
           <div className="bg-white rounded-xl shadow-lg p-6 mb-6">
-            <h2 className="text-xl font-bold text-gray-900 mb-4">This Week</h2>
+            <h2 className="text-xl font-bold text-gray-900 mb-4">{periodLabel}</h2>
             <div className="grid grid-cols-4 gap-4">
               <div className="text-center">
                 <p className="text-3xl font-bold text-orange-600">{weeklyTotals.totalDistanceMiles || '0'}</p>

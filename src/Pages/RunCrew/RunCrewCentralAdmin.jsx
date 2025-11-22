@@ -460,7 +460,46 @@ export default function RunCrewCentralAdmin() {
       return;
     }
 
-    const isoDate = date ? `${date}T${time || '00:00'}` : null;
+    // Convert time from "6:30 AM" format to "06:30:00" (24-hour ISO format)
+    const convertTimeTo24Hour = (timeStr) => {
+      if (!timeStr) return '00:00:00';
+      
+      // If already in 24-hour format (HH:MM or HH:MM:SS), return as-is
+      if (/^\d{1,2}:\d{2}(:\d{2})?$/.test(timeStr) && !timeStr.includes('AM') && !timeStr.includes('PM')) {
+        return timeStr.includes(':') && timeStr.split(':').length === 2 ? `${timeStr}:00` : timeStr;
+      }
+      
+      // Parse "6:30 AM" or "6:30 PM" format
+      const match = timeStr.match(/(\d{1,2}):(\d{2})\s*(AM|PM)/i);
+      if (!match) {
+        console.warn('Invalid time format:', timeStr);
+        return '00:00:00';
+      }
+      
+      let hours = parseInt(match[1], 10);
+      const minutes = match[2];
+      const period = match[3].toUpperCase();
+      
+      if (period === 'PM' && hours !== 12) {
+        hours += 12;
+      } else if (period === 'AM' && hours === 12) {
+        hours = 0;
+      }
+      
+      return `${hours.toString().padStart(2, '0')}:${minutes}:00`;
+    };
+
+    const time24Hour = convertTimeTo24Hour(time);
+    const isoDate = date ? `${date}T${time24Hour}` : null;
+    
+    // Validate the ISO date string
+    if (isoDate) {
+      const testDate = new Date(isoDate);
+      if (isNaN(testDate.getTime())) {
+        showToast('Invalid date or time. Please check your inputs.');
+        return;
+      }
+    }
 
     // EDIT MODE: Update existing run via backend
     if (editingRunId) {

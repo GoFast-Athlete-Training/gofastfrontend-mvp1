@@ -70,6 +70,15 @@ const AthleteHome = () => {
     }
   }, [location.pathname]);
 
+  // RUNCREW OR BUST: Redirect to join/create if no crew
+  useEffect(() => {
+    if (athleteProfile && !runCrewId) {
+      console.log('🚨 ATHLETE HOME: No runcrew - redirecting to join/create (runcrew or bust)');
+      navigate('/runcrew/join-or-start', { replace: true });
+      return;
+    }
+  }, [athleteProfile, runCrewId, navigate]);
+
   // Calculate onboarding state (only once)
   useEffect(() => {
     if (!athleteProfile) {

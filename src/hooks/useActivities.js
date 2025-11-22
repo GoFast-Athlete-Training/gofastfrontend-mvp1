@@ -43,24 +43,26 @@ const calculateRunTotals = (activities) => {
 };
 
 /**
- * useActivities - Fetches and manages weekly activities (RUNS ONLY)
+ * useActivities - Fetches and manages activities for a specific period (RUNS ONLY)
  * 
  * Behavior:
- * 1. First tries to load from localStorage (fast)
+ * 1. For 'current' period: First tries to load from localStorage (fast)
  * 2. If empty or stale, fetches from backend
  * 3. Filters to only running activities (safety net)
  * 4. Recalculates totals for runs only
- * 5. Updates localStorage with fresh data
+ * 5. Updates localStorage with fresh data (only for 'current' period)
  * 
  * @param {string} athleteId - Athlete ID to fetch activities for
+ * @param {string} period - Time period: 'current' | 'previous' | 'month' | 'lastMonth' (default: 'current')
  * @param {boolean} forceRefresh - Force refresh from backend even if localStorage has data
- * @returns {Object} { activities, weeklyTotals, isLoading, error, refresh }
+ * @returns {Object} { activities, weeklyTotals, isLoading, error, refresh, periodLabel }
  */
-export default function useActivities(athleteId, forceRefresh = false) {
+export default function useActivities(athleteId, period = 'current', forceRefresh = false) {
   const [activities, setActivities] = useState([]);
   const [weeklyTotals, setWeeklyTotals] = useState(null);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState(null);
+  const [periodLabel, setPeriodLabel] = useState('This Week');
 
   const fetchActivities = async () => {
     if (!athleteId) {
@@ -73,8 +75,8 @@ export default function useActivities(athleteId, forceRefresh = false) {
       setIsLoading(true);
       setError(null);
 
-      // Try localStorage first (unless force refresh)
-      if (!forceRefresh) {
+      // Try localStorage first (only for 'current' period and unless force refresh)
+      if (period === 'current' && !forceRefresh) {
         const model = LocalStorageAPI.getFullHydrationModel();
         const cachedActivities = model?.weeklyActivities || [];
         const cachedTotals = model?.weeklyTotals || null;
@@ -87,10 +89,11 @@ export default function useActivities(athleteId, forceRefresh = false) {
           console.log('✅ ACTIVITIES: Loaded from localStorage:', cachedActivities.length, 'total activities,', filteredRuns.length, 'runs');
           setActivities(filteredRuns);
           setWeeklyTotals(recalculatedTotals);
+          setPeriodLabel('This Week');
           setIsLoading(false);
           
           // Still fetch in background to update cache
-          fetchFromBackend(athleteId).catch(err => {
+          fetchFromBackend(athleteId, period).catch(err => {
             console.warn('⚠️ ACTIVITIES: Background fetch failed (non-critical):', err);
           });
           return;
@@ -98,7 +101,7 @@ export default function useActivities(athleteId, forceRefresh = false) {
       }
 
       // Fetch from backend
-      await fetchFromBackend(athleteId);
+      await fetchFromBackend(athleteId, period);
     } catch (err) {
       console.error('❌ ACTIVITIES: Error fetching activities:', err);
       setError(err.message);
@@ -106,15 +109,18 @@ export default function useActivities(athleteId, forceRefresh = false) {
     }
   };
 
-  const fetchFromBackend = async (athleteId) => {
+  const fetchFromBackend = async (athleteId, periodParam = period) => {
     try {
-      console.log('🔄 ACTIVITIES: Fetching from backend for athleteId:', athleteId);
+      console.log('🔄 ACTIVITIES: Fetching from backend for athleteId:', athleteId, 'period:', periodParam);
       
-      const response = await api.get(`/athlete/${athleteId}/activities/weekly`);
+      const response = await api.get(`/athlete/${athleteId}/activities/weekly`, {
+        params: { period: periodParam }
+      });
       
       if (response.data?.success) {
         const fetchedActivities = response.data.activities || [];
         const fetchedTotals = response.data.weeklyTotals || null;
+        const fetchedPeriodLabel = response.data.periodLabel || 'This Week';
 
         // Filter to runs only and recalculate totals (safety net - backend should already filter, but ensure consistency)
         const filteredRuns = filterRunningActivities(fetchedActivities);
@@ -124,16 +130,18 @@ export default function useActivities(athleteId, forceRefresh = false) {
         
         setActivities(filteredRuns);
         setWeeklyTotals(recalculatedTotals);
+        setPeriodLabel(fetchedPeriodLabel);
 
-        // Update localStorage cache with filtered runs and recalculated totals
-        const model = LocalStorageAPI.getFullHydrationModel();
-        LocalStorageAPI.setFullHydrationModel({
-          ...model,
-          weeklyActivities: filteredRuns,
-          weeklyTotals: recalculatedTotals
-        });
-
-        console.log('✅ ACTIVITIES: Updated localStorage cache with', filteredRuns.length, 'runs');
+        // Update localStorage cache only for 'current' period
+        if (periodParam === 'current') {
+          const model = LocalStorageAPI.getFullHydrationModel();
+          LocalStorageAPI.setFullHydrationModel({
+            ...model,
+            weeklyActivities: filteredRuns,
+            weeklyTotals: recalculatedTotals
+          });
+          console.log('✅ ACTIVITIES: Updated localStorage cache with', filteredRuns.length, 'runs');
+        }
       } else {
         throw new Error(response.data?.error || 'Failed to fetch activities');
       }
@@ -148,14 +156,14 @@ export default function useActivities(athleteId, forceRefresh = false) {
   useEffect(() => {
     // Only fetch if we have an athleteId
     if (athleteId) {
-      console.log('🔄 ACTIVITIES: useEffect triggered, athleteId:', athleteId);
+      console.log('🔄 ACTIVITIES: useEffect triggered, athleteId:', athleteId, 'period:', period);
       fetchActivities();
     } else {
       console.log('⏳ ACTIVITIES: useEffect waiting for athleteId');
       setIsLoading(false);
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [athleteId, forceRefresh]);
+  }, [athleteId, period, forceRefresh]);
 
   const refresh = () => {
     fetchActivities();
@@ -166,7 +174,8 @@ export default function useActivities(athleteId, forceRefresh = false) {
     weeklyTotals,
     isLoading,
     error,
-    refresh
+    refresh,
+    periodLabel
   };
 }
 
