@@ -57,7 +57,11 @@ export default function RunCrewCentral() {
       ? (entry) => `${entry.totalRuns ?? entry.activityCount ?? 0} runs`
       : activeMetric === 'calories'
       ? (entry) => `${Math.round(entry.totalCalories ?? 0)} cal`
-      : (entry) => `${(entry.totalMiles ?? entry.totalDistanceMiles ?? 0).toFixed(1)} mi`;
+      : (entry) => {
+          const miles = entry.totalMiles ?? entry.totalDistanceMiles ?? 0;
+          const numMiles = typeof miles === 'number' ? miles : parseFloat(miles) || 0;
+          return `${numMiles.toFixed(1)} mi`;
+        };
 
     // Sort by active metric (descending) - create stable sorted array
     const sorted = [...leaderboard].sort((a, b) => {
@@ -68,8 +72,12 @@ export default function RunCrewCentral() {
       } else if (activeMetric === 'calories') {
         return (b.totalCalories ?? 0) - (a.totalCalories ?? 0);
       } else {
-        const aMiles = a.totalMiles ?? a.totalDistanceMiles ?? 0;
-        const bMiles = b.totalMiles ?? b.totalDistanceMiles ?? 0;
+        const aMiles = typeof (a.totalMiles ?? a.totalDistanceMiles ?? 0) === 'number' 
+          ? (a.totalMiles ?? a.totalDistanceMiles ?? 0) 
+          : parseFloat(a.totalMiles ?? a.totalDistanceMiles ?? 0) || 0;
+        const bMiles = typeof (b.totalMiles ?? b.totalDistanceMiles ?? 0) === 'number' 
+          ? (b.totalMiles ?? b.totalDistanceMiles ?? 0) 
+          : parseFloat(b.totalMiles ?? b.totalDistanceMiles ?? 0) || 0;
         return bMiles - aMiles;
       }
     });

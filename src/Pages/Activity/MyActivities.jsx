@@ -126,7 +126,13 @@ const MyActivities = () => {
             <h2 className="text-xl font-bold text-gray-900 mb-4">{periodLabel}</h2>
             <div className="grid grid-cols-4 gap-4">
               <div className="text-center">
-                <p className="text-3xl font-bold text-orange-600">{weeklyTotals.totalDistanceMiles || '0'}</p>
+                <p className="text-3xl font-bold text-orange-600">
+                  {typeof weeklyTotals.totalDistanceMiles === 'number' 
+                    ? weeklyTotals.totalDistanceMiles.toFixed(1) 
+                    : (typeof weeklyTotals.totalDistanceMiles === 'string' 
+                      ? parseFloat(weeklyTotals.totalDistanceMiles).toFixed(1) || '0'
+                      : '0')}
+                </p>
                 <p className="text-sm text-gray-600">Miles</p>
               </div>
               <div className="text-center">

@@ -36,8 +36,8 @@ const calculateRunTotals = (activities) => {
     if (activity.calories) totals.totalCalories += activity.calories;
   });
   
-  // Convert distance from meters to miles
-  totals.totalDistanceMiles = (totals.totalDistance / 1609.34).toFixed(2);
+  // Convert distance from meters to miles (keep as number for formatting in components)
+  totals.totalDistanceMiles = totals.totalDistance / 1609.34;
   
   return totals;
 };
