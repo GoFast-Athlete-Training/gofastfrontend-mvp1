@@ -1,8 +1,11 @@
 import React, { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
+import { LocalStorageAPI } from '../../config/LocalStorageConfig';
+import useHydratedAthlete from '../../hooks/useHydratedAthlete';
 
 const Settings = () => {
   const navigate = useNavigate();
+  const { athleteId } = useHydratedAthlete();
   
   // Connection states - will be hydrated from backend
   const [connections, setConnections] = useState({
@@ -13,14 +16,17 @@ const Settings = () => {
 
   // Check connection status on component mount
   useEffect(() => {
-    checkConnectionStatus();
-  }, []);
+    if (athleteId) {
+      checkConnectionStatus();
+    } else {
+      setLoading(false);
+    }
+  }, [athleteId]);
 
   const checkConnectionStatus = async () => {
     try {
-      const athleteId = localStorage.getItem('athleteId');
       if (!athleteId) {
-        console.log('No athleteId found in localStorage');
+        console.log('No athleteId found');
         setLoading(false);
         return;
       }
@@ -59,9 +65,8 @@ const Settings = () => {
     }
 
     try {
-      const athleteId = localStorage.getItem('athleteId');
       if (!athleteId) {
-        throw new Error('AthleteId not found in localStorage');
+        throw new Error('AthleteId not found');
       }
 
       const response = await fetch(`https://gofastbackendv2-fall2025.onrender.com/api/garmin/disconnect`, {
@@ -90,10 +95,8 @@ const Settings = () => {
   // CLEAN Garmin OAuth 2.0 Flow - Backend handles everything (POPUP VERSION)
   const connectGarmin = async () => {
     try {
-      // Get athleteId from localStorage
-      const athleteId = localStorage.getItem('athleteId');
       if (!athleteId) {
-        throw new Error('AthleteId not found in localStorage');
+        throw new Error('AthleteId not found');
       }
       
       console.log(`🔍 Starting Garmin OAuth for athleteId: ${athleteId}`);
@@ -153,6 +156,29 @@ const Settings = () => {
   };
 
 
+  // Redirect if not authenticated
+  useEffect(() => {
+    if (!athleteId && !loading) {
+      console.log('🚨 SETTINGS: No athleteId - redirecting to athlete-home');
+      navigate('/athlete-home', { replace: true });
+    }
+  }, [athleteId, loading, navigate]);
+
+  if (loading) {
+    return (
+      <div className="min-h-screen bg-gray-50 flex items-center justify-center">
+        <div className="text-center">
+          <div className="animate-spin rounded-full h-16 w-16 border-b-2 border-orange-500 mx-auto mb-4"></div>
+          <p className="text-gray-600">Loading settings...</p>
+        </div>
+      </div>
+    );
+  }
+
+  if (!athleteId) {
+    return null; // Will redirect via useEffect
+  }
+
   return (
     <div className="min-h-screen bg-gray-50">
       {/* Header */}
@@ -167,7 +193,7 @@ const Settings = () => {
               onClick={() => navigate("/athlete-home")}
               className="px-6 py-3 bg-gray-200 text-gray-700 rounded-lg font-semibold hover:bg-gray-300 transition"
             >
-              Back to Home
+              Athlete Dashboard
             </button>
           </div>
         </div>
