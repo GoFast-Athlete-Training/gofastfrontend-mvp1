@@ -227,3 +227,4 @@ if (validating && !crewInfo) {
 **Status**: ✅ Implemented with graceful error handling
 
 
+
